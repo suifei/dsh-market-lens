@@ -163,17 +163,18 @@ window.__ModuleLoader__.load({
 .ml-panel>header{display:flex;gap:6px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--dsw-alias-border-l1);flex-wrap:wrap;font-size:12px;color:var(--dsw-alias-label-secondary)}
 .ml-panel>header .ml-title{font-weight:600;color:var(--dsw-alias-label-primary);margin-right:auto}
 .ml-rows{overflow-y:auto;flex:1;min-height:0}
-.ml-row{display:grid;grid-template-columns:minmax(0,1.2fr) auto auto;gap:4px 10px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--dsw-alias-border-l1);cursor:pointer;background:none;border-left:0;border-right:0;border-top:0;color:inherit;font:inherit;text-align:left;width:100%}
-.ml-row .nm{display:flex;flex-direction:column;min-width:0}
+.ml-row{display:flex;align-items:center;gap:10px;position:relative;padding:8px 10px;border-bottom:1px solid var(--dsw-alias-border-l1);cursor:pointer;background:none;border-left:0;border-right:0;border-top:0;color:inherit;font:inherit;text-align:left;width:100%}
+.ml-row .nm{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
 .ml-row .nm b{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ml-row .nm code{font-size:11px;color:var(--dsw-alias-label-secondary)}
 .ml-row .nm .ad{font-size:11px;line-height:1.3}
 .ml-row:hover,.ml-row[aria-current="true"]{background:var(--dsw-alias-bg-layer-2)}
-.ml-row .qt{display:grid;grid-template-columns:auto auto;gap:0 10px;justify-items:end;align-items:baseline}
+.ml-row .qt{flex:none;display:grid;grid-template-columns:auto auto;gap:0 10px;justify-items:end;align-items:baseline}
 .ml-row .qt b{font-size:15px;font-weight:600}
 .ml-row .qt .rm{font-size:11px;white-space:nowrap}
-.ml-row .rm-x{grid-column:3;justify-self:end;visibility:hidden}
+.ml-row .rm-x{position:absolute;top:6px;right:8px;visibility:hidden;z-index:2}
 .ml-row:hover .rm-x{visibility:visible}
+.ml-row .ml-spark{flex:none}
 .ml-spark{width:64px;height:26px;display:block;overflow:visible}
 .ml-spark.empty{visibility:hidden}
 .ml-chart{flex:1;min-height:260px;position:relative;display:flex;flex-direction:column}
@@ -313,7 +314,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.6.0';
+		const CLIENT_REV = '0.6.1';
 		const diagQueue = [];
 		let diagTimer = 0;
 		function diagSend(rows) {
@@ -863,10 +864,11 @@ window.__ModuleLoader__.load({
 				setCross({ gi: barAtPixel(x), x, y });
 			}
 			function panBy(clientX) {
-				if (pan.current === null || geo.current === null) return;
-				const g = geo.current;
-				const shift = Math.round((pan.current.x - clientX) / g.step);
-				setView((current) => ({ ...current, offset: Math.max(0, Math.min(total - current.count, pan.current.offset + shift)) }));
+				const p = pan.current;
+				if (p === null || geo.current === null) return;
+				// capture p: the setView callback runs after pointerup may already null pan.current
+				const shift = Math.round((p.x - clientX) / geo.current.step);
+				setView((current) => ({ ...current, offset: Math.max(0, Math.min(total - current.count, p.offset + shift)) }));
 			}
 			function onPointerDown(event) {
 				// the placeholder before the first draw has no geometry: keep pointer effects off it
@@ -1746,15 +1748,26 @@ window.__ModuleLoader__.load({
 			static getDerivedStateFromError(error) {
 				return { error };
 			}
-			componentDidCatch(error) {
+			componentDidCatch(error, info) {
 				console.error(`${PKG}: panel crashed`, error);
-				diag('panel.crash', { message: String(error?.message ?? error) });
+				diag('panel.crash', {
+					message: String(error?.message ?? error),
+					stack: String(info?.componentStack ?? error?.stack ?? '').slice(0, 400),
+				});
+			}
+			retry() {
+				this.setState({ error: null });
 			}
 			render() {
 				if (this.state.error === null) return this.props.children;
 				return h('div', { className: 'ml-root', style: { padding: 16, gap: 6, display: 'flex', flexDirection: 'column' } },
 					h('b', { style: { color: 'var(--dsw-alias-state-error-primary)' } }, this.props.prefix + String(this.state.error?.message ?? this.state.error)),
-					h('span', { className: 'ml-pad' }, this.props.hint === void 0 ? '' : this.props.hint()));
+					h('span', { className: 'ml-pad' }, this.props.hint === void 0 ? '' : this.props.hint()),
+					h('button', {
+						type: 'button', className: 'ml-btn', style: { alignSelf: 'flex-start' },
+						title: '重新渲染面板 / re-render the board',
+						onClick: () => this.retry(),
+					}, '↻'));
 			}
 		}
 
