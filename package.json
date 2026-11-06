@@ -1,6 +1,6 @@
 {
   "name": "@suifei/dsh-market-lens",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "private": true,
   "description": "寰镜 MarketLens — read-only A-share / HK / US market board for the DSH Web GUI (delayed public quotes, no trading)",
   "type": "module",

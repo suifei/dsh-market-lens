@@ -116,6 +116,9 @@ window.__ModuleLoader__.load({
 .ml-daybar span{display:flex;gap:5px;align-items:baseline}
 .ml-daybar i{font-style:normal;color:var(--dsw-alias-label-secondary)}
 .ml-flat{color:var(--dsw-alias-label-secondary)}
+.up{color:var(--ml-up)}
+.down{color:var(--ml-down)}
+.up .rm,.down .rm{color:inherit}
 .ml-top{display:flex;gap:8px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--dsw-alias-border-l1);flex-wrap:wrap}
 .ml-brand{font-weight:600;margin-right:auto;display:flex;gap:8px;align-items:baseline;min-width:0}
 .ml-brand small{color:var(--dsw-alias-label-secondary);font-weight:400;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -305,7 +308,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.5.2';
+		const CLIENT_REV = '0.5.3';
 		const diagQueue = [];
 		let diagTimer = 0;
 		function diagSend(rows) {
@@ -474,13 +477,17 @@ window.__ModuleLoader__.load({
 			const moved = quote.price !== void 0 && quote.price !== null && prev.current !== void 0 && prev.current !== null && quote.price !== prev.current;
 			const tick = moved ? (quote.price > prev.current ? ' tick-up' : ' tick-down') : '';
 			React.useEffect(() => { prev.current = quote.price; }, [quote.price]);
+			// 开/高/低 relative to prev close: above = up color, below = down color, level = neutral
+			const cmpPrev = (value) => (value === null || quote.prevClose === null || quote.prevClose === void 0)
+				? null
+				: value > quote.prevClose ? 1 : value < quote.prevClose ? -1 : 0;
 			const cells = [
 				['metric.price', quote.price === null ? null : fmtNum(quote.price), quote.changePct, tick],
 				['metric.change', quote.changePct === null ? null : `${fmtSigned(quote.changePct)}%`, quote.changePct, ''],
-				['metric.open', quote.open === null ? null : fmtNum(quote.open), null, ''],
+				['metric.open', quote.open === null ? null : fmtNum(quote.open), cmpPrev(quote.open), ''],
 				['metric.prev', quote.prevClose === null ? null : fmtNum(quote.prevClose), null, ''],
-				['metric.high', quote.high === null ? null : fmtNum(quote.high), null, ''],
-				['metric.low', quote.low === null ? null : fmtNum(quote.low), null, ''],
+				['metric.high', quote.high === null ? null : fmtNum(quote.high), cmpPrev(quote.high), ''],
+				['metric.low', quote.low === null ? null : fmtNum(quote.low), cmpPrev(quote.low), ''],
 				['metric.amplitude', quote.amplitude === null ? null : `${fmtNum(quote.amplitude)}%`, null, ''],
 				['metric.volume', quote.volume === null ? null : fmtBig(quote.volume), null, ''],
 				['metric.amount', quote.amount === null ? null : fmtBig(quote.amount), null, ''],
@@ -907,6 +914,9 @@ window.__ModuleLoader__.load({
 			}
 
 			const zoomed = total > 0 && (view.count < total - 1 || view.offset > 0);
+			const relCls = (value, base) => (value === null || value === void 0 || base === null || base === void 0)
+				? 'ml-flat'
+				: value > base ? 'up' : value < base ? 'down' : 'ml-flat';
 			const legendBar = cross === null ? void 0 : bars[cross.gi];
 			const legendPrev = legendBar === void 0 ? void 0 : bars[bars.indexOf(legendBar) - 1];
 			const legendChg = legendBar?.c !== void 0 && legendBar?.c !== null && (legendPrev?.c ?? null) !== null ? (legendBar.c - legendPrev.c) / legendPrev.c * 100 : null;
@@ -937,9 +947,11 @@ window.__ModuleLoader__.load({
 					}),
 					h('div', { className: 'ml-legend' }, legendBar === void 0 ? t('chart.hint') : [
 						h('b', { key: 'd' }, String(legendBar.t)),
-						h('span', { key: 'o' }, `O ${fmtNum(legendBar.o)}  H ${fmtNum(legendBar.h)}`),
-						h('span', { key: 'l' }, `L ${fmtNum(legendBar.l)}  C ${fmtNum(legendBar.c)}`),
-						h('span', { key: 'c', className: legendChg === null ? '' : dirClass(legendChg) }, legendChg === null ? '' : `${fmtSigned(legendChg)}%`),
+						h('span', { key: 'o', className: relCls(legendBar.o, legendPrev?.c ?? legendBar.o) }, `O ${fmtNum(legendBar.o)}`),
+						h('span', { key: 'h', className: relCls(legendBar.h, legendPrev?.c ?? legendBar.h) }, `H ${fmtNum(legendBar.h)}`),
+						h('span', { key: 'l', className: relCls(legendBar.l, legendPrev?.c ?? legendBar.l) }, `L ${fmtNum(legendBar.l)}`),
+						h('span', { key: 'c', className: relCls(legendBar.c, legendPrev?.c ?? legendBar.c) }, `C ${fmtNum(legendBar.c)}`),
+						h('span', { key: 'p', className: legendChg === null ? '' : dirClass(legendChg) }, legendChg === null ? '' : `${fmtSigned(legendChg)}%`),
 						h('span', { key: 'v' }, `Vol ${fmtBig(legendBar.v)}`),
 						...(showMa ? maSeries.filter((m) => m.values[cross.gi] !== null).map((m, i) => h('span', {
 							key: `ma${m.span}`,
