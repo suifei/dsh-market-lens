@@ -377,9 +377,12 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.10.0';
+		const CLIENT_REV = '0.11.0';
 		const diagQueue = [];
 		let diagTimer = 0;
+		// the host meta tells the real level; until then assume the shipped 'errors' default
+		let diagMode = 'errors';
+		const isDiagError = (ev) => ev === 'panel.crash' || ev === 'route.status' || ev === 'route.reject' || String(ev).endsWith('.fail');
 		function diagSend(rows) {
 			try {
 				const body = JSON.stringify({ rows });
@@ -403,6 +406,7 @@ window.__ModuleLoader__.load({
 			if (rows.length > 0) diagSend(rows);
 		}
 		function diag(ev, fields) {
+			if (diagMode === 'off' || (diagMode !== 'full' && !isDiagError(ev))) return;
 			diagQueue.push({
 				ev,
 				...fields,
@@ -1472,6 +1476,7 @@ window.__ModuleLoader__.load({
 						controller = new AbortController();
 						try {
 							const value = await api('meta', {}, controller.signal);
+							if (value?.diag === 'full' || value?.diag === 'errors' || value?.diag === 'off') diagMode = value.diag;
 							if (stopped) return;
 							diag('panel.meta.ok', { symbols: value.defaultWatchlist.length });
 							setMeta(value);

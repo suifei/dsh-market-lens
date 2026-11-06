@@ -1,6 +1,8 @@
 # 寰镜 MarketLens bundle patch: mounts the Host half.
 # The Client half is discovered from this package's `dsh.client` declaration.
+# diagLevel: 开发机全量日志；发布的默认值是 'errors'（只留崩溃/失败行），
+# 完全静音用 'off'。普通使用者删掉这一行即可回到默认。
 - insert:
     - id: market-lens
       name: '@suifei/dsh-market-lens'
-      config: {}
+      config: { diagLevel: full }

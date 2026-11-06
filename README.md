@@ -86,11 +86,13 @@ A 股 / 港股 / 美股的**只读**行情看板 DSH Web 插件。定位一句�
 
 ## 配置（`cordis.patch.yml` 行内 `config`）
 
-`pollIntervalMs 5000 · quoteTtlMs 5000 · klineTtlMs 60000 · searchTtlMs 300000 · newsTtlMs 60000 · finTtlMs 21600000 · upstreamTimeoutMs 6000 · maxQuoteSymbols ≤200 · maxKlineCount ≤320 · routePath /market-lens`
+`pollIntervalMs 5000 · quoteTtlMs 5000 · klineTtlMs 60000 · searchTtlMs 300000 · newsTtlMs 60000 · finTtlMs 21600000 · upstreamTimeoutMs 6000 · maxQuoteSymbols ≤200 · maxKlineCount ≤320 · routePath /market-lens · diagLevel errors`
 
-## 诊断日志（自监控闭环）
+## 诊断日志（自监控闭环，**全局开关**）
 
-面板把关键事件（挂载、每类请求成败、渲染崩溃）批量 POST 到 `/market-lens/diag`，宿主连同护栏拒绝与非常规状态码一起写入 JSONL 日志：
+**`diagLevel` 是日志总开关**：`off` 完全静音（不落盘、客户端连 POST 都不发）；`errors`（**发布默认**）只保留崩溃/失败行（`panel.crash`、`*.fail`、`route.status`、`route.reject`），日常事件零写盘；`full` 记录一切——开发调试期用。仓库自带的 `cordis.patch.yml` 行内写了 `config: { diagLevel: full }`（开发机现状），**发布前删掉或改回 `errors`** 即可回到静音默认；普通使用者不配置天然是 `errors`。
+
+面板把关键事件（挂载、每类请求成败、渲染崩溃）批量 POST 到 `/market-lens/diag`，宿主连同护栏拒绝与非常规状态码一起写入 JSONL 日志（客户端与服务端各有一道同级过滤，`full` 之外不产生流水）：
 
 - 位置：`~/.dsh/market-lens/marketlens-diag-<YYYY-MM-DD>.jsonl`（`diagLogDir` / `diagLogMaxBytes` 可在插件配置改，按天分文件、超限轮转为 `.1`）。
 - 回读：`GET /market-lens/diag?tail=50` 返回 `{file, rows}`；面板红条本身也带原因。
