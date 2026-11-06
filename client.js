@@ -177,7 +177,7 @@ window.__ModuleLoader__.load({
 .ml-ticker:hover{animation-play-state:paused}
 @keyframes mltape{to{transform:translateX(-50%)}}
 .ml-ticker span{font-size:14px;text-shadow:0 0 3px currentColor;letter-spacing:1px}
-.ml-ledstage{flex:1;min-height:0;position:relative}
+.ml-ledstage{flex:1;min-height:0;position:relative;background:#05080f}
 .ml-ledscreen{position:absolute;inset:0;display:block;cursor:crosshair}
 .ml-led .up{color:color-mix(in srgb,var(--ml-up) 68%,#fff)}
 .ml-led .down{color:color-mix(in srgb,var(--ml-down) 68%,#fff)}
@@ -369,7 +369,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.16.1';
+		const CLIENT_REV = '0.16.2';
 		const diagQueue = [];
 		let diagTimer = 0;
 		// the host meta tells the real level; until then assume the shipped 'errors' default
@@ -2107,8 +2107,8 @@ window.__ModuleLoader__.load({
 			// design px (guaranteed gutters for 8x16 halfwidth runs) and the whole
 			// scene scales uniformly to the container - a real LED wall never
 			// re-lays itself out when you hang it on a smaller frame
-			const DESIGN_W = 1280;
-			const COL_X = [700, 860, 1090, 1276];
+			const DESIGN_W = 1920;
+			const COL_X = [1000, 1280, 1600, 1916];
 			const wrapRef = React.useRef(null);
 			const canvasRef = React.useRef(null);
 			const contentRef = React.useRef(null);
@@ -2121,18 +2121,15 @@ window.__ModuleLoader__.load({
 			const [lit, setLit] = React.useState(0);
 			const [paused, setPaused] = React.useState(false);
 			const [feedTick, setFeedTick] = React.useState(0);
-			// quantized fit scale, measured in PHYSICAL pixels (css width x dpi):
-			// the wall is a bulb raster, so what matters is real pixels on the
-			// panel, not the browser's zoomed css box. Bands against the 1280
-			// design raster - under 1.5x snap to 0.25 steps (320 -> 0.25,
-			// 640 -> 0.5, 960 -> 0.75, 1280 -> 1, 1440 -> 1.25), from 1.5x up
-			// snap to whole multiples so bulbs stay whole pixels (1920 -> 2,
-			// 2560 -> 2, 4K -> 3, 5K -> 4, 8K -> 6). The scene bakes once at
-			// design px and is nearest-neighbour scaled; layout never re-flows.
+			// quantized fit scale, measured in PHYSICAL pixels (css width x dpi),
+			// floored to 0.25 steps against the 1920 (1080p) design raster: the
+			// scene NEVER crops - leftover space is off-bulb wall. Examples:
+			// 480 -> 0.25, 960 -> 0.5, 1440 -> 0.75, 1920 -> 1, 2400 -> 1.25,
+			// 4K -> 2, 8K -> 4. Bakes once at design px, nearest-neighbour blit;
+			// the layout itself never re-flows.
 			const sc = (() => {
 				const raw = size.w === 0 ? 1 : size.w / DESIGN_W;
-				if (raw < 1.5) return Math.max(0.25, Math.min(1.25, Math.round(raw * 4) / 4));
-				return Math.max(2, Math.min(6, Math.round(raw)));
+				return Math.max(0.25, Math.min(4, Math.floor(raw * 4) / 4));
 			})();
 			const pageSize = Math.max(2, Math.floor((size.h / sc - HEAD_H - CHART_H) / ROW_H));
 			const pages = Math.max(1, Math.ceil(rows.length / pageSize));
@@ -2306,14 +2303,17 @@ window.__ModuleLoader__.load({
 					raf = window.requestAnimationFrame(step);
 					if (ts - last < 110) return; // ~9fps: a bulb wall idles gracefully, it is not a cartoon
 					last = ts;
-					const scene = sceneRef.current;
-					if (scene === null) return;
+					// paint the frame background every tick, even with no scene yet:
+					// a resize clears the canvas, and a transparent wall reads as a
+					// white screen until the next bake lands
 					x.fillStyle = OFF_BG;
 					x.fillRect(0, 0, size.w, size.h);
 					if (base !== null) {
 						x.fillStyle = base;
 						x.fillRect(0, 0, size.w, size.h);
 					}
+					const scene = sceneRef.current;
+					if (scene === null) return;
 					x.drawImage(scene, 0, 0, Math.round(scene.width * sc), Math.round(scene.height * sc));
 					scanY = (scanY + 1) % gh;
 					x.fillStyle = 'rgba(130,200,255,0.05)';
