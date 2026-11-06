@@ -93,6 +93,17 @@ test('updates batch-checks filings per symbol and marks non-A-shares unsupported
 	await rm(dir, { recursive: true, force: true });
 });
 
+test('the pixel webfont is served with a font content-type', async () => {
+	const { dir, routeResource } = await mount(async () => res('{}'));
+	const handled = await routeResource(get('/market-lens/font'));
+	assert.equal(handled.status, 200);
+	assert.equal(handled.headers.get('content-type'), 'font/woff2');
+	const bytes = await handled.arrayBuffer();
+	assert.ok(bytes.byteLength > 100_000, 'real font, not a stub');
+	assert.deepEqual([...new Uint8Array(bytes.slice(0, 4))], [0x77, 0x4F, 0x46, 0x32], 'wOF2 magic');
+	await rm(dir, { recursive: true, force: true });
+});
+
 test('posts route rejects a missing symbol with 400', async () => {
 	const { dir, routeResource } = await mount(async () => res('{}'));
 	const handled = await routeResource(get('/market-lens/posts'));

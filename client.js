@@ -170,12 +170,13 @@ window.__ModuleLoader__.load({
 .ml-main{display:grid;grid-template-columns:320px minmax(0,1fr) 350px;gap:10px;padding:10px 14px;flex:1;min-height:0}
 .ml-split{cursor:col-resize;background:var(--dsw-alias-border-l1);border-radius:3px;transition:background .15s;touch-action:none;margin:2px -7px}
 .ml-split:hover,.ml-split:active{background:var(--dsw-alias-brand-primary)}
-.ml-led{grid-column:1/-1;position:relative;background:#05080f;border:1px solid #12283f;border-radius:12px;display:flex;flex-direction:column;min-height:0;overflow:hidden;color:#d7e9ff;font-family:ui-monospace,'Cascadia Mono',Consolas,monospace;box-shadow:inset 0 0 60px rgba(10,40,80,.45)}
-.ml-led::after{content:'';position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(255,255,255,.03) 0 1px,transparent 1px 3px)}
+@font-face{font-family:'MLPixel';src:url('/market-lens/font?v=0.9.0') format('woff2');font-display:swap}
+.ml-led{grid-column:1/-1;position:relative;background:#05080f;border:1px solid #12283f;border-radius:12px;display:flex;flex-direction:column;min-height:0;overflow:hidden;color:#d7e9ff;font-family:'MLPixel',ui-monospace,'Cascadia Mono',Consolas,monospace}
+.ml-led .num,.ml-led .nm b,.ml-ticker span{letter-spacing:1px}
 .ml-ticker{display:flex;gap:40px;padding:9px 12px;white-space:nowrap;overflow:hidden;border-bottom:1px solid #12283f;background:#03060b;flex:none;animation:mltape 45s linear infinite;width:max-content}
 .ml-ticker:hover{animation-play-state:paused}
 @keyframes mltape{to{transform:translateX(-50%)}}
-.ml-ticker span{font-size:14px;text-shadow:0 0 8px currentColor;letter-spacing:.5px}
+.ml-ticker span{font-size:14px;text-shadow:0 0 3px currentColor;letter-spacing:1px}
 .ml-ledscroll{overflow-y:auto;min-height:0;flex:1}
 .ml-led table{width:100%;border-collapse:collapse;table-layout:auto}
 .ml-led thead th{position:sticky;top:0;background:#03060b;color:#4f7196;font-size:11px;font-weight:400;text-align:right;padding:7px 16px;border-bottom:1px solid #12283f;letter-spacing:2px;text-transform:uppercase}
@@ -185,11 +186,22 @@ window.__ModuleLoader__.load({
 .ml-led td{padding:11px 16px}
 .ml-led .nm b{font-size:17px;font-weight:600;letter-spacing:1px}
 .ml-led .nm code{display:block;font-size:11px;color:#4f7196}
-.ml-led .num{text-align:right;font-size:19px;font-variant-numeric:tabular-nums;text-shadow:0 0 10px currentColor}
+.ml-led .num{text-align:right;font-size:19px;font-variant-numeric:tabular-nums;text-shadow:0 0 3px currentColor}
 .ml-led .num.big{font-size:24px;font-weight:700;min-width:110px}
 .ml-led .up{color:var(--ml-up)}
 .ml-led .down{color:var(--ml-down)}
 .ml-led .ml-flat{color:#6b87a4}
+.ml-ledbody{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.35fr);gap:0;flex:1;min-height:0}
+.ml-ledscroll{overflow-y:auto;min-height:0}
+.ml-ledchart{display:flex;flex-direction:column;min-width:0;border-left:1px solid #12283f}
+.ml-ledchart .ml-chart{background:transparent;border:0}
+.ml-led-hd{display:flex;align-items:baseline;gap:12px;padding:8px 14px;border-bottom:1px solid #12283f;background:#03060b}
+.ml-led-hd b{font-size:20px;letter-spacing:2px}
+.ml-led-hd code{color:#4f7196;font-size:12px}
+.ml-led-hd .px{font-size:26px;text-shadow:0 0 4px currentColor;font-variant-numeric:tabular-nums}
+.ml-led tbody tr.hl{background:#0f2c4a}
+.ml-led tbody tr.hl td:first-child::before{content:'▶';color:var(--dsw-alias-brand-primary);margin-right:6px;font-size:11px}
+@media (max-width:1200px){.ml-ledbody{grid-template-columns:minmax(0,1fr)}}
 .ml-tabs{display:flex;gap:2px}
 .ml-tabs button{background:none;border:0;padding:5px 9px;border-radius:8px;font:inherit;font-size:12px;color:var(--dsw-alias-label-secondary);cursor:pointer}
 .ml-tabs button[aria-selected="true"]{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);font-weight:600}
@@ -218,7 +230,8 @@ window.__ModuleLoader__.load({
 .ml-row[aria-current="true"]:hover .ml-pin{opacity:.85}
 .ml-row.pinned .ml-pin{opacity:.95}
 .ml-row.pinned .nm{padding-left:16px}
-.ml-bub{position:absolute;top:5px;left:26px;min-width:16px;height:16px;padding:0 4px;border-radius:9px;background:var(--ml-up);color:#fff;font-size:10px;font-weight:700;line-height:16px;text-align:center;box-shadow:0 0 0 2px var(--dsw-alias-bg-layer-1),0 0 8px var(--ml-up);animation:mlbub 1.6s ease-in-out infinite;z-index:3}
+.ml-bub{position:absolute;top:5px;right:8px;min-width:16px;height:16px;padding:0 4px;border-radius:9px;background:var(--ml-up);color:#fff;font-size:10px;font-weight:700;line-height:16px;text-align:center;box-shadow:0 0 0 2px var(--dsw-alias-bg-layer-1),0 0 8px var(--ml-up);animation:mlbub 1.6s ease-in-out infinite;z-index:3}
+.ml-row:has(.ml-bub):hover .rm-x{right:28px}
 @keyframes mlbub{50%{transform:scale(1.13)}}
 .ml-row .ml-spark{flex:none}
 .ml-spark{width:56px;height:26px;display:block;overflow:visible}
@@ -360,7 +373,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.8.0';
+		const CLIENT_REV = '0.9.0';
 		const diagQueue = [];
 		let diagTimer = 0;
 		function diagSend(rows) {
@@ -1837,6 +1850,8 @@ window.__ModuleLoader__.load({
 					},
 					led === true ? h(LedBoard, {
 						rows: sorted, quotes, seenQuote, meta, t,
+						showMa: prefs.showMa, hollow: PALETTES[prefs.palette]?.hollow === true,
+						getKline: (symbol) => api('kline', { symbol, period: 'day', count: 160 }),
 						onPick: (symbol) => {
 							pick(symbol);
 							setLed(false);
@@ -1871,7 +1886,7 @@ window.__ModuleLoader__.load({
 										})))),
 						) : null,
 						led === true || wide === false ? null : h('div', { className: 'ml-split', onPointerDown: beginSplit('l'), role: 'separator', 'aria-orientation': 'vertical', 'aria-label': t('board.split') }),
-						showDetail ? h('div', { className: 'ml-panelcol', 'data-col': 'chart' },
+						led === true ? null : showDetail ? h('div', { className: 'ml-panelcol', 'data-col': 'chart' },
 							h('section', { className: 'ml-panel', style: { flex: 2 } },
 								h('header', null,
 									h('button', { type: 'button', className: 'ml-btn ml-back', onClick: () => setView('list') }, '‹ ' + t('detail.back')),
@@ -1891,7 +1906,7 @@ window.__ModuleLoader__.load({
 										: h(KLineChart, { data: kline.body, showMa: prefs.showMa, hollow: PALETTES[prefs.palette]?.hollow === true, t }),
 							)) : null,
 						led === true || wide === false ? null : h('div', { className: 'ml-split', onPointerDown: beginSplit('r'), role: 'separator', 'aria-orientation': 'vertical', 'aria-label': t('board.split') }),
-						showDetail ? h('div', { className: 'ml-panelcol', 'data-col': 'detail' },
+						led === true ? null : showDetail ? h('div', { className: 'ml-panelcol', 'data-col': 'detail' },
 							h('section', { className: 'ml-panel' },
 								h('header', null, h('span', { className: 'ml-title' }, t('detail.title'))),
 								selectedQuote === void 0 ? h('div', { className: 'ml-pad' }, t('toolbar.error'))
@@ -1906,27 +1921,73 @@ window.__ModuleLoader__.load({
 			return Panel;
 		}
 
-		/** LED exchange board: dark glass panel, glowing quote rows, ticker tape on top. */
-		function LedBoard({ rows, quotes, seenQuote, meta, onPick, t }) {
+		/**
+		 * LED exchange board: pixel-font quote table that auto-rotates, with a
+		 * chart that follows the highlighted row. Hover takes the wheel - pausing
+		 * the rotation and selecting the hovered row - and leaving resumes.
+		 */
+		function LedBoard({ rows, quotes, seenQuote, meta, onPick, getKline, showMa, hollow, t }) {
+			const [cursor, setCursor] = React.useState(0);
+			const [paused, setPaused] = React.useState(false);
+			const [feed, setFeed] = React.useState(null);
+			const scrollRef = React.useRef(null);
+			const count = rows.length;
+			const at = count === 0 ? void 0 : rows[cursor % count];
+			const atQuote = at === void 0 ? void 0 : quotes.get(at.symbol) ?? seenQuote(at.symbol);
 			const ticker = (meta?.indexBar ?? []).map((symbol) => quotes.get(symbol) ?? seenQuote(symbol)).filter((q) => q !== void 0);
 			const tape = ticker.length === 0 ? [] : [...ticker, ...ticker];
+			React.useEffect(() => {
+				if (paused === true || count < 2) return void 0;
+				const timer = window.setInterval(() => setCursor((current) => (current + 1) % count), 4000);
+				return () => window.clearInterval(timer);
+			}, [paused, count]);
+			React.useEffect(() => {
+				const symbol = at?.symbol;
+				if (symbol === void 0) return void 0;
+				let dead = false;
+				getKline(symbol).then((body) => {
+					if (!dead) setFeed({ symbol, body });
+				}, () => void 0);
+				return () => {
+					dead = true;
+				};
+			}, [at?.symbol]);
+			React.useEffect(() => {
+				if (paused === true || scrollRef.current === null) return;
+				const row = scrollRef.current.querySelector(`tr[data-i="${String(cursor % count)}"]`);
+				if (row !== null) row.scrollIntoView({ block: 'nearest' });
+			}, [cursor, paused, count]);
 			return h('div', { className: 'ml-led' },
 				tape.length === 0 ? null : h('div', { className: 'ml-ticker' },
 					tape.map((q, index) => h('span', { key: `${String(q.symbol)}|${String(index)}`, className: dirClass(q.changePct ?? 0) },
 						q.name ?? q.symbol, ' ', fmtNum(q.price, (q.price ?? 0) > 1000 ? 0 : 2), '  ', q.changePct === null || q.changePct === void 0 ? '—' : `${fmtSigned(q.changePct)}%`))),
-				h('div', { className: 'ml-ledscroll' }, h('table', null,
-					h('thead', null, h('tr', null,
-						h('th', null, t('board.col.instrument')), h('th', null, t('board.col.last')), h('th', null, t('board.col.chg')), h('th', null, t('board.col.chgPct')), h('th', null, t('board.col.amount')))),
-					h('tbody', null, rows.map((row) => {
-						const q = quotes.get(row.symbol) ?? seenQuote(row.symbol);
-						const pct = q?.changePct ?? null;
-						return h('tr', { key: row.symbol, className: dirClass(pct ?? 0), onClick: () => onPick(row.symbol), title: t('board.pickHint') },
-							h('td', { className: 'nm' }, h('b', null, q?.name ?? row.name), h('code', null, row.symbol)),
-							h('td', { className: 'num' }, q?.price === null || q?.price === void 0 ? '—' : fmtNum(q.price)),
-							h('td', { className: 'num' }, q?.change === null || q?.change === void 0 ? '—' : fmtSigned(q.change)),
-							h('td', { className: 'num big' }, pct === null || pct === void 0 ? '—' : `${fmtSigned(pct)}%`),
-							h('td', { className: 'num' }, q?.amount === null || q?.amount === void 0 ? '—' : fmtBig(q.amount)));
-					})))));
+				h('div', { className: 'ml-ledbody' },
+					h('div', { className: 'ml-ledscroll', ref: scrollRef, onMouseLeave: () => setPaused(false) },
+						h('table', null,
+							h('thead', null, h('tr', null,
+								h('th', null, t('board.col.instrument')), h('th', null, t('board.col.last')), h('th', null, t('board.col.chg')), h('th', null, t('board.col.chgPct')), h('th', null, t('board.col.amount')))),
+							h('tbody', { onMouseEnter: () => setPaused(true) }, rows.map((row, index) => {
+								const q = quotes.get(row.symbol) ?? seenQuote(row.symbol);
+								const pct = q?.changePct ?? null;
+								return h('tr', {
+									key: row.symbol, 'data-i': String(index), className: `${dirClass(pct ?? 0)}${index === cursor % count ? ' hl' : ''}`,
+									onClick: () => onPick(row.symbol), onMouseEnter: () => setCursor(index),
+									title: t('board.pickHint'),
+								},
+									h('td', { className: 'nm' }, h('b', null, q?.name ?? row.name), h('code', null, row.symbol)),
+									h('td', { className: 'num' }, q?.price === null || q?.price === void 0 ? '—' : fmtNum(q.price)),
+									h('td', { className: 'num' }, q?.change === null || q?.change === void 0 ? '—' : fmtSigned(q.change)),
+									h('td', { className: 'num big' }, pct === null || pct === void 0 ? '—' : `${fmtSigned(pct)}%`),
+									h('td', { className: 'num' }, q?.amount === null || q?.amount === void 0 ? '—' : fmtBig(q.amount)));
+							})))),
+					h('div', { className: 'ml-ledchart' },
+						h('header', { className: 'ml-led-hd' }, at === void 0 ? null : [
+							h('b', { key: `n${String(at.symbol)}` }, atQuote?.name ?? at.name),
+							h('code', null, at.symbol),
+							atQuote?.price === null || atQuote?.price === void 0 ? null : h('span', { className: `px ${dirClass(atQuote.changePct ?? 0)}` }, fmtNum(atQuote.price, (atQuote.price ?? 0) > 1000 ? 0 : 2), '  ', atQuote.changePct === null || atQuote.changePct === void 0 ? '—' : `${fmtSigned(atQuote.changePct)}%`),
+						]),
+						feed === null || feed.symbol !== at?.symbol ? h('div', { className: 'ml-pad' }, t('news.loading'))
+							: h(KLineChart, { data: feed.body, showMa, hollow, t }))));
 		}
 
 		/** Keeps a render crash inside the board instead of blanking the slot. */
