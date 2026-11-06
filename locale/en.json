@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "MarketLens market board",
+    "description": "Read-only delayed quotes for A-shares, HK and US stocks: watchlist, index bar, K-line and search, plus the read-only model tools market_search, market_quotes and market_kline. No trading, not Level-2."
+  }
+}

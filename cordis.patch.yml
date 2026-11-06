@@ -1,0 +1,6 @@
+# 寰镜 MarketLens bundle patch: mounts the Host half.
+# The Client half is discovered from this package's `dsh.client` declaration.
+- insert:
+    - id: market-lens
+      name: '@suifei/dsh-market-lens'
+      config: {}

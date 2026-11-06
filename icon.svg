@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- 寰镜 MarketLens: a lens ring over three candlesticks (CN / HK / US boards). Original artwork, MIT. -->
+  <defs>
+    <linearGradient id="ml-ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2f7de1"/>
+      <stop offset="1" stop-color="#8a5ce8"/>
+    </linearGradient>
+  </defs>
+  <circle cx="30" cy="30" r="21" fill="none" stroke="url(#ml-ring)" stroke-width="5"/>
+  <line x1="45.5" y1="45.5" x2="58" y2="58" stroke="url(#ml-ring)" stroke-width="7" stroke-linecap="round"/>
+  <g>
+    <line x1="21" y1="20" x2="21" y2="40" stroke="#d84a4a" stroke-width="2.5"/>
+    <rect x="17.5" y="25" width="7" height="10" rx="1.5" fill="#d84a4a"/>
+    <line x1="30" y1="22" x2="30" y2="42" stroke="#2fa36b" stroke-width="2.5"/>
+    <rect x="26.5" y="26" width="7" height="12" rx="1.5" fill="#2fa36b"/>
+    <line x1="39" y1="18" x2="39" y2="38" stroke="#d8a02f" stroke-width="2.5"/>
+    <rect x="35.5" y="22" width="7" height="9" rx="1.5" fill="#d8a02f"/>
+  </g>
+</svg>
