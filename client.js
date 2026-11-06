@@ -130,7 +130,22 @@ window.__ModuleLoader__.load({
 .ml-btn[aria-pressed="true"]{border-color:var(--dsw-alias-brand-primary);color:var(--dsw-alias-brand-primary)}
 .ml-status{font-size:12px;color:var(--dsw-alias-label-secondary);display:flex;gap:6px;align-items:center}
 .ml-status[data-err="1"]{color:var(--dsw-alias-state-error-primary)}
-.ml-indexbar{display:flex;gap:6px;overflow-x:auto;padding:8px 14px;border-bottom:1px solid var(--dsw-alias-border-l1);scrollbar-width:thin}
+.ml-indexbar{display:flex;gap:6px;padding:8px 14px}
+.ml-hwrap{position:relative;border-bottom:1px solid var(--dsw-alias-border-l1);flex:none}
+.ml-hscroll{overflow-x:auto;display:flex;scrollbar-width:none;touch-action:pan-x;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;outline:none}
+.ml-hscroll:focus-visible{box-shadow:inset 0 0 0 2px var(--dsw-alias-brand-primary)}
+.ml-hscroll::-webkit-scrollbar{width:8px;height:8px}
+.ml-hscroll::-webkit-scrollbar-track{background:transparent}
+.ml-hscroll::-webkit-scrollbar-thumb{background:transparent;border-radius:4px;border:2px solid transparent;background-clip:content-box}
+.ml-hscroll:hover::-webkit-scrollbar-thumb,.ml-hscroll:focus::-webkit-scrollbar-thumb{background:var(--dsw-alias-border-l2)}
+.ml-hscroll::-webkit-scrollbar-thumb:hover{background:var(--dsw-alias-label-secondary)}
+.ml-hwrap::before,.ml-hwrap::after{content:'';position:absolute;top:0;bottom:0;width:26px;pointer-events:none;z-index:2;opacity:0;transition:opacity .18s}
+.ml-hwrap::before{left:0;background:linear-gradient(90deg,var(--dsw-alias-bg-base),transparent)}
+.ml-hwrap::after{right:0;background:linear-gradient(270deg,var(--dsw-alias-bg-base),transparent)}
+.ml-hwrap:has([data-f="l"])::before,.ml-hwrap:has([data-f="b"])::before,
+.ml-hwrap:has([data-f="r"])::after,.ml-hwrap:has([data-f="b"])::after{opacity:1}
+.ml-hwrap .ml-hscroll{scrollbar-color:var(--dsw-alias-border-l2) transparent}
+.ml-hwrap:not(:hover):not(:focus-within) .ml-hscroll{scrollbar-color:transparent transparent}
 .ml-idx{flex:none;display:flex;flex-direction:column;gap:2px;padding:6px 10px;border:1px solid var(--dsw-alias-border-l1);border-radius:10px;background:var(--dsw-alias-bg-layer-1);min-width:118px}
 .ml-idx b{font-size:12px;font-weight:500;color:var(--dsw-alias-label-secondary)}
 .ml-idx span{font-size:14px;font-weight:600}
@@ -201,7 +216,15 @@ window.__ModuleLoader__.load({
 .ml-dialog footer{display:flex;justify-content:flex-end;gap:8px}
 .ml-pad{padding:10px 12px;font-size:12px;color:var(--dsw-alias-label-secondary)}
 .ml-errorbar{padding:8px 14px;font-size:12px;color:var(--dsw-alias-state-error-primary);border-bottom:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1)}
-.ml-fintable{width:100%;border-collapse:collapse;font-size:12px}
+.ml-fintable{width:max-content;min-width:100%;border-collapse:collapse;font-size:12px}
+.ml-hscroll > *{flex:none;min-width:100%}
+.ml-hwrap.ml-finrow{border-bottom:0}
+.ml-root ::-webkit-scrollbar{width:9px;height:9px}
+.ml-root ::-webkit-scrollbar-track{background:transparent}
+.ml-root ::-webkit-scrollbar-thumb{background:var(--dsw-alias-border-l1);border-radius:5px;border:2px solid transparent;background-clip:content-box}
+.ml-root ::-webkit-scrollbar-thumb:hover{background:var(--dsw-alias-border-l2)}
+.ml-rows{scrollbar-width:thin;scrollbar-color:var(--dsw-alias-border-l1) transparent}
+.ml-rows:hover{scrollbar-color:var(--dsw-alias-border-l2) transparent}
 .ml-fintable th{text-align:left;font-weight:400;color:var(--dsw-alias-label-secondary);padding:6px 8px;border-bottom:1px solid var(--dsw-alias-border-l1);white-space:nowrap}
 .ml-fintable td{padding:6px 8px;border-bottom:1px solid var(--dsw-alias-border-l1);white-space:nowrap}
 .ml-fintable tr:last-child td{border-bottom:0}
@@ -282,7 +305,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.5.1';
+		const CLIENT_REV = '0.5.2';
 		const diagQueue = [];
 		let diagTimer = 0;
 		function diagSend(rows) {
@@ -359,12 +382,42 @@ window.__ModuleLoader__.load({
 			);
 		}
 
+		/**
+		 * Horizontal scroll region: no visible bar until hovered/focused, edge fades
+		 * hint what lies beyond, touch drags natively, arrow keys work (tabIndex).
+		 */
+		function HScroll({ children, className, label }) {
+			const ref = React.useRef(null);
+			const [fade, setFade] = React.useState('n');
+			const sync = () => {
+				const el = ref.current;
+				if (el === null) return;
+				const left = el.scrollLeft > 4;
+				const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 4;
+				setFade(left && right ? 'b' : left ? 'l' : right ? 'r' : 'n');
+			};
+			React.useEffect(() => {
+				sync();
+				const el = ref.current;
+				if (el === null || window.ResizeObserver === void 0) return void 0;
+				const ro = new window.ResizeObserver(sync);
+				ro.observe(el);
+				return () => ro.disconnect();
+			}, [children]);
+			return h('div', { className: `ml-hwrap ${className ?? ''}` },
+				h('div', {
+					className: 'ml-hscroll', ref, 'data-f': fade, tabIndex: 0, role: 'group', 'aria-label': label,
+					onScroll: sync,
+				}, children));
+		}
+
 		function QuoteCell({ value, pct, digits }) {
 			return h('span', { className: dirClass(pct ?? value) }, fmtNum(value, digits ?? 2));
 		}
 
 		function IndexBar({ indexBar, quotes }) {
-			return h('section', { className: 'ml-indexbar', 'aria-label': 'indices' },
+			return h(HScroll, { label: 'indices' },
+			h('section', { className: 'ml-indexbar', 'aria-label': 'indices' },
 				indexBar.map((symbol) => {
 					const quote = quotes.get(symbol);
 					const pct = quote?.changePct ?? null;
@@ -376,7 +429,7 @@ window.__ModuleLoader__.load({
 								h('span', { className: dirClass(pct) }, fmtNum(quote.price, quote.price > 1000 ? 0 : 2)),
 								h('i', { className: dirClass(pct) }, `${fmtSigned(pct)}%`)),
 					);
-				}));
+				})));
 		}
 
 		function WatchRow({ instrument, quote, active, pinned, onPin, onSelect, onRemove, t }) {
@@ -1063,7 +1116,7 @@ window.__ModuleLoader__.load({
 				fin === null || fin.state === 'busy' ? h('div', { className: 'ml-pad' }, t('detail.loading'))
 					: fin.state === 'error' ? h('div', { className: 'ml-pad' }, t('fin.error'))
 						: body.unsupported === true ? h('div', { className: 'ml-pad' }, t('fin.unsupported'))
-							: h('table', { className: 'ml-fintable' },
+							: h(HScroll, { label: 'financials', className: 'ml-finrow' }, h('table', { className: 'ml-fintable' },
 								h('thead', null, h('tr', null,
 									[t('fin.col.report'), t('fin.col.revenue'), t('fin.col.revYoY'), t('fin.col.profit'), t('fin.col.profitYoY'), t('fin.col.eps')]
 										.map((label, index) => h('th', { key: index }, label)))),
@@ -1073,7 +1126,7 @@ window.__ModuleLoader__.load({
 									h('td', { className: dirClass(row.revenueYoY) }, row.revenueYoY === null ? '—' : `${fmtSigned(row.revenueYoY)}%`),
 									h('td', null, fmtBig(row.netProfit)),
 									h('td', { className: dirClass(row.netProfitYoY) }, row.netProfitYoY === null ? '—' : `${fmtSigned(row.netProfitYoY)}%`),
-									h('td', null, fmtNum(row.eps, 2)))))));
+									h('td', null, fmtNum(row.eps, 2))))))));
 		}
 
 		function newsTimeText(value) {
