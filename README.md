@@ -58,8 +58,9 @@ A 股 / 港股 / 美股的**只读**行情看板 DSH Web 插件。定位一句�
 | `GET /market-lens/search` | `q`（1–50）, `limit≤30` | `{ items: [{symbol, name, market, kind}] }` |
 | `GET /market-lens/news` | `q?`（关键词，可空）, `limit≤30` | `{ items: [{title, url, time, source}], source }` |
 | `GET /market-lens/financials` | `symbol` | A 股：`{ rows: [{report, revenue, revenueYoY, netProfit, netProfitYoY, eps, bps}] }`；港/美：`{ unsupported: true }` |
+| `GET /market-lens/alerts` | `since`（事件游标） | `{ alerts, events, cursor }`；`POST` 新建规则或 `{action:'dismiss'}` 清未读；`DELETE ?id=` 删规则 |
 
-`QuoteRow = { symbol, name, price, prevClose, open, high, low, change, changePct, volume(股), amount(元), turnoverRate, pe, marketCap, floatMarketCap, currency?, updatedAt, source, stale? }`。字段可得性因市场与源而异：**缺失为 `null`，UI 显示 `—`，绝不补 0**。K 线前复权固定在宿主侧，UI 与工具都不暴露复权参数。
+`QuoteRow = { symbol, name, price, prevClose, open, high, low, change, changePct, volume(股), amount(元), turnoverRate, pe, volRatio, amplitude, pb, marketCap, floatMarketCap, currency?, updatedAt, source, stale? }`。字段可得性因市场与源而异：**缺失为 `null`，UI 显示 `—`，绝不补 0**。K 线前复权固定在宿主侧，UI 与工具都不暴露复权参数。
 
 路由带同源护栏：`Sec-Fetch-Site: cross-site` 或 Origin/Referer 与 Host 不一致一律 403；全部 `cache-control: no-store`。
 
@@ -91,6 +92,12 @@ A 股 / 港股 / 美股的**只读**行情看板 DSH Web 插件。定位一句�
 
 - 位置：`~/.dsh/market-lens/marketlens-diag-<YYYY-MM-DD>.jsonl`（`diagLogDir` / `diagLogMaxBytes` 可在插件配置改，按天分文件、超限轮转为 `.1`）。
 - 回读：`GET /market-lens/diag?tail=50` 返回 `{file, rows}`；面板红条本身也带原因。
+
+## 价格提醒（宿主后台评估）
+
+规则存于 `~/.dsh/market-lens/alerts.json`，**评估循环跑在宿主**——面板不开、网页不在前台，提醒照常触发。七类规则：`priceUp/priceDown`（价格≥/≤）、`pctUp/pctDown`（当日涨/跌幅≥）、`maUp/maDown`（上穿/下破 MA5/10/20/60，需拉日线，隔轮评估）、`volSpike`（量比≥，东财源提供）。触发产生事件流（保留 200 条），每条规则带独立**静默期**（默认 30 分钟）防轰炸。
+
+展示：桌面壳底部 `shell.bottom` 状态条——🔔 摇铃动效 + 多行**向上跑马灯**（3 秒一行，涨跌红绿着色），**悬停即停**，点击行跳到行情面板并把该提醒对应的股票选为当前标的，「清除」把当前所有事件标为已读。
 - 排障顺序：先看有没有 `route.reject`（护栏误伤）→ `route.status`（路径/参数错）→ `panel.*.fail`（上游源问题）→ `panel.crash`（渲染问题）。
 
 ## 数据内容

@@ -45,6 +45,14 @@ window.__ModuleLoader__.load({
 			'metric.price': '现价', 'metric.change': '涨跌幅', 'metric.open': '今开', 'metric.prev': '昨收',
 			'metric.high': '最高', 'metric.low': '最低', 'metric.volume': '成交量', 'metric.amount': '成交额',
 			'metric.turnover': '换手率', 'metric.pe': '市盈率', 'metric.marketCap': '总市值',
+			'metric.amplitude': '振幅', 'metric.volRatio': '量比', 'metric.pb': '市净率',
+			'list.pin': '钉到顶部', 'list.unpin': '取消置顶',
+			'alert.title': '提醒', 'alert.new': '设提醒', 'alert.none': '暂无提醒',
+			'alert.type.priceUp': '价格 ≥', 'alert.type.priceDown': '价格 ≤', 'alert.type.pctUp': '涨幅 ≥ (%)', 'alert.type.pctDown': '跌幅 ≥ (%)',
+			'alert.type.maUp': '上穿 MA', 'alert.type.maDown': '下破 MA', 'alert.type.volSpike': '量比 ≥',
+			'alert.threshold': '阈值', 'alert.cooldown': '静默期(分)', 'alert.save': '保存', 'alert.cancel': '取消', 'alert.delete': '删除',
+			'alert.armed': '监控中', 'alert.fired': '已触发', 'alert.fireNote': '{{symbol}} {{rule}}',
+			'alert.barTitle': '寰镜提醒', 'alert.dismiss': '清除',
 			'import.title': '批量导入自选', 'import.placeholder': '每行一个代码或名称，最多 50 条',
 			'import.confirm': '导入', 'import.cancel': '取消', 'import.toomany': '超出 50 条的部分已忽略',
 			'notice': '延迟公开行情 · 非 Level-2 · 只读无交易',
@@ -76,6 +84,14 @@ window.__ModuleLoader__.load({
 			'metric.price': 'Last', 'metric.change': 'Chg %', 'metric.open': 'Open', 'metric.prev': 'Prev',
 			'metric.high': 'High', 'metric.low': 'Low', 'metric.volume': 'Volume', 'metric.amount': 'Turnover',
 			'metric.turnover': 'Turnover', 'metric.pe': 'P/E', 'metric.marketCap': 'Mkt cap',
+			'metric.amplitude': 'Range', 'metric.volRatio': 'Vol ratio', 'metric.pb': 'P/B',
+			'list.pin': 'Pin to top', 'list.unpin': 'Unpin',
+			'alert.title': 'Alerts', 'alert.new': 'New alert', 'alert.none': 'No alerts yet',
+			'alert.type.priceUp': 'Price ≥', 'alert.type.priceDown': 'Price ≤', 'alert.type.pctUp': 'Gain ≥ (%)', 'alert.type.pctDown': 'Drop ≥ (%)',
+			'alert.type.maUp': 'Cross above MA', 'alert.type.maDown': 'Break below MA', 'alert.type.volSpike': 'Vol ratio ≥',
+			'alert.threshold': 'Threshold', 'alert.cooldown': 'Silence (min)', 'alert.save': 'Save', 'alert.cancel': 'Cancel', 'alert.delete': 'Delete',
+			'alert.armed': 'armed', 'alert.fired': 'fired', 'alert.fireNote': '{{symbol}} {{rule}}',
+			'alert.barTitle': 'MarketLens alerts', 'alert.dismiss': 'Clear',
 			'import.title': 'Bulk import watchlist', 'import.placeholder': 'One code or name per line, up to 50',
 			'import.confirm': 'Import', 'import.cancel': 'Cancel', 'import.toomany': 'Lines beyond 50 ignored',
 			'notice': 'Delayed public data · not Level-2 · read-only, no trading',
@@ -129,7 +145,32 @@ window.__ModuleLoader__.load({
 .ml-legend{position:absolute;top:6px;left:10px;right:78px;display:flex;flex-wrap:wrap;gap:2px 10px;font-size:11px;line-height:15px;color:var(--dsw-alias-label-secondary);pointer-events:none;white-space:nowrap;text-shadow:0 1px 0 var(--dsw-alias-bg-layer-1),0 -1px 0 var(--dsw-alias-bg-layer-1)}
 .ml-legend b{color:var(--dsw-alias-label-primary)}
 .ml-zoomreset{position:absolute;top:6px;right:74px;z-index:6}
-.ml-metrics{display:flex;gap:8px;overflow-x:auto;padding:10px;scrollbar-width:thin}
+.ml-bar{display:flex;align-items:center;gap:10px;height:30px;padding:0 12px;background:var(--dsw-alias-bg-layer-2);border-top:1px solid var(--dsw-alias-border-l1);font-size:12px;overflow:hidden}
+.ml-bar .bell{animation:mlring 2.6s ease-in-out infinite}
+.ml-bar:hover .bell,.ml-bar:hover .line{animation-play-state:paused}
+@keyframes mlring{0%,58%,100%{transform:rotate(0)}63%{transform:rotate(14deg)}70%{transform:rotate(-11deg)}78%{transform:rotate(7deg)}86%{transform:rotate(-4deg)}}
+.ml-bar .line{display:flex;align-items:center;gap:8px;background:none;border:0;cursor:pointer;color:var(--dsw-alias-label-primary);padding:2px 8px;border-radius:6px;white-space:nowrap;animation:mlslide .35s ease-out}
+.ml-bar .line:hover{background:var(--dsw-alias-bg-overlay)}
+@keyframes mlslide{from{transform:translateY(70%);opacity:0}to{transform:none;opacity:1}}
+.ml-bar .line code{color:var(--dsw-alias-label-secondary)}
+.ml-bar .dismiss{margin-left:auto;flex:none}
+.ml-alertlist{list-style:none;margin:0;padding:4px 10px;display:flex;flex-direction:column;gap:4px}
+.ml-alertlist li{display:flex;align-items:center;gap:8px;font-size:12px}
+.ml-alertlist .sym{font-weight:600}
+.ml-alertlist code{color:var(--dsw-alias-label-secondary)}
+.ml-alertlist .rule{margin-left:auto;color:var(--dsw-alias-label-secondary)}
+.ml-alertform{display:flex;flex-wrap:wrap;gap:8px;align-items:end;padding:8px 10px;border-top:1px dashed var(--dsw-alias-border-l1)}
+.ml-alertform label{display:flex;flex-direction:column;gap:2px;font-size:11px;color:var(--dsw-alias-label-secondary)}
+.ml-alertform input,.ml-alertform select{font-size:12px;padding:3px 6px;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);border:1px solid var(--dsw-alias-border-l2);border-radius:6px;width:88px}
+.ml-alertform select{width:auto}
+.ml-alertform .acts{display:flex;gap:6px;margin-left:auto}
+.ml-metrics{display:grid;grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:6px 8px;padding:10px}
+.ml-row.pinned{background:color-mix(in srgb,var(--dsw-alias-brand-primary) 7%,transparent)}
+.row-pin{opacity:0;margin-left:6px;cursor:pointer;font-size:10px;filter:grayscale(1)}
+.ml-row:hover .row-pin{opacity:.55}
+.row-pin.on{opacity:.9;filter:none}
+@keyframes mltick{0%{background:color-mix(in srgb,currentColor 26%,transparent)}100%{background:transparent}}
+.tick-up,.tick-down{animation:mltick .9s ease-out;border-radius:4px}
 .ml-metric{flex:none;min-width:86px;border:1px solid var(--dsw-alias-border-l1);border-radius:10px;padding:6px 9px;background:var(--dsw-alias-bg-layer-2)}
 .ml-metric b{display:block;font-size:11px;font-weight:400;color:var(--dsw-alias-label-secondary)}
 .ml-metric span{font-size:14px;font-weight:600}
@@ -197,10 +238,20 @@ window.__ModuleLoader__.load({
 		}
 		const BADGE = { cn: 'A', hk: 'HK', us: 'US' };
 
-		async function api(path, params, signal) {
+		async function api(path, params, signal, write) {
 			const url = new URL(BASE + '/' + path, window.location.origin);
 			for (const [key, value] of Object.entries(params)) if (value !== void 0 && value !== null) url.searchParams.set(key, String(value));
-			const response = await window.fetch(url, { method: 'GET', signal, cache: 'no-store', credentials: 'same-origin' });
+			const init = {
+				method: write?.method ?? 'GET',
+				signal,
+				cache: 'no-store',
+				credentials: 'same-origin',
+			};
+			if (write?.body !== void 0) {
+				init.headers = { 'content-type': 'application/json' };
+				init.body = JSON.stringify(write.body);
+			}
+			const response = await window.fetch(url, init);
 			const text = await response.text().catch(() => '');
 			let body = null;
 			try {
@@ -216,7 +267,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.3.1';
+		const CLIENT_REV = '0.4.0';
 		const diagQueue = [];
 		let diagTimer = 0;
 		function diagSend(rows) {
@@ -260,7 +311,19 @@ window.__ModuleLoader__.load({
 		// ---------- small components ----------
 		function PanelIcon({ size, active }) {
 			const s = size ?? 18;
+			const iconRef = React.useRef(null);
+			// The status strip asks the whole client to open the board; the sidebar row is the one real entry point.
+			React.useEffect(() => {
+				const onActivate = () => {
+					let node = iconRef.current?.parentElement;
+					while (node !== null && node !== void 0 && node.matches?.('button, [role="button"], a') !== true) node = node.parentElement;
+					if (node !== null && node !== void 0) node.click();
+				};
+				window.addEventListener('market-lens:activate', onActivate);
+				return () => window.removeEventListener('market-lens:activate', onActivate);
+			}, []);
 			return h('svg', {
+				ref: iconRef,
 				viewBox: '0 0 64 64', width: s, height: s, 'aria-hidden': true,
 				style: { display: 'block', color: active ? 'var(--dsw-alias-brand-primary)' : 'currentColor' },
 			},
@@ -293,18 +356,30 @@ window.__ModuleLoader__.load({
 				}));
 		}
 
-		function WatchRow({ instrument, quote, active, onSelect, onRemove, t }) {
+		function WatchRow({ instrument, quote, active, pinned, onPin, onSelect, onRemove, t }) {
 			const pct = quote?.changePct ?? null;
+			const prev = React.useRef(quote?.price);
+			const moved = quote?.price !== void 0 && prev.current !== void 0 && quote.price !== prev.current;
+			const tick = moved ? (quote.price > prev.current ? ' tick-up' : ' tick-down') : '';
+			React.useEffect(() => { prev.current = quote?.price; }, [quote?.price]);
 			return h('button', {
-				type: 'button', className: 'ml-row', 'aria-current': active ? true : void 0,
+				type: 'button', className: 'ml-row' + (pinned === true ? ' pinned' : ''), 'aria-current': active ? true : void 0,
 				onClick: () => onSelect(instrument.symbol),
 			},
 				h('span', { className: 'nm' },
 					h('b', null, quote?.name ?? instrument.name ?? instrument.symbol),
 					h('code', null, instrument.symbol),
+					onPin === void 0 ? null : h('span', {
+						className: 'row-pin' + (pinned === true ? ' on' : ''), role: 'button', tabIndex: -1,
+						title: pinned === true ? t('list.unpin') : t('list.pin'),
+						onClick: (event) => {
+							event.stopPropagation();
+							onPin(instrument.symbol);
+						},
+					}, pinned === true ? '📌' : '📍'),
 				),
 				h('span', { className: 'qt' },
-					h('b', { className: dirClass(pct) }, fmtNum(quote?.price)),
+					h('b', { key: String(quote?.price), className: dirClass(pct) + tick }, fmtNum(quote?.price)),
 					h('span', { className: `rm ${dirClass(pct)}`, title: quote?.stale === true ? t('list.staleHint') : void 0 }, quote === void 0 ? t('toolbar.error') : `${fmtSigned(pct)}% · ${fmtSigned(quote.change)} · ${fmtBig(quote.amount)}`),
 					onRemove === void 0 ? null : h('span', {
 						className: 'rm-x', role: 'button', tabIndex: -1,
@@ -319,23 +394,32 @@ window.__ModuleLoader__.load({
 		}
 
 		function Metrics({ quote, t }) {
+			const prev = React.useRef(quote.price);
+			const moved = quote.price !== void 0 && quote.price !== null && prev.current !== void 0 && prev.current !== null && quote.price !== prev.current;
+			const tick = moved ? (quote.price > prev.current ? ' tick-up' : ' tick-down') : '';
+			React.useEffect(() => { prev.current = quote.price; }, [quote.price]);
 			const cells = [
-				['metric.price', quote.price === null ? null : fmtNum(quote.price), quote.changePct],
-				['metric.change', quote.changePct === null ? null : `${fmtSigned(quote.changePct)}%`, quote.changePct],
-				['metric.open', quote.open === null ? null : fmtNum(quote.open), null],
-				['metric.prev', quote.prevClose === null ? null : fmtNum(quote.prevClose), null],
-				['metric.high', quote.high === null ? null : fmtNum(quote.high), null],
-				['metric.low', quote.low === null ? null : fmtNum(quote.low), null],
-				['metric.volume', quote.volume === null ? null : fmtBig(quote.volume), null],
-				['metric.amount', quote.amount === null ? null : fmtBig(quote.amount), null],
-				['metric.turnover', quote.turnoverRate === null ? null : `${fmtNum(quote.turnoverRate)}%`, null],
-				['metric.pe', quote.pe === null ? null : fmtNum(quote.pe), null],
-				['metric.marketCap', quote.marketCap === null ? null : fmtBig(quote.marketCap), null],
+				['metric.price', quote.price === null ? null : fmtNum(quote.price), quote.changePct, tick],
+				['metric.change', quote.changePct === null ? null : `${fmtSigned(quote.changePct)}%`, quote.changePct, ''],
+				['metric.open', quote.open === null ? null : fmtNum(quote.open), null, ''],
+				['metric.prev', quote.prevClose === null ? null : fmtNum(quote.prevClose), null, ''],
+				['metric.high', quote.high === null ? null : fmtNum(quote.high), null, ''],
+				['metric.low', quote.low === null ? null : fmtNum(quote.low), null, ''],
+				['metric.amplitude', quote.amplitude === null ? null : `${fmtNum(quote.amplitude)}%`, null, ''],
+				['metric.volume', quote.volume === null ? null : fmtBig(quote.volume), null, ''],
+				['metric.amount', quote.amount === null ? null : fmtBig(quote.amount), null, ''],
+				['metric.turnover', quote.turnoverRate === null ? null : `${fmtNum(quote.turnoverRate)}%`, null, ''],
+				['metric.volRatio', quote.volRatio === null ? null : fmtNum(quote.volRatio), null, ''],
+				['metric.pe', quote.pe === null ? null : fmtNum(quote.pe), null, ''],
+				['metric.pb', quote.pb === null ? null : fmtNum(quote.pb), null, ''],
+				['metric.marketCap', quote.marketCap === null ? null : fmtBig(quote.marketCap), null, ''],
 			];
 			return h('div', { className: 'ml-metrics' },
-				cells.map(([key, text, pct]) => h('div', { className: 'ml-metric', key },
+				cells.map(([key, text, pct, tickClass]) => h('div', { className: 'ml-metric', key },
 					h('b', null, t(key)),
-					h('span', { className: pct === null || pct === void 0 ? '' : dirClass(pct) }, text ?? '—'))));
+					key === 'metric.price'
+						? h('span', { key: String(quote.price), className: `${pct === null || pct === void 0 ? '' : dirClass(pct)}${tickClass}` }, text ?? '—')
+						: h('span', { className: pct === null || pct === void 0 ? '' : dirClass(pct) }, text ?? '—'))));
 		}
 
 		// ---------- K-line canvas chart ----------
@@ -538,9 +622,11 @@ window.__ModuleLoader__.load({
 					if (cross.y < priceHeight) {
 						const price = high - (cross.y - 8) / (priceHeight - 16) * (high - low);
 						const label = price.toFixed(price > 1000 ? 0 : 2);
-						ctx2.fillStyle = '#3a3a3f';
+						ctx2.fillStyle = token('--dsw-alias-bg-overlay', '#2a2a2e');
 						ctx2.fillRect(plotWidth + 2, cross.y - 8, axisWidth - 4, 16);
-						ctx2.fillStyle = colorBg === '#17171a' ? '#e8e8ea' : '#2a2a2e';
+						ctx2.strokeStyle = token('--dsw-alias-border-l2', '#3a3a3f');
+						ctx2.strokeRect(plotWidth + 2.5, cross.y - 7.5, axisWidth - 5, 15);
+						ctx2.fillStyle = token('--dsw-alias-label-primary', '#e8e8ea');
 						ctx2.fillText(label, plotWidth + 6, cross.y + 3);
 					}
 					const crossBar = bars[cross.gi];
@@ -548,9 +634,11 @@ window.__ModuleLoader__.load({
 						const dlabel = String(crossBar.t);
 						const dw = Math.min(84, Math.max(52, dlabel.length * 7 + 8));
 						const dx = Math.max(0, Math.min(plotWidth - dw, cross.x - dw / 2));
-						ctx2.fillStyle = '#3a3a3f';
+						ctx2.fillStyle = token('--dsw-alias-bg-overlay', '#2a2a2e');
 						ctx2.fillRect(dx, height - 14, dw, 13);
-						ctx2.fillStyle = colorBg === '#17171a' ? '#e8e8ea' : '#2a2a2e';
+						ctx2.strokeStyle = token('--dsw-alias-border-l2', '#3a3a3f');
+						ctx2.strokeRect(dx + 0.5, height - 13.5, dw - 1, 12);
+						ctx2.fillStyle = token('--dsw-alias-label-primary', '#e8e8ea');
 						ctx2.fillText(dlabel, dx + 4, height - 4);
 					}
 				}
@@ -714,6 +802,139 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- bulk import dialog ----------
+		function ruleTextClient(alert, t) {
+			switch (alert.type) {
+				case 'priceUp': return `${t('alert.type.priceUp')} ${String(alert.value)}`;
+				case 'priceDown': return `${t('alert.type.priceDown')} ${String(alert.value)}`;
+				case 'pctUp': return `${t('alert.type.pctUp')} ${String(alert.value)}%`;
+				case 'pctDown': return `${t('alert.type.pctDown')} ${String(alert.value)}%`;
+				case 'maUp': return `${t('alert.type.maUp')} MA${String(alert.span ?? 5)}`;
+				case 'maDown': return `${t('alert.type.maDown')} MA${String(alert.span ?? 5)}`;
+				default: return `${t('alert.type.volSpike')} ${String(alert.value)}`;
+			}
+		}
+
+		const ALERT_TYPE_ICONS = {
+			priceUp: '📈', priceDown: '📉', pctUp: '📈', pctDown: '📉', maUp: '⤴️', maDown: '⤵️', volSpike: '🔊',
+		};
+
+		function AlertsCard({ alerts, selected, quote, onAdd, onDelete, t }) {
+			const [form, setForm] = React.useState(null);
+			const set = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+			const needValue = form !== null && ['priceUp', 'priceDown', 'pctUp', 'pctDown', 'volSpike'].includes(form.type);
+			const needSpan = form !== null && ['maUp', 'maDown'].includes(form.type);
+			return h('section', { className: 'ml-panel ml-alerts' },
+				h('header', null,
+					h('span', { className: 'ml-title' }, t('alert.title')),
+					h('button', {
+						type: 'button', className: 'ml-btn', disabled: selected === null,
+						onClick: () => setForm(form === null ? {
+							type: quote?.price !== void 0 && quote?.price !== null ? 'priceUp' : 'pctUp',
+							value: quote?.price ?? 3,
+							span: 5,
+							cooldownMin: 30,
+						} : null),
+					}, t('alert.new'))),
+				alerts.length === 0 && form === null ? h('div', { className: 'ml-pad' }, t('alert.none')) : null,
+				alerts.length === 0 ? null : h('ul', { className: 'ml-alertlist' },
+					alerts.map((alert) => h('li', { key: alert.id },
+						h('span', { className: 'sym' }, ALERT_TYPE_ICONS[alert.type] ?? '🔔', ' ', alert.name ?? alert.symbol),
+						h('code', null, alert.symbol),
+						h('span', { className: 'rule' }, ruleTextClient(alert, t)),
+						h('button', {
+							type: 'button', className: 'rm-x', title: t('alert.delete'),
+							onClick: () => onDelete(alert.id),
+						}, '×')))),
+				form === null ? null : h('div', { className: 'ml-alertform' },
+					h('select', {
+						value: form.type, onChange: (event) => set('type', event.target.value),
+					}, ['priceUp', 'priceDown', 'pctUp', 'pctDown', 'maUp', 'maDown', 'volSpike'].map((type) => h('option', { key: type, value: type }, t(`alert.type.${type}`)))),
+					needValue ? h('label', null, t('alert.threshold'), h('input', {
+						type: 'number', step: 'any', min: '0', value: String(form.value),
+						onChange: (event) => set('value', Number(event.target.value)),
+					})) : null,
+					needSpan ? h('label', null, 'MA', h('select', {
+						value: String(form.span), onChange: (event) => set('span', Number(event.target.value)),
+					}, [5, 10, 20, 60].map((span) => h('option', { key: span, value: String(span) }, `MA${String(span)}`)))) : null,
+					h('label', null, t('alert.cooldown'), h('input', {
+						type: 'number', step: '1', min: '0', max: '1440', value: String(form.cooldownMin),
+						onChange: (event) => set('cooldownMin', Number(event.target.value)),
+					})),
+					h('div', { className: 'acts' },
+						h('button', { type: 'button', className: 'ml-btn', onClick: () => setForm(null) }, t('alert.cancel')),
+						h('button', {
+							type: 'button', className: 'ml-btn',
+							disabled: selected === null || (needValue && !(form.value > 0)),
+							onClick: () => {
+								void onAdd({
+									symbol: selected,
+									type: form.type,
+									value: needValue ? form.value : 1,
+									span: form.span,
+									cooldownMin: form.cooldownMin,
+								});
+								setForm(null);
+							},
+						}, t('alert.save')))));
+		}
+
+		/** Bottom status strip: vertical marquee of fired alerts; hover pauses, click opens the board. */
+		function AlertBar({ t }) {
+			const [events, setEvents] = React.useState([]);
+			const [slot, setSlot] = React.useState(0);
+			const [paused, setPaused] = React.useState(false);
+			const cursorRef = React.useRef(0);
+			React.useEffect(() => {
+				let stopped = false;
+				const poll = async () => {
+					try {
+						const body = await api('alerts', { since: cursorRef.current });
+						if (stopped) return;
+						if (body.events.length > 0) {
+							cursorRef.current = Math.max(cursorRef.current, ...body.events.map((row) => row.id));
+							setEvents((current) => [...current, ...body.events].slice(-30));
+						}
+					} catch { /* the strip stays quiet while the host sleeps */ }
+				};
+				 void poll();
+				const timer = window.setInterval(poll, 8000);
+				return () => {
+					stopped = true;
+					window.clearInterval(timer);
+				};
+			}, []);
+			React.useEffect(() => {
+				if (paused || events.length < 2) return void 0;
+				const timer = window.setInterval(() => setSlot((current) => current + 1), 3000);
+				return () => window.clearInterval(timer);
+			}, [paused, events.length]);
+			if (events.length === 0) return null;
+			const shown = events.slice(-30);
+			const currentRow = shown[shown.length - 1 - (slot % shown.length)];
+			const dir = currentRow.changePct === null || currentRow.changePct === void 0 ? '' : dirClass(currentRow.changePct);
+			return h('div', {
+				className: 'ml-bar', role: 'status',
+				onMouseEnter: () => setPaused(true),
+				onMouseLeave: () => setPaused(false),
+			},
+				h('span', { className: 'bell', 'aria-hidden': true }, '🔔'),
+				h('button', {
+					type: 'button', className: `line ${dir}`, key: currentRow.id,
+					title: t('alert.barTitle'),
+					onClick: () => window.dispatchEvent(new CustomEvent('market-lens:activate', { detail: { symbol: currentRow.symbol } })),
+				},
+					h('b', null, ALERT_TYPE_ICONS[currentRow.type] ?? '🔔', ' ', currentRow.name ?? currentRow.symbol),
+					h('span', null, `${fmtNum(currentRow.price)}`, currentRow.changePct === null || currentRow.changePct === void 0 ? '' : ` ${fmtSigned(currentRow.changePct)}%`),
+					h('code', null, new Date(currentRow.at).toLocaleTimeString())),
+				h('button', {
+					type: 'button', className: 'ml-btn dismiss',
+					onClick: () => {
+						void api('alerts', {}, void 0, { method: 'POST', body: { action: 'dismiss' } });
+						setEvents([]);
+					},
+				}, t('alert.dismiss')));
+		}
+
 		function ImportDialog({ onImport, onClose, t }) {
 			const [text, setText] = React.useState('');
 			const lines = text.split(/\n+/).map((line) => line.trim()).filter(Boolean);
@@ -783,7 +1004,7 @@ window.__ModuleLoader__.load({
 				const [wide, setWide] = React.useState(() => (typeof document === 'undefined' ? true : document.documentElement.clientWidth >= 900));
 				const [meta, setMeta] = React.useState(null);
 				const [watchlist, setWatchlist] = React.useState(() => loadLs(LS_WATCH, null));
-				const [prefs, setPrefs] = React.useState(() => loadLs(LS_PREFS, { palette: 'redup', filter: 'all', sort: 'default', showMa: true }));
+				const [prefs, setPrefs] = React.useState(() => ({ pinned: [], ...loadLs(LS_PREFS, { palette: 'redup', filter: 'all', sort: 'default', showMa: true }) }));
 				const seenRef = React.useRef(loadLs(LS_SEEN, {}));
 				const seenQuote = (symbol) => {
 					const row = seenRef.current[symbol];
@@ -806,6 +1027,35 @@ window.__ModuleLoader__.load({
 				const [metaError, setMetaError] = React.useState(null);
 				const [fin, setFin] = React.useState(null);
 				const [news, setNews] = React.useState({ state: 'idle', items: [], source: '' });
+				const [alertsList, setAlertsList] = React.useState([]);
+				const refreshAlerts = React.useCallback(() => {
+					api('alerts', { since: 0 }).then(
+						(body) => setAlertsList(body.alerts ?? []),
+						() => { /* keep the last known list */ },
+					);
+				}, []);
+				React.useEffect(() => {
+					refreshAlerts();
+					const timer = window.setInterval(refreshAlerts, 15000);
+					return () => window.clearInterval(timer);
+				}, [refreshAlerts]);
+				const addAlert = async (input) => {
+					try {
+						await api('alerts', {}, void 0, { method: 'POST', body: input });
+						diag('panel.alert.add', { symbol: input.symbol, type: input.type });
+					} catch (error) {
+						diag('panel.alert.fail', { message: String(error?.message ?? error) });
+					}
+					refreshAlerts();
+				};
+				const dropAlert = async (id) => {
+					try {
+						await api('alerts', { id }, void 0, { method: 'DELETE' });
+					} catch (error) {
+						diag('panel.alert.fail', { message: String(error?.message ?? error) });
+					}
+					refreshAlerts();
+				};
 
 				React.useEffect(() => {
 					saveLs(LS_WATCH, watchlist ?? []);
@@ -813,6 +1063,21 @@ window.__ModuleLoader__.load({
 				React.useEffect(() => {
 					saveLs(LS_PREFS, prefs);
 				}, [prefs]);
+
+				React.useEffect(() => {
+					const onActivate = (event) => {
+						const symbol = event.detail?.symbol;
+						if (typeof symbol !== 'string') return;
+						setSelected(symbol);
+						setView('detail');
+						setWatchlist((current) => {
+							const list = current ?? (meta?.defaultWatchlist ?? []);
+							return list.includes(symbol) ? list : [...list, symbol];
+						});
+					};
+					window.addEventListener('market-lens:activate', onActivate);
+					return () => window.removeEventListener('market-lens:activate', onActivate);
+				}, [meta]);
 
 				React.useEffect(() => {
 					diag('panel.mount', {
@@ -1110,6 +1375,19 @@ window.__ModuleLoader__.load({
 						return (pa - pb) * dir;
 					});
 				} else if (prefs.sort === 'amount') sorted.sort((a, b) => (quotes.get(b.symbol)?.amount ?? -1) - (quotes.get(a.symbol)?.amount ?? -1));
+				// Pinned rows keep their own order and float to the top of any sort (professional boards never move a pinned row).
+				const pinOrder = prefs.pinned ?? [];
+				if (pinOrder.length > 0) {
+					const rank = (symbol) => {
+						const at = pinOrder.indexOf(symbol);
+						return at === -1 ? pinOrder.length : at;
+					};
+					sorted.sort((a, b) => rank(a.symbol) - rank(b.symbol));
+				}
+				const togglePin = (symbol) => setPrefs((current) => {
+					const list = current.pinned ?? [];
+					return { ...current, pinned: list.includes(symbol) ? list.filter((item) => item !== symbol) : [...list, symbol] };
+				});
 
 				const selectedQuote = selected === null ? void 0 : quotes.get(selected) ?? seenQuote(selected);
 				const showList = wide || view === 'list';
@@ -1167,6 +1445,7 @@ window.__ModuleLoader__.load({
 									sorted.length === 0 ? h('div', { style: { padding: 12, color: 'var(--dsw-alias-label-secondary)' } }, t('list.addHint'))
 										: sorted.map((row) => h(WatchRow, {
 											key: row.symbol, instrument: row, quote: quotes.get(row.symbol) ?? seenQuote(row.symbol),
+											pinned: (prefs.pinned ?? []).includes(row.symbol), onPin: togglePin,
 											active: row.symbol === selected,
 											onSelect: (symbol) => {
 												setSelected(symbol);
@@ -1200,6 +1479,7 @@ window.__ModuleLoader__.load({
 								h('header', null, h('span', { className: 'ml-title' }, t('detail.title'))),
 								selectedQuote === void 0 ? h('div', { className: 'ml-pad' }, t('toolbar.error'))
 									: h(Metrics, { quote: selectedQuote, t })),
+							h(AlertsCard, { alerts: alertsList, selected, quote: selectedQuote, onAdd: addAlert, onDelete: dropAlert, t }),
 							h(FinancialCard, { fin, t }),
 							h(NewsCard, { news, t }),
 						) : null),
@@ -1248,6 +1528,7 @@ window.__ModuleLoader__.load({
 				return h(ErrorBoundary, { prefix: t('crash.prefix'), hint: () => t('crash.hint') }, h(PanelInner));
 			}
 			ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: PANEL_ID }, Panel));
+			ctx.slots.inject('shell.bottom', () => ctx.slots.register({ name: 'shell.bottom', key: `${NS}-bar` }, () => h(AlertBar, { t })));
 			ctx.effect(() => {
 				const onHide = () => flushDiag();
 				window.addEventListener('pagehide', onHide);

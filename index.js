@@ -7,9 +7,11 @@
  */
 import z from '@deepseek-ai/schemastery';
 import { defineTool } from '@deepseek-ai/dsh-tools';
+import { join } from 'node:path';
 import { createMarketService } from './lib/service.js';
 import { createDiagLogger, defaultDiagDir } from './lib/diaglog.js';
 import { createRoutes } from './lib/routes.js';
+import { createAlertManager } from './lib/alerts.js';
 
 /** Stable Loader identity. */
 export const name = 'market-lens';
@@ -79,6 +81,13 @@ export function apply(ctx, config) {
 			kline: config.klineTtlMs,
 			news: config.newsTtlMs,
 		},
+	});
+
+	const alerts = createAlertManager({
+		service,
+		path: join(config.diagLogDir, 'alerts.json'),
+		diag: (row) => diag.append(row),
+		intervalMs: Math.max(10000, config.pollIntervalMs * 2),
 	});
 
 	const marketSearch = defineTool({
@@ -151,10 +160,11 @@ export function apply(ctx, config) {
 		};
 	}, 'market-lens: tools');
 
-	const { routeResource, diagRoute } = createRoutes({
+	const { routeResource, diagRoute, alertsRoute } = createRoutes({
 		service,
 		diag,
-		config: { ...config, version: '0.3.1' },
+		alerts,
+		config: { ...config, version: '0.4.0' },
 	});
 
 	ctx.effect(() => {
@@ -185,7 +195,30 @@ export function apply(ctx, config) {
 				}
 			},
 		});
+		const disposeAlerts = webServer.register({
+			kind: 'exact',
+			path: `${config.routePath.replace(/\/+$/, '')}/alerts`,
+			handler: async (req, res) => {
+				try {
+					await alertsRoute(req, res);
+				} catch (error) {
+					diag.append({
+						ev: 'host.alerts-error',
+						message: String(error),
+					});
+					if (!res.headersSent) {
+						try {
+							res.writeHead(500, { 'content-type': 'application/json' });
+							res.end('{"error":{"code":"INTERNAL"}}');
+						} catch { /* socket already gone */ }
+					}
+				}
+			},
+		});
+		alerts.start();
 		return () => {
+			alerts.stop();
+			disposeAlerts();
 			disposeDiag();
 			disposeResource();
 		};
