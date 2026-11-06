@@ -369,7 +369,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.15.0';
+		const CLIENT_REV = '0.16.0';
 		const diagQueue = [];
 		let diagTimer = 0;
 		// the host meta tells the real level; until then assume the shipped 'errors' default
@@ -2099,11 +2099,17 @@ window.__ModuleLoader__.load({
 		 * chart strip; hover pauses and grabs, click returns to the desk.
 		 */
 		function LedBoard({ rows, quotes, seenQuote, meta, onPick, getKline, ledUp, ledDown, tiny, t }) {
-			// one 16x16 (std) or 8x8 (tiny) glyph line plus a gutter, in css px
+			// one 16x16 (std) or 8x8 (tiny) glyph line plus a gutter, in design px
 			const G = (tiny === true ? 8 : 16) * PITCH;
 			const HEAD_H = G + 8;
 			const ROW_H = G + 12;
 			const CHART_H = tiny === true ? 56 : 88;
+			// the wall has a FIXED design raster: columns are laid once at 1280
+			// design px (guaranteed gutters for 8x16 halfwidth runs) and the whole
+			// scene scales uniformly to the container - a real LED wall never
+			// re-lays itself out when you hang it on a smaller frame
+			const DESIGN_W = 1280;
+			const COL_X = [700, 860, 1090, 1276];
 			const wrapRef = React.useRef(null);
 			const canvasRef = React.useRef(null);
 			const contentRef = React.useRef(null);
@@ -2116,7 +2122,20 @@ window.__ModuleLoader__.load({
 			const [lit, setLit] = React.useState(0);
 			const [paused, setPaused] = React.useState(false);
 			const [feedTick, setFeedTick] = React.useState(0);
-			const pageSize = Math.max(2, Math.floor((size.h - HEAD_H - CHART_H) / ROW_H));
+			// quantized fit scale, measured in PHYSICAL pixels (css width x dpi):
+			// the wall is a bulb raster, so what matters is real pixels on the
+			// panel, not the browser's zoomed css box. Bands against the 1280
+			// design raster - under 1.5x snap to 0.25 steps (320 -> 0.25,
+			// 640 -> 0.5, 960 -> 0.75, 1280 -> 1, 1440 -> 1.25), from 1.5x up
+			// snap to whole multiples so bulbs stay whole pixels (1920 -> 2,
+			// 2560 -> 2, 4K -> 3, 5K -> 4, 8K -> 6). The scene bakes once at
+			// design px and is nearest-neighbour scaled; layout never re-flows.
+			const sc = (() => {
+				const raw = size.w === 0 ? 1 : size.w / DESIGN_W;
+				if (raw < 1.5) return Math.max(0.25, Math.min(1.25, Math.round(raw * 4) / 4));
+				return Math.max(2, Math.min(6, Math.round(raw)));
+			})();
+			const pageSize = Math.max(2, Math.floor((size.h / sc - HEAD_H - CHART_H) / ROW_H));
 			const pages = Math.max(1, Math.ceil(rows.length / pageSize));
 			const start = Math.min(page * pageSize, Math.max(0, rows.length - pageSize));
 			const view = rows.slice(start, start + pageSize);
@@ -2149,19 +2168,23 @@ window.__ModuleLoader__.load({
 					window.clearInterval(timer);
 				};
 			}, [rowsKey]);
-			// fit the canvas to the wrapper (rule 7: the board follows its container)
+			// size the wall in PHYSICAL pixels so the bands reflect real panel
+			// resolution (rule 7: the board follows its container, counted in bulbs)
 			React.useEffect(() => {
 				const wrap = wrapRef.current;
 				if (wrap === null) return void 0;
-				const fit = () => setSize({ w: Math.max(280, wrap.clientWidth), h: Math.max(240, wrap.clientHeight) });
+				const fit = () => {
+					const dpr = window.devicePixelRatio || 1;
+					setSize({ w: Math.max(280, Math.floor(wrap.clientWidth * dpr)), h: Math.max(200, Math.floor(wrap.clientHeight * dpr)) });
+				};
 				fit();
 				const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(fit) : null;
 				if (ro !== null) ro.observe(wrap);
-				else window.addEventListener('resize', fit);
+				window.addEventListener('resize', fit);
 				void loadLamp().then(() => setFeedTick((current) => current + 1), () => void 0);
 				return () => {
 					if (ro !== null) ro.disconnect();
-					else window.removeEventListener('resize', fit);
+					window.removeEventListener('resize', fit);
 				};
 			}, []);
 			// paint the visible page to the content canvas and bake the bulb screen
@@ -2175,15 +2198,14 @@ window.__ModuleLoader__.load({
 				if (c === null) {
 					c = contentRef.current = document.createElement('canvas');
 				}
-				c.width = size.w;
+				c.width = DESIGN_W;
 				c.height = HEAD_H + view.length * ROW_H + CHART_H;
 				const x = c.getContext('2d');
 				x.fillStyle = '#000';
 				x.fillRect(0, 0, c.width, c.height);
-				const cols = [0.52, 0.68, 0.86, 0.995];
 				ledText(x, 8, 4, t('board.col.instrument'), '#3f618a', void 0, tiny);
 				[t('board.col.last'), t('board.col.chg'), t('board.col.chgPct'), t('board.col.amount')].forEach((label, i) => {
-					ledText(x, 0, 4, label, '#3f618a', Math.floor(c.width * cols[i]) - 4, tiny);
+					ledText(x, 0, 4, label, '#3f618a', COL_X[i] - 4, tiny);
 				});
 				view.forEach((row, i) => {
 					const top = HEAD_H + i * ROW_H;
@@ -2209,7 +2231,7 @@ window.__ModuleLoader__.load({
 						q?.amount === null || q?.amount === void 0 ? '—' : fmtBig(q.amount, 1),
 					];
 					cells.forEach((text, i2) => {
-						ledText(x, 0, y, text, i2 === 3 ? '#9fc4e8' : i2 === 2 ? color : isLit ? '#ffffff' : color, Math.floor(c.width * cols[i2]) - 4, tiny);
+						ledText(x, 0, y, text, i2 === 3 ? '#9fc4e8' : i2 === 2 ? color : isLit ? '#ffffff' : color, COL_X[i2] - 4, tiny);
 					});
 				});
 				// chart strip for the lit row, grid-aligned so it samples cleanly
@@ -2262,34 +2284,46 @@ window.__ModuleLoader__.load({
 				const timer = window.setInterval(() => rotRef.current(), 4000);
 				return () => window.clearInterval(timer);
 			}, []);
-			// the living screen: one blit + scan band + bulb chatter + wipe
+			// the living screen: nearest-neighbour blit at the band's scale, plus
+			// scan band, bulb chatter and the wipe - all on the physical grid
 			React.useEffect(() => {
 				const cv = canvasRef.current;
 				if (cv === null || size.w === 0) return void 0;
 				cv.width = size.w;
 				cv.height = size.h;
 				const x = cv.getContext('2d');
+				x.imageSmoothingEnabled = false;
+				const cell = PITCH * sc;
+				// the whole frame is wall: an off-bulb field tiles the unused area too
+				const base = x.createPattern(offTile, 'repeat');
+				if (base !== null && typeof DOMMatrix !== 'undefined') base.setTransform(new DOMMatrix([sc, 0, 0, sc, 0, 0]));
+				const gw = Math.ceil(size.w / cell);
+				const gh = Math.ceil(size.h / cell);
+				const total = Math.max(1, gw * gh);
 				let raf = 0;
 				let last = 0;
 				let scanY = 0;
-				const gw = Math.floor(size.w / PITCH);
-				const gh = Math.floor(size.h / PITCH);
-				const total = Math.max(1, gw * gh);
 				const step = (ts) => {
 					raf = window.requestAnimationFrame(step);
 					if (ts - last < 110) return; // ~9fps: a bulb wall idles gracefully, it is not a cartoon
 					last = ts;
 					const scene = sceneRef.current;
 					if (scene === null) return;
-					x.drawImage(scene, 0, 0);
+					x.fillStyle = OFF_BG;
+					x.fillRect(0, 0, size.w, size.h);
+					if (base !== null) {
+						x.fillStyle = base;
+						x.fillRect(0, 0, size.w, size.h);
+					}
+					x.drawImage(scene, 0, 0, Math.round(scene.width * sc), Math.round(scene.height * sc));
 					scanY = (scanY + 1) % gh;
 					x.fillStyle = 'rgba(130,200,255,0.05)';
-					x.fillRect(0, scanY * PITCH, size.w, PITCH);
+					x.fillRect(0, Math.round(scanY * cell), size.w, Math.max(1, Math.round(cell)));
 					for (let k = 0; k < 150; k++) {
-						const bx = Math.floor(Math.random() * gw) * PITCH;
-						const by = Math.floor(Math.random() * gh) * PITCH;
+						const bx = Math.floor(Math.random() * gw) * cell;
+						const by = Math.floor(Math.random() * gh) * cell;
 						x.fillStyle = k % 4 === 0 ? 'rgba(150,210,255,0.12)' : 'rgba(5,8,15,0.45)';
-						x.fillRect(bx + 1, by + 1, 1, 1);
+						x.fillRect(Math.round(bx) + 1, Math.round(by) + 1, 1, 1);
 					}
 					const tr = transRef.current;
 					if (tr !== null) {
@@ -2297,7 +2331,7 @@ window.__ModuleLoader__.load({
 						const n = Math.floor((total / 10) * 1.2);
 						if (tr.phase === 'out') {
 							x.fillStyle = OFF_BG;
-							for (let k = 0; k < n; k++) x.fillRect(Math.floor(Math.random() * gw) * PITCH, Math.floor(Math.random() * gh) * PITCH, PITCH, PITCH);
+							for (let k = 0; k < n; k++) x.fillRect(Math.round(Math.floor(Math.random() * gw) * cell), Math.round(Math.floor(Math.random() * gh) * cell), Math.max(1, Math.round(cell)), Math.max(1, Math.round(cell)));
 							if (tr.f >= 10) {
 								transRef.current = { phase: 'in', f: 9 };
 								const commit = pendingRef.current;
@@ -2305,10 +2339,11 @@ window.__ModuleLoader__.load({
 								if (commit !== null) commit();
 							}
 						} else {
+							const ps = Math.max(1, Math.round(cell));
 							for (let k = 0; k < n; k++) {
-								const sx = Math.floor(Math.random() * gw) * PITCH;
-								const sy = Math.floor(Math.random() * gh) * PITCH;
-								x.drawImage(scene, sx, sy, PITCH, PITCH, sx, sy, PITCH, PITCH);
+								const sx = Math.floor(Math.random() * (scene.width / PITCH)) * PITCH;
+								const sy = Math.floor(Math.random() * (scene.height / PITCH)) * PITCH;
+								x.drawImage(scene, sx, sy, PITCH, PITCH, Math.round(sx * sc), Math.round(sy * sc), ps, ps);
 							}
 							if (tr.f <= 0) transRef.current = null;
 						}
@@ -2319,7 +2354,8 @@ window.__ModuleLoader__.load({
 			}, [size]);
 			const hit = (event) => {
 				const rect = canvasRef.current.getBoundingClientRect();
-				const i = Math.floor((event.clientY - rect.top - HEAD_H) / ROW_H);
+				const dpr = window.devicePixelRatio || 1;
+				const i = Math.floor((((event.clientY - rect.top) * dpr) / sc - HEAD_H) / ROW_H);
 				return i >= 0 && i < view.length ? i : -1;
 			};
 			return h('div', { className: 'ml-led' },
