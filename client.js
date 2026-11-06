@@ -16,6 +16,7 @@ window.__ModuleLoader__.load({
 		const BASE = '/market-lens';
 		const LS_WATCH = 'ml.watchlist.v1';
 		const LS_PREFS = 'ml.prefs.v1';
+		const LS_SEEN = 'ml.seen.v1';
 
 		const zh = {
 			'panel.title': '寰镜行情',
@@ -38,6 +39,8 @@ window.__ModuleLoader__.load({
 			'indexbar.title': '指数',
 			'detail.title': '详情', 'detail.back': '返回自选',
 			'detail.period.day': '日K', 'detail.period.week': '周K', 'detail.period.month': '月K',
+			'chart.hint': '拖拽框选放大 · 滚轮缩放 · 双击回全览 · Shift+拖拽平移', 'chart.reset': '全览',
+			'list.staleHint': '缓存数据，恢复轮询后自动更新', 'kline.retry': '重试',
 			'detail.ma': 'MA', 'detail.chartError': 'K线获取失败', 'detail.loading': '加载中…',
 			'metric.price': '现价', 'metric.change': '涨跌幅', 'metric.open': '今开', 'metric.prev': '昨收',
 			'metric.high': '最高', 'metric.low': '最低', 'metric.volume': '成交量', 'metric.amount': '成交额',
@@ -67,6 +70,8 @@ window.__ModuleLoader__.load({
 			'indexbar.title': 'Indices',
 			'detail.title': 'Detail', 'detail.back': 'Back to watchlist',
 			'detail.period.day': 'Daily', 'detail.period.week': 'Weekly', 'detail.period.month': 'Monthly',
+			'chart.hint': 'drag to box-zoom · wheel zooms · double-click shows all · shift+drag pans', 'chart.reset': 'Overview',
+			'list.staleHint': 'cached values; live once polling recovers', 'kline.retry': 'Retry',
 			'detail.ma': 'MA', 'detail.chartError': 'K-line unavailable', 'detail.loading': 'Loading…',
 			'metric.price': 'Last', 'metric.change': 'Chg %', 'metric.open': 'Open', 'metric.prev': 'Prev',
 			'metric.high': 'High', 'metric.low': 'Low', 'metric.volume': 'Volume', 'metric.amount': 'Turnover',
@@ -121,6 +126,9 @@ window.__ModuleLoader__.load({
 .ml-canvas-wrap{flex:1;position:relative;min-height:0}
 .ml-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:crosshair}
 .ml-tip{position:absolute;pointer-events:none;background:var(--dsw-alias-bg-overlay);border:1px solid var(--dsw-alias-border-l2);border-radius:8px;padding:6px 8px;font-size:11px;display:grid;grid-template-columns:auto auto;gap:1px 12px;z-index:5;white-space:nowrap}
+.ml-legend{position:absolute;top:6px;left:10px;right:78px;display:flex;flex-wrap:wrap;gap:2px 10px;font-size:11px;line-height:15px;color:var(--dsw-alias-label-secondary);pointer-events:none;white-space:nowrap;text-shadow:0 1px 0 var(--dsw-alias-bg-layer-1),0 -1px 0 var(--dsw-alias-bg-layer-1)}
+.ml-legend b{color:var(--dsw-alias-label-primary)}
+.ml-zoomreset{position:absolute;top:6px;right:74px;z-index:6}
 .ml-metrics{display:flex;gap:8px;overflow-x:auto;padding:10px;scrollbar-width:thin}
 .ml-metric{flex:none;min-width:86px;border:1px solid var(--dsw-alias-border-l1);border-radius:10px;padding:6px 9px;background:var(--dsw-alias-bg-layer-2)}
 .ml-metric b{display:block;font-size:11px;font-weight:400;color:var(--dsw-alias-label-secondary)}
@@ -208,7 +216,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.2.2';
+		const CLIENT_REV = '0.3.0';
 		const diagQueue = [];
 		let diagTimer = 0;
 		function diagSend(rows) {
@@ -293,7 +301,7 @@ window.__ModuleLoader__.load({
 				),
 				h('span', { className: 'qt' },
 					h('b', { className: dirClass(pct) }, fmtNum(quote?.price)),
-					h('span', { className: `rm ${dirClass(pct)}` }, quote === void 0 ? t('toolbar.error') : `${fmtSigned(pct)}% · ${fmtSigned(quote.change)} · ${fmtBig(quote.amount)}`),
+					h('span', { className: `rm ${dirClass(pct)}`, title: quote?.stale === true ? t('list.staleHint') : void 0 }, quote === void 0 ? t('toolbar.error') : `${fmtSigned(pct)}% · ${fmtSigned(quote.change)} · ${fmtBig(quote.amount)}`),
 					onRemove === void 0 ? null : h('span', {
 						className: 'rm-x', role: 'button', tabIndex: -1,
 						title: t('list.remove'),
@@ -355,13 +363,22 @@ window.__ModuleLoader__.load({
 			const wrapRef = React.useRef(null);
 			const canvasRef = React.useRef(null);
 			const [view, setView] = React.useState({ count: 90, offset: 0 }); // offset = bars hidden on the right
-			const [tip, setTip] = React.useState(null);
-			const maState = React.useRef({ ma: [5, 10, 20, 60] });
+			const [cross, setCross] = React.useState(null); // crosshair: global bar index + pixel position
+			const [sel, setSel] = React.useState(null); // box-zoom selection in canvas pixels
+			const geo = React.useRef({ start: 0, count: 1, step: 1, plotWidth: 1, priceHeight: 1, low: 0, high: 1 });
 			const bars = data?.bars ?? [];
 			const total = bars.length;
+			const maSpans = [5, 10, 20, 60];
+			const maColors = ['#e6a23c', '#409eff', '#9a5ce8', '#d95c8a'];
+			const maSeries = React.useMemo(
+				() => maSpans.map((span) => ({ span, values: movingAverage(bars, span) })),
+				[data],
+			);
 
 			React.useEffect(() => {
 				setView((current) => ({ count: Math.min(Math.max(20, current.count), Math.max(20, total)), offset: 0 }));
+				setCross(null);
+				setSel(null);
 			}, [data]);
 
 			const draw = React.useCallback(() => {
@@ -399,7 +416,7 @@ window.__ModuleLoader__.load({
 					if (bar.l !== null && bar.l < low) low = bar.l;
 					if (bar.h !== null && bar.h > high) high = bar.h;
 				}
-				const mas = showMa ? maState.current.ma.map((span) => ({ span, values: movingAverage(bars, span).slice(start, start + count) })) : [];
+				const mas = showMa ? maSeries.map((m) => ({ span: m.span, values: m.values.slice(start, start + count) })) : [];
 				for (const ma of mas) for (const value of ma.values) if (value !== null) {
 					if (value < low) low = value;
 					if (value > high) high = value;
@@ -454,9 +471,9 @@ window.__ModuleLoader__.load({
 						ctx2.globalAlpha = 1;
 					}
 				}
-				const maColors = [colorText, '#e6a23c', '#409eff', '#9a5ce8'];
+				const maColorsLocal = ['#e6a23c', '#409eff', '#9a5ce8', '#d95c8a'];
 				mas.forEach((ma, lineIndex) => {
-					ctx2.strokeStyle = maColors[lineIndex % maColors.length];
+					ctx2.strokeStyle = maColorsLocal[lineIndex % maColorsLocal.length];
 					ctx2.lineWidth = 1.4;
 					ctx2.beginPath();
 					let started = false;
@@ -479,7 +496,61 @@ window.__ModuleLoader__.load({
 				const lastBar = visible[visible.length - 1]?.t ?? '';
 				ctx2.fillText(String(first), 4, height - 4);
 				ctx2.fillText(String(lastBar), Math.max(4, plotWidth - 84), height - 4);
-			}, [bars, view, total, showMa]);
+				geo.current = {
+					start,
+					count,
+					step,
+					plotWidth,
+					priceHeight,
+					low,
+					high,
+				};
+				if (sel !== null) {
+					const sx = Math.min(sel.x0, sel.x1);
+					const sw = Math.abs(sel.x1 - sel.x0);
+					ctx2.fillStyle = 'rgba(64,158,255,0.15)';
+					ctx2.fillRect(sx, 0, sw, priceHeight);
+					ctx2.strokeStyle = 'rgba(64,158,255,0.65)';
+					ctx2.strokeRect(sx + 0.5, 0.5, sw, priceHeight - 1);
+				}
+				if (cross !== null && cross.x <= plotWidth) {
+					ctx2.setLineDash([3, 3]);
+					ctx2.strokeStyle = colorText;
+					ctx2.lineWidth = 1;
+					const cxh = Math.round(cross.x) + 0.5;
+					ctx2.beginPath();
+					ctx2.moveTo(cxh, 0);
+					ctx2.lineTo(cxh, height - 16);
+					ctx2.stroke();
+					if (cross.y < priceHeight) {
+						const cyh = Math.round(cross.y) + 0.5;
+						ctx2.beginPath();
+						ctx2.moveTo(0, cyh);
+						ctx2.lineTo(plotWidth, cyh);
+						ctx2.stroke();
+					}
+					ctx2.setLineDash([]);
+					ctx2.font = '10px system-ui, sans-serif';
+					if (cross.y < priceHeight) {
+						const price = high - (cross.y - 8) / (priceHeight - 16) * (high - low);
+						const label = price.toFixed(price > 1000 ? 0 : 2);
+						ctx2.fillStyle = '#3a3a3f';
+						ctx2.fillRect(plotWidth + 2, cross.y - 8, axisWidth - 4, 16);
+						ctx2.fillStyle = colorBg === '#17171a' ? '#e8e8ea' : '#2a2a2e';
+						ctx2.fillText(label, plotWidth + 6, cross.y + 3);
+					}
+					const crossBar = bars[cross.gi];
+					if (crossBar !== void 0) {
+						const dlabel = String(crossBar.t);
+						const dw = Math.min(84, Math.max(52, dlabel.length * 7 + 8));
+						const dx = Math.max(0, Math.min(plotWidth - dw, cross.x - dw / 2));
+						ctx2.fillStyle = '#3a3a3f';
+						ctx2.fillRect(dx, height - 14, dw, 13);
+						ctx2.fillStyle = colorBg === '#17171a' ? '#e8e8ea' : '#2a2a2e';
+						ctx2.fillText(dlabel, dx + 4, height - 4);
+					}
+				}
+			}, [bars, view, total, showMa, cross, sel, maSeries]);
 
 			React.useEffect(() => {
 				const wrap = wrapRef.current;
@@ -492,38 +563,52 @@ window.__ModuleLoader__.load({
 
 			const pointers = React.useRef(new Map());
 			const pinch = React.useRef(null);
-			const drag = React.useRef(null);
+			const pan = React.useRef(null);
 			const pressTimer = React.useRef(void 0);
 
+			function localXY(event) {
+				const rect = event.currentTarget.getBoundingClientRect();
+				return {
+					x: event.clientX - rect.left,
+					y: event.clientY - rect.top,
+				};
+			}
+			function barAtPixel(px) {
+				const g = geo.current;
+				return g.start + Math.max(0, Math.min(g.count - 1, Math.floor(px / g.step)));
+			}
+			function setCrossAt(event) {
+				const { x, y } = localXY(event);
+				setCross({ gi: barAtPixel(x), x, y });
+			}
+			function panBy(clientX) {
+				if (pan.current === null) return;
+				const g = geo.current;
+				const shift = Math.round((pan.current.x - clientX) / g.step);
+				setView((current) => ({ ...current, offset: Math.max(0, Math.min(total - current.count, pan.current.offset + shift)) }));
+			}
 			function onPointerDown(event) {
 				event.currentTarget.setPointerCapture?.(event.pointerId);
 				pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
 				if (pointers.current.size === 2) {
 					const [a, b] = [...pointers.current.values()];
 					pinch.current = { distance: Math.abs(a.x - b.x) || 1, count: view.count };
-				} else if (pointers.current.size === 1 && event.pointerType === 'touch') {
-					pressTimer.current = window.setTimeout(() => showTipAt(event), 450);
-					drag.current = { x: event.clientX, offset: view.offset };
-				} else drag.current = { x: event.clientX, offset: view.offset };
-			}
-			function showTipAt(event) {
-				const rect = event.currentTarget.getBoundingClientRect();
-				setTipBarAt(rect, event.clientX, event.clientY);
-			}
-			function setTipBarAt(rect, clientX, clientY) {
-				const count = Math.min(Math.max(20, Math.round(view.count)), total);
-				const offset = Math.max(0, Math.min(Math.round(view.offset), total - count));
-				const start = total - count - offset;
-				const axisWidth = 64;
-				const plotWidth = Math.max(40, rect.width - axisWidth - 8);
-				const index = Math.max(0, Math.min(count - 1, Math.floor((clientX - rect.left) / (plotWidth / count))));
-				const barAt = bars[start + index];
-				if (barAt === void 0) return;
-				setTip({ bar: barAt, x: clientX - rect.left, y: clientY - rect.top });
+					return;
+				}
+				if (event.pointerType === 'touch') {
+					const at = localXY(event);
+					pressTimer.current = window.setTimeout(() => setCross({ gi: barAtPixel(at.x), x: at.x, y: at.y }), 450);
+					pan.current = { x: event.clientX, offset: view.offset };
+				} else if (event.shiftKey || event.button === 1) {
+					pan.current = { x: event.clientX, offset: view.offset };
+				} else {
+					const { x } = localXY(event);
+					setSel({ x0: x, x1: x });
+				}
 			}
 			function onPointerMove(event) {
 				if (pointers.current.has(event.pointerId)) pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
-				if (pressTimer.current !== void 0 && Math.abs((drag.current?.x ?? event.clientX) - event.clientX) > 6) {
+				if (pressTimer.current !== void 0 && Math.abs((pan.current?.x ?? event.clientX) - event.clientX) > 6) {
 					window.clearTimeout(pressTimer.current);
 					pressTimer.current = void 0;
 				}
@@ -534,48 +619,94 @@ window.__ModuleLoader__.load({
 					setView((current) => ({ ...current, count: Math.min(Math.max(20, next), total) }));
 					return;
 				}
-				if (drag.current !== null && event.buttons > 0 && event.pointerType !== 'touch') {
-					const wrap = wrapRef.current;
-					const axisWidth = 64;
-					const plotWidth = Math.max(40, (wrap?.clientWidth ?? 300) - axisWidth - 8);
-					const count = Math.min(Math.max(20, Math.round(view.count)), total);
-					const shift = Math.round((drag.current.x - event.clientX) / (plotWidth / count));
-					setView((current) => ({ ...current, offset: Math.max(0, Math.min(total - count, drag.current.offset + shift)) }));
-				} else if (event.pointerType === 'mouse' && drag.current === null) showTipAt(event);
+				if (sel !== null) {
+					const { x } = localXY(event);
+					setSel((current) => current === null ? current : { ...current, x1: x });
+				}
+				if (pan.current !== null && event.buttons > 0) panBy(event.clientX);
+				if (event.pointerType === 'mouse') setCrossAt(event);
 			}
 			function onPointerUp(event) {
 				pointers.current.delete(event.pointerId);
 				if (pointers.current.size < 2) pinch.current = null;
-				drag.current = null;
+				pan.current = null;
 				window.clearTimeout(pressTimer.current);
 				pressTimer.current = void 0;
+				if (sel === null) return;
+				const g = geo.current;
+				const i0 = Math.max(0, Math.min(g.count - 1, Math.floor(Math.min(sel.x0, sel.x1) / g.step)));
+				const i1 = Math.max(0, Math.min(g.count - 1, Math.floor(Math.max(sel.x0, sel.x1) / g.step)));
+				setSel(null);
+				if (i1 - i0 < 3) return;
+				const count = Math.max(5, i1 - i0 + 1);
+				const startG = g.start + i0;
+				setView({
+					count,
+					offset: Math.max(0, Math.min(total - count, total - count - startG)),
+				});
+				window.setTimeout(() => {
+					const wrap = wrapRef.current;
+					if (wrap !== null) diag('panel.chart.zoom', {
+						count,
+						bars: total,
+					});
+				}, 0);
 			}
 			function onWheel(event) {
 				event.preventDefault();
 				const factor = event.deltaY > 0 ? 1.15 : 0.87;
-				setView((current) => ({ ...current, count: Math.min(Math.max(20, Math.round(current.count * factor)), total) }));
+				const g = geo.current;
+				const rect = event.currentTarget.getBoundingClientRect();
+				const frac = Math.max(0, Math.min(1, (event.clientX - rect.left) / Math.max(1, g.plotWidth)));
+				setView((current) => {
+					const count = Math.min(Math.max(5, Math.round(current.count * factor)), total);
+					if (count === current.count) return current;
+					const anchor = g.start + frac * current.count; // keep the bar under the cursor in place
+					const start = anchor - frac * count;
+					return {
+						count,
+						offset: Math.max(0, Math.min(total - count, Math.round(total - count - start))),
+					};
+				});
+			}
+			// React attaches wheel passively; a non-passive listener is needed to stop the page from scrolling through.
+			React.useEffect(() => {
+				const canvas = canvasRef.current;
+				if (canvas === null) return void 0;
+				const native = (event) => onWheel(event);
+				canvas.addEventListener('wheel', native, { passive: false });
+				return () => canvas.removeEventListener('wheel', native);
+			}, [total]);
+			const resetView = () => setView({ count: Math.min(total, 90), offset: 0 });
+			function onDoubleClick() {
+				resetView();
 			}
 
-			const bar = tip?.bar;
+			const zoomed = total > 0 && (view.count < total - 1 || view.offset > 0);
+			const legendBar = cross === null ? void 0 : bars[cross.gi];
+			const legendPrev = legendBar === void 0 ? void 0 : bars[bars.indexOf(legendBar) - 1];
+			const legendChg = legendBar?.c !== void 0 && legendBar?.c !== null && (legendPrev?.c ?? null) !== null ? (legendBar.c - legendPrev.c) / legendPrev.c * 100 : null;
 			return h('div', { className: 'ml-chart' },
 				h('div', { className: 'ml-canvas-wrap', ref: wrapRef },
 					h('canvas', {
 						className: 'ml-canvas', ref: canvasRef,
-						onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp, onWheel,
-						onPointerLeave: () => setTip(null),
+						onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp, onDoubleClick,
+						onPointerLeave: () => setCross(null),
 					}),
-					bar === void 0 ? null : h('div', {
-						className: 'ml-tip',
-						style: {
-							left: Math.min(tip.x + 12, Math.max(0, (wrapRef.current?.clientWidth ?? 300) - 170)),
-							top: Math.max(4, tip.y - 70),
-						},
-					},
-						h('b', null, String(bar.t)),
-						h('span', null, `O ${fmtNum(bar.o)}  H ${fmtNum(bar.h)}`),
-						h('span', null, `L ${fmtNum(bar.l)}  C ${fmtNum(bar.c)}`),
-						h('span', null, `Vol ${fmtBig(bar.v)}`)),
-				));
+					h('div', { className: 'ml-legend' }, legendBar === void 0 ? t('chart.hint') : [
+						h('b', { key: 'd' }, String(legendBar.t)),
+						h('span', { key: 'o' }, `O ${fmtNum(legendBar.o)}  H ${fmtNum(legendBar.h)}`),
+						h('span', { key: 'l' }, `L ${fmtNum(legendBar.l)}  C ${fmtNum(legendBar.c)}`),
+						h('span', { key: 'c', className: legendChg === null ? '' : dirClass(legendChg) }, legendChg === null ? '' : `${fmtSigned(legendChg)}%`),
+						h('span', { key: 'v' }, `Vol ${fmtBig(legendBar.v)}`),
+						...(showMa ? maSeries.filter((m) => m.values[cross.gi] !== null).map((m, i) => h('span', {
+							key: `ma${m.span}`,
+							style: { color: maColors[i % maColors.length] },
+						}, `MA${String(m.span)} ${fmtNum(m.values[cross.gi])}`)) : []),
+					]),
+					zoomed ? h('button', {
+						type: 'button', className: 'ml-btn ml-zoomreset', onClick: resetView,
+					}, '⤢ ' + t('chart.reset')) : null));
 		}
 
 		// ---------- bulk import dialog ----------
@@ -649,6 +780,14 @@ window.__ModuleLoader__.load({
 				const [meta, setMeta] = React.useState(null);
 				const [watchlist, setWatchlist] = React.useState(() => loadLs(LS_WATCH, null));
 				const [prefs, setPrefs] = React.useState(() => loadLs(LS_PREFS, { palette: 'redup', filter: 'all', sort: 'default', showMa: true }));
+				const seenRef = React.useRef(loadLs(LS_SEEN, {}));
+				const seenQuote = (symbol) => {
+					const row = seenRef.current[symbol];
+					return row === void 0 ? void 0 : {
+						...row,
+						stale: true,
+					};
+				};
 				const [quotes, setQuotes] = React.useState(() => new Map());
 				const [refresh, setRefresh] = React.useState({ state: 'idle', at: 0, error: null });
 				const [search, setSearch] = React.useState({ q: '', items: [], open: false, busy: false });
@@ -658,6 +797,7 @@ window.__ModuleLoader__.load({
 				const [view, setView] = React.useState('list');
 				const [period, setPeriod] = React.useState('day');
 				const [kline, setKline] = React.useState(null);
+				const [klineSeq, setKlineSeq] = React.useState(0);
 				const [importing, setImporting] = React.useState(false);
 				const [metaError, setMetaError] = React.useState(null);
 				const [fin, setFin] = React.useState(null);
@@ -742,6 +882,16 @@ window.__ModuleLoader__.load({
 							const next = new Map();
 							for (const quote of body.quotes) next.set(quote.symbol, quote);
 							setQuotes(next);
+							for (const quote of body.quotes) seenRef.current[quote.symbol] = {
+								symbol: quote.symbol,
+								name: quote.name,
+								price: quote.price,
+								change: quote.change,
+								changePct: quote.changePct,
+								amount: quote.amount,
+								at: Date.now(),
+							};
+							saveLs(LS_SEEN, seenRef.current);
 							if (lastQuotesState !== 'ok') {
 								lastQuotesState = 'ok';
 								diag('panel.quotes.ok', { rows: next.size });
@@ -783,8 +933,7 @@ window.__ModuleLoader__.load({
 					}
 					const controller = new AbortController();
 					setKline({ state: 'busy' });
-					api('kline', { symbol: selected, period, count: 320 }, controller.signal).then(
-						(body) => {
+					api('kline', { symbol: selected, period, count: 320 }, controller.signal).then((body) => {
 							diag('panel.kline.ok', {
 								symbol: selected,
 								period,
@@ -804,7 +953,7 @@ window.__ModuleLoader__.load({
 						},
 					);
 					return () => controller.abort();
-				}, [selected, period]);
+				}, [selected, period, klineSeq]);
 
 				React.useEffect(() => {
 					if (selected === null) {
@@ -941,7 +1090,7 @@ window.__ModuleLoader__.load({
 					});
 				};
 
-				const instrumentRows = (watchlist ?? (meta?.defaultWatchlist ?? [])).map((symbol) => ({ symbol, market: marketOf(symbol), name: quotes.get(symbol)?.name ?? symbol }));
+				const instrumentRows = (watchlist ?? (meta?.defaultWatchlist ?? [])).map((symbol) => ({ symbol, market: marketOf(symbol), name: quotes.get(symbol)?.name ?? seenQuote(symbol)?.name ?? symbol }));
 				const filtered = instrumentRows.filter((row) => prefs.filter === 'all' || (prefs.filter === 'index' ? (meta?.indexBar ?? []).includes(row.symbol) : row.market === prefs.filter));
 				const sorted = [...filtered];
 				if (prefs.sort === 'gainers' || prefs.sort === 'losers') {
@@ -955,7 +1104,7 @@ window.__ModuleLoader__.load({
 					});
 				} else if (prefs.sort === 'amount') sorted.sort((a, b) => (quotes.get(b.symbol)?.amount ?? -1) - (quotes.get(a.symbol)?.amount ?? -1));
 
-				const selectedQuote = selected === null ? void 0 : quotes.get(selected);
+				const selectedQuote = selected === null ? void 0 : quotes.get(selected) ?? seenQuote(selected);
 				const showList = wide || view === 'list';
 				const showDetail = wide || view === 'detail';
 
@@ -1010,7 +1159,7 @@ window.__ModuleLoader__.load({
 								h('div', { className: 'ml-rows' },
 									sorted.length === 0 ? h('div', { style: { padding: 12, color: 'var(--dsw-alias-label-secondary)' } }, t('list.addHint'))
 										: sorted.map((row) => h(WatchRow, {
-											key: row.symbol, instrument: row, quote: quotes.get(row.symbol),
+											key: row.symbol, instrument: row, quote: quotes.get(row.symbol) ?? seenQuote(row.symbol),
 											active: row.symbol === selected,
 											onSelect: (symbol) => {
 												setSelected(symbol);
@@ -1034,7 +1183,9 @@ window.__ModuleLoader__.load({
 										onClick: () => setPrefs((current) => ({ ...current, showMa: !current.showMa })),
 									}, t('detail.ma'))),
 								kline === null || kline.state === 'busy' ? h('div', { style: { padding: 16 } }, t('detail.loading'))
-									: kline.state === 'error' ? h('div', { style: { padding: 16 } }, t('detail.chartError'))
+									: kline.state === 'error' ? h('div', { className: 'ml-pad', style: { display: 'flex', gap: 10, alignItems: 'center' } },
+										t('detail.chartError'),
+										h('button', { type: 'button', className: 'ml-btn', onClick: () => setKlineSeq((current) => current + 1) }, t('kline.retry')))
 										: h(KLineChart, { data: kline.body, showMa: prefs.showMa, t }),
 							)) : null,
 						showDetail ? h('div', { className: 'ml-panelcol', 'data-col': 'detail' },
