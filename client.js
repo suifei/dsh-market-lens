@@ -203,6 +203,8 @@ window.__ModuleLoader__.load({
 .ml-hall svg{display:block}
 @keyframes mlhallblink{50%{opacity:.15}}
 .ml-hall .led{animation:mlhallblink 1.1s steps(2) infinite}
+.ml-palbtn{display:inline-flex;align-items:center;padding:6px 8px}
+.ml-palbtn svg{display:block}
 .ml-bub{transition:top .15s,right .15s}
 .ml-tabs{display:flex;gap:2px}
 .ml-tabs button{background:none;border:0;padding:5px 9px;border-radius:8px;font:inherit;font-size:12px;color:var(--dsw-alias-label-secondary);cursor:pointer}
@@ -382,7 +384,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.12.0';
+		const CLIENT_REV = '0.12.1';
 		const diagQueue = [];
 		let diagTimer = 0;
 		// the host meta tells the real level; until then assume the shipped 'errors' default
@@ -1845,12 +1847,14 @@ window.__ModuleLoader__.load({
 							) : null),
 						h('span', { className: 'ml-palwrap', style: { position: 'relative' } },
 							h('button', {
-								type: 'button', className: 'ml-btn', title: t('toolbar.palette'), 'aria-expanded': palOpen,
+								type: 'button', className: 'ml-btn ml-palbtn', 'aria-expanded': palOpen,
+								'aria-label': `${t('toolbar.palette')} · ${t(`palette.${prefs.palette in PALETTES ? prefs.palette : 'redup'}`)}`,
+								title: `${t('toolbar.palette')} · ${t(`palette.${prefs.palette in PALETTES ? prefs.palette : 'redup'}`)}`,
 								onClick: () => setPalOpen((current) => !current),
-							}, h('i', { style: { display: 'inline-flex', gap: 2, marginRight: 6, verticalAlign: -1 } },
-								h('s', { style: { width: 10, height: 10, borderRadius: 3, background: PALETTES[prefs.palette]?.up ?? PALETTES.redup.up, display: 'block' } }),
-								h('s', { style: { width: 10, height: 10, borderRadius: 3, background: PALETTES[prefs.palette]?.down ?? PALETTES.redup.down, display: 'block' } })),
-								t(`palette.${prefs.palette in PALETTES ? prefs.palette : 'redup'}`)),
+							},
+								h('svg', { width: 16, height: 16, viewBox: '0 0 16 16', 'aria-hidden': true },
+									h('rect', { x: 1, y: 1, width: 6.5, height: 14, rx: 2, fill: 'var(--ml-up)' }),
+									h('rect', { x: 8.5, y: 1, width: 6.5, height: 14, rx: 2, fill: 'var(--ml-down)' }))),
 							palOpen ? h('div', { className: 'ml-palmenu' },
 								Object.entries(PALETTES).map(([id, pal]) => h('button', {
 									key: id, type: 'button',
