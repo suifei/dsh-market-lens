@@ -369,7 +369,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.13.0';
+		const CLIENT_REV = '0.14.0';
 		const diagQueue = [];
 		let diagTimer = 0;
 		// the host meta tells the real level; until then assume the shipped 'errors' default
@@ -1940,10 +1940,70 @@ window.__ModuleLoader__.load({
 		// that kill and re-light bulbs cell by cell. No libraries, ~1 blit + a
 		// few hundred tiny fills per frame at 24fps.
 		const PITCH = 4;             // css px per bulb cell
-		const HEAD_H = 32;           // caption band
-		const ROW_H = 48;            // one quote row
+		const HEAD_H = 72;           // caption band (one 16-dot line + margins)
+		const ROW_H = 80;            // one quote row (16-dot glyphs + 4-dot gutter)
 		const CHART_H = 128;         // expansion chart strip at the bottom
 		const OFF_BG = '#05080f';
+		// UCDOS-style bitmap font (HZK16 + ASC16, 8178 glyphs) served by
+		// /market-lens/lampfont: one bitmap dot = exactly one bulb, no AA, razor
+		// legible. Loaded once; until ready the wall shows nothing but bulbs.
+		const LAMP = { ready: false, asc: null, hz: null, map: null };
+		let lampPromise = null;
+		function loadLamp() {
+			if (lampPromise === null) {
+				lampPromise = window.fetch(BASE + '/lampfont').then((r) => {
+					if (!r.ok) throw new Error(String(r.status));
+					return r.arrayBuffer();
+				}).then((buf) => {
+					const u = new Uint8Array(buf);
+					const dv = new DataView(buf);
+					if (u[0] !== 0x4d || u[1] !== 0x4c || u[2] !== 0x4c || u[3] !== 0x50) throw new Error('bad lamp.bin');
+					const ascLen = dv.getUint32(4, true);
+					const hzLen = dv.getUint32(8, true);
+					LAMP.asc = u.subarray(16, 16 + ascLen);
+					LAMP.hz = u.subarray(16 + ascLen, 16 + ascLen + hzLen);
+					LAMP.map = new Uint16Array(buf.slice(16 + ascLen + hzLen));
+					LAMP.ready = true;
+				}, () => {
+					lampPromise = null;
+				});
+			}
+			return lampPromise;
+		}
+		const ledCharW = (ch) => ch.codePointAt(0) < 0x100 ? 9 : (LAMP.map[ch.codePointAt(0)] > 0 ? 17 : 9);
+		/** dot-advance width of a string, in bulbs */
+		function ledTextW(text) {
+			let w = 0;
+			for (const ch of text) w += ledCharW(ch);
+			return Math.max(0, w - 1);
+		}
+		function ledText(cx, x, y, text, color, rightAt) {
+			let px = rightAt === void 0 ? x : rightAt - ledTextW(text) * PITCH;
+			cx.fillStyle = color;
+			for (const ch of text) {
+				const code = ch.codePointAt(0);
+				if (code < 0x100) {
+					const o = code * 16;
+					for (let row = 0; row < 16; row++) {
+						const bits = LAMP.asc[o + row];
+						if (bits === 0) continue;
+						for (let bx = 0; bx < 8; bx++) if (((bits >> (7 - bx)) & 1) === 1) cx.fillRect(px + bx * PITCH, y + row * PITCH, PITCH, PITCH);
+					}
+					px += 9 * PITCH;
+					continue;
+				}
+				const cell = code < 0x10000 ? LAMP.map[code] : 0;
+				if (cell > 0) {
+					const off = (cell - 1) * 32;
+					for (let row = 0; row < 16; row++) {
+						const bits = (LAMP.hz[off + row * 2] << 8) | LAMP.hz[off + row * 2 + 1];
+						if (bits === 0) continue;
+						for (let bx = 0; bx < 16; bx++) if (((bits >> (15 - bx)) & 1) === 1) cx.fillRect(px + bx * PITCH, y + row * PITCH, PITCH, PITCH);
+					}
+					px += 17 * PITCH;
+				} else px += 9 * PITCH;
+			}
+		}
 		const spriteCache = new Map();
 		const offTile = (() => {
 			const c = document.createElement('canvas');
@@ -2071,7 +2131,7 @@ window.__ModuleLoader__.load({
 				const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(fit) : null;
 				if (ro !== null) ro.observe(wrap);
 				else window.addEventListener('resize', fit);
-				void document.fonts?.load("36px 'MLPixel'").then(() => setFeedTick((current) => current + 1), () => void 0);
+				void loadLamp().then(() => setFeedTick((current) => current + 1), () => void 0);
 				return () => {
 					if (ro !== null) ro.disconnect();
 					else window.removeEventListener('resize', fit);
@@ -2080,6 +2140,10 @@ window.__ModuleLoader__.load({
 			// paint the visible page to the content canvas and bake the bulb screen
 			React.useEffect(() => {
 				if (size.w === 0 || view.length === 0) return;
+				if (!LAMP.ready) {
+					void loadLamp().then(() => setFeedTick((current) => current + 1), () => void 0);
+					return;
+				}
 				let c = contentRef.current;
 				if (c === null) {
 					c = contentRef.current = document.createElement('canvas');
@@ -2089,37 +2153,27 @@ window.__ModuleLoader__.load({
 				const x = c.getContext('2d');
 				x.fillStyle = '#000';
 				x.fillRect(0, 0, c.width, c.height);
-				x.textBaseline = 'middle';
-				x.textAlign = 'left';
 				const cols = [0.55, 0.7, 0.85, 0.995];
-				x.fillStyle = '#3f618a';
-				x.font = "20px 'MLPixel',monospace";
-				x.fillText(t('board.col.instrument'), 8, HEAD_H / 2);
+				ledText(x, 8, 8, t('board.col.instrument'), '#3f618a');
 				[t('board.col.last'), t('board.col.chg'), t('board.col.chgPct'), t('board.col.amount')].forEach((label, i) => {
-					x.textAlign = 'right';
-					x.fillText(label, Math.floor(c.width * cols[i]) - 2, HEAD_H / 2);
+					ledText(x, 0, 8, label, '#3f618a', Math.floor(c.width * cols[i]) - 4);
 				});
 				view.forEach((row, i) => {
-					const y = HEAD_H + i * ROW_H + ROW_H / 2;
+					const top = HEAD_H + i * ROW_H;
+					const y = top + (ROW_H - 64) / 2;
 					const q = quotes.get(row.symbol) ?? seenQuote(row.symbol);
 					const pct = q?.changePct ?? null;
 					const color = pct === null ? '#cfe6ff' : pct > 0 ? ledUp : pct < 0 ? ledDown : '#8fb3d9';
 					const isLit = i === lit;
 					if (isLit) {
 						x.fillStyle = '#0e2c4c';
-						x.fillRect(0, HEAD_H + i * ROW_H, c.width, ROW_H);
-						x.fillStyle = '#ffd75e';
-						x.font = "20px 'MLPixel',monospace";
-						x.textAlign = 'left';
-						x.fillText('▶', 8, y);
+						x.fillRect(0, top, c.width, ROW_H - 4);
+						ledText(x, 8, y, '>', '#ffd75e');
 					}
-					x.textAlign = 'left';
-					x.fillStyle = isLit ? '#ffffff' : color;
-					x.font = "36px 'MLPixel',monospace";
-					x.fillText((q?.name ?? row.name ?? '').slice(0, 6), isLit ? 40 : 24, y - 8);
-					x.fillStyle = '#3f618a';
-					x.font = "16px 'MLPixel',monospace";
-					x.fillText(row.symbol, isLit ? 40 : 24, y + 15);
+					const name = (q?.name ?? row.name ?? '').slice(0, 4);
+					ledText(x, isLit ? 80 : 24, y, name, isLit ? '#ffffff' : color);
+					// code sits after the name in half width, same glyph line
+					ledText(x, (isLit ? 80 : 24) + (ledTextW(name) + 3) * PITCH, y, row.symbol, '#3f618a');
 					const cells = [
 						q?.price === null || q?.price === void 0 ? '—' : fmtNum(q.price),
 						q?.change === null || q?.change === void 0 ? '—' : fmtSigned(q.change),
@@ -2127,10 +2181,7 @@ window.__ModuleLoader__.load({
 						q?.amount === null || q?.amount === void 0 ? '—' : fmtBig(q.amount),
 					];
 					cells.forEach((text, i2) => {
-						x.textAlign = 'right';
-						x.font = "36px 'MLPixel',monospace";
-						x.fillStyle = i2 === 3 ? '#9fc4e8' : i2 === 2 ? color : isLit ? '#ffffff' : color;
-						x.fillText(text, Math.floor(c.width * cols[i2]) - 2, y);
+						ledText(x, 0, y, text, i2 === 3 ? '#9fc4e8' : i2 === 2 ? color : isLit ? '#ffffff' : color, Math.floor(c.width * cols[i2]) - 4);
 					});
 				});
 				// chart strip for the lit row, grid-aligned so it samples cleanly
@@ -2159,10 +2210,7 @@ window.__ModuleLoader__.load({
 						x.globalAlpha = 1;
 					}
 				} else {
-					x.fillStyle = '#3f618a';
-					x.font = "20px 'MLPixel',monospace";
-					x.textAlign = 'left';
-					x.fillText('···', 12, cy0 + CHART_H / 2);
+					ledText(x, 12, cy0 + (CHART_H - 64) / 2, 'LOADING', '#3f618a');
 				}
 				sceneRef.current = bakeLamps(c);
 			}, [size, view.length, page, lit, feedTick, quotes]);
@@ -2199,7 +2247,7 @@ window.__ModuleLoader__.load({
 				const total = Math.max(1, gw * gh);
 				const step = (ts) => {
 					raf = window.requestAnimationFrame(step);
-					if (ts - last < 40) return;
+					if (ts - last < 110) return; // ~9fps: a bulb wall idles gracefully, it is not a cartoon
 					last = ts;
 					const scene = sceneRef.current;
 					if (scene === null) return;

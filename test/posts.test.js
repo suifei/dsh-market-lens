@@ -101,6 +101,11 @@ test('the pixel webfont is served with a font content-type', async () => {
 	const bytes = await handled.arrayBuffer();
 	assert.ok(bytes.byteLength > 100_000, 'real font, not a stub');
 	assert.deepEqual([...new Uint8Array(bytes.slice(0, 4))], [0x77, 0x4F, 0x46, 0x32], 'wOF2 magic');
+	const lamp = await routeResource(get('/market-lens/lampfont'));
+	assert.equal(lamp.status, 200);
+	const lb = new Uint8Array(await lamp.arrayBuffer());
+	assert.deepEqual([...lb.slice(0, 4)], [0x4d, 0x4c, 0x4c, 0x50], 'MLLP magic');
+	assert.equal(new DataView(lb.buffer).getUint32(8, true), 261_696, 'full HZK16 body');
 	await rm(dir, { recursive: true, force: true });
 });
 
