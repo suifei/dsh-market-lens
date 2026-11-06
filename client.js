@@ -369,7 +369,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.17.0';
+		const CLIENT_REV = '0.18.0';
 		const diagQueue = [];
 		let diagTimer = 0;
 		// the host meta tells the real level; until then assume the shipped 'errors' default
@@ -2025,7 +2025,6 @@ window.__ModuleLoader__.load({
 				} else px += 9 * PITCH;
 			}
 		}
-		const spriteCache = new Map();
 		const offTile = (() => {
 			const c = document.createElement('canvas');
 			c.width = PITCH;
@@ -2033,10 +2032,12 @@ window.__ModuleLoader__.load({
 			const x = c.getContext('2d');
 			x.fillStyle = 'rgba(24,48,74,0.9)';
 			x.beginPath();
-			x.arc(PITCH / 2, PITCH / 2, PITCH * 0.36, 0, 6.3);
+			x.arc(PITCH / 2, PITCH / 2, PITCH * 0.44, 0, 6.3);
 			x.fill();
 			return c;
 		})();
+		const spriteCache = new Map();
+		const haloCache = new Map();
 		function lampSprite(color) {
 			let s = spriteCache.get(color);
 			if (s !== void 0) return s;
@@ -2044,13 +2045,30 @@ window.__ModuleLoader__.load({
 			s.width = PITCH;
 			s.height = PITCH;
 			const x = s.getContext('2d');
-			const g = x.createRadialGradient(PITCH / 2, PITCH / 2, 0.15, PITCH / 2, PITCH / 2, PITCH * 0.72);
+			// bulb with a dark seam around it: core to ~0.60 cell, then clear edge
+			const g = x.createRadialGradient(PITCH / 2, PITCH / 2, 0.05, PITCH / 2, PITCH / 2, PITCH * 0.6);
 			g.addColorStop(0, color);
-			g.addColorStop(0.6, color);
+			g.addColorStop(0.62, color);
 			g.addColorStop(1, 'rgba(0,0,0,0)');
 			x.fillStyle = g;
 			x.fillRect(0, 0, PITCH, PITCH);
 			spriteCache.set(color, s);
+			return s;
+		}
+		function haloSprite(color) {
+			let s = haloCache.get(color);
+			if (s !== void 0) return s;
+			s = document.createElement('canvas');
+			s.width = PITCH * 3;
+			s.height = PITCH * 3;
+			const x = s.getContext('2d');
+			const g = x.createRadialGradient(PITCH * 1.5, PITCH * 1.5, 0.2, PITCH * 1.5, PITCH * 1.5, PITCH * 1.5);
+			g.addColorStop(0, color);
+			g.addColorStop(0.4, color);
+			g.addColorStop(1, 'rgba(0,0,0,0)');
+			x.fillStyle = g;
+			x.fillRect(0, 0, PITCH * 3, PITCH * 3);
+			haloCache.set(color, s);
 			return s;
 		}
 		/** content canvas -> baked bulb screen INTO the given target canvas (no per-bake allocation) */
@@ -2063,6 +2081,7 @@ window.__ModuleLoader__.load({
 			lx.fillStyle = lx.createPattern(offTile, 'repeat');
 			lx.fillRect(0, 0, led.width, led.height);
 			const d = content.getContext('2d').getImageData(0, 0, content.width, content.height).data;
+			const lit = [];
 			for (let gy = 0; gy + PITCH <= content.height; gy += PITCH) {
 				for (let gx = 0; gx + PITCH <= content.width; gx += PITCH) {
 					let r = 0;
@@ -2082,9 +2101,20 @@ window.__ModuleLoader__.load({
 					if (r >= g && r > g * 1.35 && r > b * 1.2) color = '#ff7d7d';
 					else if (g > r * 1.2 && g >= b) color = '#63f5b0';
 					else if (r > 4200 && g > 3200 && b < 2400) color = '#ffd75e';
-					lx.globalAlpha = Math.min(1, lum * 1.3);
-					lx.drawImage(lampSprite(color), gx, gy);
+					lit.push(gx, gy, lum, color);
 				}
+			}
+			// soft-glow pass first: additive bloom around every lit bulb, so the
+			// seam between neighbours reads as glass, not as a printed grid
+			lx.globalCompositeOperation = 'lighter';
+			for (let k = 0; k < lit.length; k += 4) {
+				lx.globalAlpha = Math.min(0.5, lit[k + 2] * 0.34);
+				lx.drawImage(haloSprite(lit[k + 3]), lit[k] - PITCH, lit[k + 1] - PITCH);
+			}
+			lx.globalCompositeOperation = 'source-over';
+			for (let k = 0; k < lit.length; k += 4) {
+				lx.globalAlpha = Math.min(1, lit[k + 2] * 1.3);
+				lx.drawImage(lampSprite(lit[k + 3]), lit[k], lit[k + 1]);
 			}
 			lx.globalAlpha = 1;
 			return led;
@@ -2102,10 +2132,11 @@ window.__ModuleLoader__.load({
 			const HEAD_H = G + 8;
 			const ROW_H = G + 12;
 			const CHART_H = tiny === true ? 56 : 88;
-			// the wall has a FIXED design raster: columns are laid once at 1280
-			// design px (guaranteed gutters for 8x16 halfwidth runs) and the whole
-			// scene scales uniformly to the container - a real LED wall never
-			// re-lays itself out when you hang it on a smaller frame
+			// the wall has a FIXED design raster: columns are laid once at 1920
+			// (1080p) design px with guaranteed gutters for 8x16 halfwidth runs;
+			// the scene then scales uniformly into the container like a game in
+			// fit mode - and when a page holds few rows the row pitch EQUALIZES to
+			// fill the screen instead of leaving a dead band under the last line
 			const DESIGN_W = 1920;
 			const COL_X = [1000, 1280, 1600, 1916];
 			const wrapRef = React.useRef(null);
@@ -2114,6 +2145,7 @@ window.__ModuleLoader__.load({
 			const sceneRef = React.useRef(null);
 			const transRef = React.useRef(null);
 			const pendingRef = React.useRef(null);
+			const pitchRef = React.useRef(0);
 			const feedsRef = React.useRef(new Map());
 			const scenePairRef = React.useRef(null);
 			const pairIdxRef = React.useRef(0);
@@ -2193,7 +2225,12 @@ window.__ModuleLoader__.load({
 					c = contentRef.current = document.createElement('canvas');
 				}
 				c.width = DESIGN_W;
-				c.height = HEAD_H + view.length * ROW_H + CHART_H;
+				// game-fit: with a short page the row pitch stretches to push the
+				// chart strip to the very bottom of the frame - no dead band
+				const availH = Math.max(HEAD_H + view.length * ROW_H + CHART_H, Math.floor(size.h / sc));
+				const pitch = Math.max(ROW_H, Math.floor((availH - HEAD_H - CHART_H) / view.length));
+				pitchRef.current = pitch;
+				c.height = HEAD_H + pitch * view.length + CHART_H;
 				const x = c.getContext('2d');
 				x.fillStyle = '#000';
 				x.fillRect(0, 0, c.width, c.height);
@@ -2202,15 +2239,15 @@ window.__ModuleLoader__.load({
 					ledText(x, 0, 4, label, '#3f618a', COL_X[i] - 4, tiny);
 				});
 				view.forEach((row, i) => {
-					const top = HEAD_H + i * ROW_H;
-					const y = top + (ROW_H - 16 * PITCH) / 2;
+					const top = HEAD_H + i * pitch;
+					const y = top + (pitch - G) / 2;
 					const q = quotes.get(row.symbol) ?? seenQuote(row.symbol);
 					const pct = q?.changePct ?? null;
 					const color = pct === null ? '#cfe6ff' : pct > 0 ? ledUp : pct < 0 ? ledDown : '#8fb3d9';
 					const isLit = i === lit;
 					if (isLit) {
 						x.fillStyle = '#0e2c4c';
-						x.fillRect(0, top, c.width, ROW_H - 3);
+						x.fillRect(0, top, c.width, pitch - 3);
 						ledText(x, 8, y, '>', '#ffd75e', void 0, tiny);
 					}
 					const name = (q?.name ?? row.name ?? '').slice(0, 4);
@@ -2228,13 +2265,15 @@ window.__ModuleLoader__.load({
 						ledText(x, 0, y, text, i2 === 3 ? '#9fc4e8' : i2 === 2 ? color : isLit ? '#ffffff' : color, COL_X[i2] - 4, tiny);
 					});
 				});
-				// chart strip for the lit row, grid-aligned so it samples cleanly
-				const cy0 = HEAD_H + view.length * ROW_H;
+				// chart strip pinned to the bottom of the scene: a stepped price
+				// ribbon with connected runs, a fat glowing endpoint, gradient
+				// volume and hi/lo ticks in the right gutter
+				const cy0 = c.height - CHART_H;
 				const litSymbol = view[lit]?.symbol;
 				const bars = (litSymbol === void 0 ? void 0 : feedsRef.current.get(litSymbol)?.bars) ?? [];
 				const pts = bars.filter((b2) => b2.c !== null);
 				if (pts.length > 1) {
-					const nCols = Math.floor((c.width - 16) / PITCH);
+					const nCols = Math.floor((c.width - 150) / PITCH);
 					const priceRows = Math.max(6, Math.floor((CHART_H - 16) * 0.62 / PITCH));
 					const volRows = Math.max(3, Math.floor((CHART_H - 16) * 0.30 / PITCH));
 					const lo = Math.min(...pts.map((b2) => b2.c));
@@ -2243,18 +2282,38 @@ window.__ModuleLoader__.load({
 					const volMax = Math.max(...pts.map((b2) => b2.v ?? 0), 1);
 					const litQ = quotes.get(litSymbol) ?? seenQuote(litSymbol);
 					const lineColor = (litQ?.changePct ?? 0) >= 0 ? ledUp : ledDown;
+					let prevY = null;
 					for (let col = 0; col < nCols; col++) {
 						const idx = Math.min(pts.length - 1, Math.round((col / nCols) * (pts.length - 1)));
 						const b2 = pts[idx];
 						const lvl = Math.max(1, Math.round(((b2.c - lo) / span) * priceRows));
-						const vh = Math.max(1, Math.round((((b2.v ?? 0) / volMax) * volRows)));
+						const yTop = cy0 + 4 + (priceRows - lvl) * PITCH;
 						x.fillStyle = lineColor;
-						x.fillRect(8 + col * PITCH, cy0 + 4 + priceRows * PITCH - lvl * PITCH, PITCH, PITCH);
-						x.globalAlpha = 0.42;
+						if (prevY !== null && prevY !== yTop) {
+							// run between the levels: the ribbon stays solid even
+							// on fast moves instead of throwing single dots
+							x.globalAlpha = 0.7;
+							x.fillRect(8 + col * PITCH, Math.min(prevY, yTop), PITCH, Math.abs(prevY - yTop) + PITCH);
+							x.globalAlpha = 1;
+						}
+						x.fillRect(8 + col * PITCH, yTop, PITCH, PITCH);
+						if (col === nCols - 1) {
+							// fat endpoint: the latest close burns two bulbs wide
+							x.fillRect(8 + (col - 1) * PITCH, yTop, PITCH, PITCH);
+							x.fillRect(8 + (col - 1) * PITCH, yTop - PITCH, PITCH, PITCH);
+							x.fillRect(8 + col * PITCH, yTop - PITCH, PITCH, PITCH);
+						}
+						const vh = Math.max(1, Math.round(((b2.v ?? 0) / volMax) * volRows));
 						x.fillStyle = idx > 0 && b2.c < pts[idx - 1].c ? ledDown : ledUp;
-						for (let vk = 0; vk < vh; vk++) x.fillRect(8 + col * PITCH, cy0 + CHART_H - 4 - (vk + 1) * PITCH, PITCH, PITCH);
+						for (let vk = 0; vk < vh; vk++) {
+							x.globalAlpha = 0.72 - 0.45 * (vk / Math.max(1, vh - 1));
+							x.fillRect(8 + col * PITCH, cy0 + CHART_H - 4 - (vk + 1) * PITCH, PITCH, PITCH);
+						}
 						x.globalAlpha = 1;
+						prevY = yTop;
 					}
+					ledText(x, 0, cy0 + 2, fmtNum(hi), '#4d7aa8', DESIGN_W - 8, tiny);
+					ledText(x, 0, cy0 + 4 + priceRows * PITCH - G, fmtNum(lo), '#4d7aa8', DESIGN_W - 8, tiny);
 				} else {
 					ledText(x, 12, cy0 + (CHART_H - G) / 2, 'LOADING', '#3f618a', void 0, tiny);
 				}
@@ -2356,7 +2415,7 @@ window.__ModuleLoader__.load({
 			}, [size]);
 			const hit = (event) => {
 				const rect = canvasRef.current.getBoundingClientRect();
-				const i = Math.floor(((event.clientY - rect.top) / sc - HEAD_H) / ROW_H);
+				const i = Math.floor(((event.clientY - rect.top) / sc - HEAD_H) / (pitchRef.current === 0 ? ROW_H : pitchRef.current));
 				return i >= 0 && i < view.length ? i : -1;
 			};
 			return h('div', { className: 'ml-led' },
