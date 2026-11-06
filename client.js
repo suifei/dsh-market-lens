@@ -133,7 +133,7 @@ window.__ModuleLoader__.load({
 .down{color:var(--ml-down)}
 .up .rm,.down .rm{color:inherit}
 .ml-top{display:flex;gap:8px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--dsw-alias-border-l1);flex-wrap:wrap}
-.ml-brand{font-weight:600;margin-right:auto;display:flex;gap:8px;align-items:baseline;min-width:0}
+.ml-brand{font-weight:600;margin-right:auto;display:flex;gap:8px;align-items:baseline;min-width:0;position:relative;z-index:40}
 .ml-brand small{color:var(--dsw-alias-label-secondary);font-weight:400;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ml-searchbox{position:relative;flex:1 1 240px;max-width:420px}
 .ml-search{width:100%;box-sizing:border-box;padding:7px 10px;border-radius:8px;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);color:inherit;font:inherit}
@@ -195,14 +195,19 @@ window.__ModuleLoader__.load({
 .ml-led tbody tr.hl td:first-child::before{content:'▶';color:var(--dsw-alias-brand-primary);margin-right:6px;font-size:11px}
 .ml-ledexpand td{padding:0 16px 12px;border-bottom:1px solid #12314f;cursor:default}
 .ml-pchart{width:100%;height:108px;display:block}
-.ml-hall{position:relative;flex:none;display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:10px;border:1px solid #2a4f7a;font:inherit;font-size:13px;font-weight:600;letter-spacing:2px;color:#dcecff;cursor:pointer;align-self:center;background:linear-gradient(160deg,#0d1f38,#123a63 60%,#0d2c4c);box-shadow:0 2px 12px -4px rgba(31,111,235,.65),inset 0 0 14px rgba(31,111,235,.25)}
-.ml-hall:hover{filter:brightness(1.25)}
-.ml-hall[aria-pressed="true"]{border-color:var(--ml-up);background:linear-gradient(160deg,#241016,#4a1520 60%,#2a0d14);box-shadow:0 0 16px -2px var(--ml-up),inset 0 0 14px rgba(255,120,120,.25)}
-.ml-hall::after{content:attr(data-tip);position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%) translateY(4px);white-space:nowrap;padding:6px 11px;border-radius:8px;background:#071426;color:#d7e9ff;font-size:11px;font-weight:400;letter-spacing:2px;border:1px solid #1f6feb;box-shadow:0 0 12px -2px #1f6feb;font-family:'MLPixel',monospace;opacity:0;pointer-events:none;transition:opacity .15s,transform .15s;z-index:30}
+.ml-hall{position:relative;flex:none;display:inline-flex;align-items:center;gap:7px;padding:6px 14px;border-radius:11px;border:1px solid #a8781f;font:inherit;font-size:13px;font-weight:700;letter-spacing:3px;color:#3a2400;cursor:pointer;align-self:center;background-image:linear-gradient(105deg,transparent 40%,rgba(255,255,255,.9) 48%,transparent 56%),linear-gradient(150deg,#7a4f00,#ffd75e 42%,#fff3b8 55%,#e8b23a);background-size:250% 100%,100% 100%;background-position:190% 0,0 0;background-repeat:no-repeat,no-repeat;animation:mlhall-laser 3.4s linear infinite,mlhall-breath 2.6s ease-in-out infinite}
+.ml-hall:hover{filter:brightness(1.12) saturate(1.1);transform:translateY(-1px);animation-duration:1.5s,1.3s}
+.ml-hall:active{transform:translateY(1px)}
+.ml-hall[aria-pressed="true"]{border-color:var(--ml-up);background-image:linear-gradient(105deg,transparent 40%,rgba(255,255,255,.9) 48%,transparent 56%),linear-gradient(150deg,#5a2a00,#ff9d3e 45%,#ffd75e 70%,#b45a10)}
+.ml-hall:focus-visible{outline:2px solid #ffd75e;outline-offset:2px}
+.ml-hall::after{content:attr(data-tip);position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%) translateY(4px);white-space:nowrap;padding:6px 11px;border-radius:8px;background:#071426;color:#ffe9a8;font-size:11px;font-weight:400;letter-spacing:2px;border:1px solid #a8781f;box-shadow:0 4px 18px -4px rgba(0,0,0,.5),0 0 10px -2px #ffd75e;font-family:'MLPixel',monospace;opacity:0;pointer-events:none;transition:opacity .15s,transform .15s;z-index:41}
 .ml-hall:hover::after{opacity:1;transform:translateX(-50%) translateY(0)}
 .ml-hall svg{display:block}
 @keyframes mlhallblink{50%{opacity:.15}}
 .ml-hall .led{animation:mlhallblink 1.1s steps(2) infinite}
+@keyframes mlhall-laser{0%{background-position:190% 0,0 0}100%{background-position:-90% 0,0 0}}
+@keyframes mlhall-breath{0%,100%{box-shadow:0 0 5px -1px rgba(255,205,90,.55),inset 0 0 6px rgba(122,79,0,.35)}50%{box-shadow:0 0 18px 1px rgba(255,215,94,.85),inset 0 0 10px rgba(255,243,184,.45)}}
+@media (prefers-reduced-motion:reduce){.ml-hall,.ml-hall .led{animation:none}}
 .ml-palbtn{display:inline-flex;align-items:center;padding:6px 8px}
 .ml-palbtn svg{display:block}
 .ml-bub{transition:top .15s,right .15s}
@@ -384,7 +389,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.12.1';
+		const CLIENT_REV = '0.12.2';
 		const diagQueue = [];
 		let diagTimer = 0;
 		// the host meta tells the real level; until then assume the shipped 'errors' default
@@ -1819,10 +1824,10 @@ window.__ModuleLoader__.load({
 								onClick: () => setLed((current) => !current),
 							},
 								h('svg', { width: 16, height: 16, viewBox: '0 0 16 16', 'aria-hidden': true },
-									h('rect', { x: 0, y: 0, width: 16, height: 16, rx: 3, fill: '#071426' }),
+									h('rect', { x: 0, y: 0, width: 16, height: 16, rx: 3, fill: '#3a2400' }),
 									h('rect', { x: 2.5, y: 6, width: 2.5, height: 6.5, fill: 'var(--ml-down)' }),
 									h('rect', { x: 6.5, y: 3, width: 2.5, height: 9.5, fill: 'var(--ml-up)' }),
-									h('rect', { x: 11.5, y: 11.5, width: 2.5, height: 2.5, fill: '#ffd75e', className: 'led' })),
+									h('rect', { x: 11.5, y: 11.5, width: 2.5, height: 2.5, fill: '#fff3b8', className: 'led' })),
 								t('board.short'))),
 						h('span', { className: 'ml-searchbox' },
 							h('input', {
