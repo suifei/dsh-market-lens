@@ -216,7 +216,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.3.0';
+		const CLIENT_REV = '0.3.1';
 		const diagQueue = [];
 		let diagTimer = 0;
 		function diagSend(rows) {
@@ -246,12 +246,16 @@ window.__ModuleLoader__.load({
 				ev,
 				...fields,
 			});
-			if (diagQueue.length >= 40) {
+			if (diagQueue.length >= 40 || window.document.hidden === true) {
 				flushDiag();
 				return;
 			}
 			if (diagTimer === 0) diagTimer = window.setTimeout(flushDiag, 1200);
 		}
+		// A hidden page can be torn down any moment; never leave queued rows behind.
+		window.document.addEventListener('visibilitychange', () => {
+			if (window.document.hidden === true) flushDiag();
+		});
 
 		// ---------- small components ----------
 		function PanelIcon({ size, active }) {
@@ -868,9 +872,12 @@ window.__ModuleLoader__.load({
 					let timer = 0;
 					let controller = null;
 					let lastQuotesState = null;
+					let hidTicks = 0;
 					const intervalMs = meta?.pollIntervalMs ?? 5000;
 					const tick = async () => {
 						if (window.document.hidden) {
+							hidTicks++;
+							if (hidTicks === 30) diag('panel.hidden', { symbols: symbolsKey.split(',').length });
 							timer = window.setTimeout(tick, 1000);
 							return;
 						}
@@ -1250,6 +1257,7 @@ window.__ModuleLoader__.load({
 				};
 			}, `${PKG}: diag flush`);
 			diag('client.apply', { rev: CLIENT_REV });
+			flushDiag();
 			console.log(`${PKG}: client half applied`);
 		}
 

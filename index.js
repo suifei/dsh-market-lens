@@ -154,7 +154,7 @@ export function apply(ctx, config) {
 	const { routeResource, diagRoute } = createRoutes({
 		service,
 		diag,
-		config: { ...config, version: '0.3.0' },
+		config: { ...config, version: '0.3.1' },
 	});
 
 	ctx.effect(() => {
