@@ -282,7 +282,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.5.0';
+		const CLIENT_REV = '0.5.1';
 		const diagQueue = [];
 		let diagTimer = 0;
 		function diagSend(rows) {
@@ -735,6 +735,7 @@ window.__ModuleLoader__.load({
 			}
 			function barAtPixel(px) {
 				const g = geo.current;
+				if (g === null) return 0;
 				return g.start + Math.max(0, Math.min(g.count - 1, Math.floor(px / g.step)));
 			}
 			function setCrossAt(event) {
@@ -742,12 +743,14 @@ window.__ModuleLoader__.load({
 				setCross({ gi: barAtPixel(x), x, y });
 			}
 			function panBy(clientX) {
-				if (pan.current === null) return;
+				if (pan.current === null || geo.current === null) return;
 				const g = geo.current;
 				const shift = Math.round((pan.current.x - clientX) / g.step);
 				setView((current) => ({ ...current, offset: Math.max(0, Math.min(total - current.count, pan.current.offset + shift)) }));
 			}
 			function onPointerDown(event) {
+				// the placeholder before the first draw has no geometry: keep pointer effects off it
+				if (geo.current === null) return;
 				event.currentTarget.setPointerCapture?.(event.pointerId);
 				pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
 				if (pointers.current.size === 2) {
@@ -822,6 +825,7 @@ window.__ModuleLoader__.load({
 				event.preventDefault();
 				const factor = event.deltaY > 0 ? 1.15 : 0.87;
 				const g = geo.current;
+				if (g === null) return;
 				const rect = event.currentTarget.getBoundingClientRect();
 				const frac = Math.max(0, Math.min(1, (event.clientX - rect.left) / Math.max(1, g.plotWidth)));
 				setView((current) => {
