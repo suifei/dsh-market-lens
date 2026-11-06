@@ -177,24 +177,10 @@ window.__ModuleLoader__.load({
 .ml-ticker:hover{animation-play-state:paused}
 @keyframes mltape{to{transform:translateX(-50%)}}
 .ml-ticker span{font-size:14px;text-shadow:0 0 3px currentColor;letter-spacing:1px}
-.ml-ledscroll{overflow-y:auto;min-height:0;flex:1}
-.ml-led table{width:100%;border-collapse:collapse;table-layout:auto}
-.ml-led thead th{position:sticky;top:0;background:#03060b;color:#4f7196;font-size:11px;font-weight:400;text-align:right;padding:7px 16px;border-bottom:1px solid #12283f;letter-spacing:2px;text-transform:uppercase}
-.ml-led thead th:first-child{text-align:left}
-.ml-led tbody tr{border-bottom:1px solid #0c1c2e;cursor:pointer}
-.ml-led tbody tr:hover{background:#0b1e33}
-.ml-led td{padding:10px 16px}
-.ml-led .nm b{font-size:19px;font-weight:600;letter-spacing:2px}
-.ml-led .nm code{display:block;font-size:12px;color:#4f7196;letter-spacing:1px}
-.ml-led .num{text-align:right;font-size:19px;font-variant-numeric:tabular-nums;text-shadow:0 0 3px currentColor}
-.ml-led .num.big{font-size:21px;font-weight:700;min-width:104px}
+.ml-ledstage{flex:1;min-height:0;position:relative}
+.ml-ledscreen{position:absolute;inset:0;display:block;cursor:crosshair}
 .ml-led .up{color:color-mix(in srgb,var(--ml-up) 68%,#fff)}
 .ml-led .down{color:color-mix(in srgb,var(--ml-down) 68%,#fff)}
-.ml-led .ml-flat{color:#6b87a4}
-.ml-led tbody tr.hl{background:#0f2c4a}
-.ml-led tbody tr.hl td:first-child::before{content:'▶';color:var(--dsw-alias-brand-primary);margin-right:6px;font-size:11px}
-.ml-ledexpand td{padding:0 16px 12px;border-bottom:1px solid #12314f;cursor:default}
-.ml-pchart{width:100%;height:108px;display:block}
 .ml-hall{position:relative;flex:none;display:inline-flex;align-items:center;gap:7px;padding:6px 14px;border-radius:11px;border:1px solid #a8781f;font:inherit;font-size:13px;font-weight:700;letter-spacing:3px;color:#3a2400;cursor:pointer;align-self:center;background-image:linear-gradient(105deg,transparent 40%,rgba(255,255,255,.9) 48%,transparent 56%),linear-gradient(150deg,#7a4f00,#ffd75e 42%,#fff3b8 55%,#e8b23a);background-size:250% 100%,100% 100%;background-position:190% 0,0 0;background-repeat:no-repeat,no-repeat;animation:mlhall-laser 3.4s linear infinite,mlhall-breath 2.6s ease-in-out infinite}
 .ml-hall:hover{filter:brightness(1.12) saturate(1.1);transform:translateY(-1px);animation-duration:1.5s,1.3s}
 .ml-hall:active{transform:translateY(1px)}
@@ -334,12 +320,6 @@ window.__ModuleLoader__.load({
 			if (value === null || value === void 0 || !Number.isFinite(value)) return 'ml-flat';
 			return value > 0 ? 'up' : value < 0 ? 'down' : 'ml-flat';
 		}
-		// lighten a hex tone toward white for the dark LED panel (mix 0..1)
-		function ledTone(hex, mix) {
-			const n = parseInt(String(hex).slice(1), 16);
-			const f = (v) => Math.round(v + (255 - v) * mix);
-			return `rgb(${String(f((n >> 16) & 255))},${String(f((n >> 8) & 255))},${String(f(n & 255))})`;
-		}
 		function loadLs(key, fallback) {
 			try {
 				const raw = window.localStorage.getItem(key);
@@ -389,7 +369,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.12.2';
+		const CLIENT_REV = '0.13.0';
 		const diagQueue = [];
 		let diagTimer = 0;
 		// the host meta tells the real level; until then assume the shipped 'errors' default
@@ -1880,8 +1860,8 @@ window.__ModuleLoader__.load({
 					},
 					led === true ? h(LedBoard, {
 						rows: sorted, quotes, seenQuote, meta, t,
-						ledUp: ledTone(PALETTES[prefs.palette]?.up ?? '#e04f4f', 0.34),
-						ledDown: ledTone(PALETTES[prefs.palette]?.down ?? '#2fa36b', 0.34),
+						ledUp: PALETTES[prefs.palette]?.up ?? PALETTES.redup.up,
+						ledDown: PALETTES[prefs.palette]?.down ?? PALETTES.redup.down,
 						getKline: (symbol) => api('kline', { symbol, period: 'day', count: 160 }),
 						onPick: (symbol) => {
 							pick(symbol);
@@ -1952,150 +1932,338 @@ window.__ModuleLoader__.load({
 			return Panel;
 		}
 
-		/**
-		 * Static pixel chart for the board: a stepped close line (no smoothing,
-		 * no interaction) over blocky volume. Renders from prefetched bars, so
-		 * switching rows never blanks or flickers.
-		 */
-		function PixelChart({ bars, color, volUp, volDown }) {
-			const ref = React.useRef(null);
-			React.useEffect(() => {
-				const cv = ref.current;
-				if (cv === null) return;
-				const dpr = window.devicePixelRatio || 1;
-				const w = Math.max(80, cv.clientWidth);
-				const hgt = 108;
-				cv.width = w * dpr;
-				cv.height = hgt * dpr;
-				const ctx = cv.getContext('2d');
-				ctx.scale(dpr, dpr);
-				ctx.clearRect(0, 0, w, hgt);
-				const pts = bars.filter((b) => b.c !== null);
-				if (pts.length < 2) return;
-				const vs = pts.map((b) => b.v ?? 0);
-				const volMax = Math.max(...vs, 1);
-				const volH = 22;
-				const priceH = hgt - volH - 6;
-				const lo = Math.min(...pts.map((b) => b.c));
-				const hi = Math.max(...pts.map((b) => b.c));
-				const span = hi - lo || 1;
-				const step = w / pts.length;
-				const px = (i) => Math.round(i * step + step / 2);
-				const py = (v) => Math.round(priceH - ((v - lo) / span) * (priceH - 8)) + 0.5;
-				ctx.fillStyle = '#16324d';
-				for (let g = 1; g < 4; g++) ctx.fillRect(0, Math.round((priceH / 4) * g), w, 1);
-				ctx.globalAlpha = 0.55;
-				pts.forEach((b, i) => {
-					const vh = Math.max(1, Math.round(((b.v ?? 0) / volMax) * volH));
-					ctx.fillStyle = (i > 0 ? b.c >= pts[i - 1].c : true) ? volUp : volDown;
-					ctx.fillRect(Math.round(i * step + 1), hgt - vh, Math.max(1, Math.round(step) - 2), vh);
-				});
-				ctx.globalAlpha = 1;
-				ctx.strokeStyle = color;
-				ctx.lineWidth = 2;
-				ctx.lineJoin = 'miter';
-				ctx.beginPath();
-				let prevY = py(pts[0].c);
-				pts.forEach((b, i) => {
-					const x = px(i);
-					const y = py(b.c);
-					if (i === 0) ctx.moveTo(x, y);
-					// horizontal to this column, then a vertical step: every segment sits on the grid
-					else { ctx.lineTo(x, prevY); ctx.lineTo(x, y); }
-					prevY = y;
-				});
-				ctx.stroke();
-				const lastY = py(pts[pts.length - 1].c);
-				ctx.fillStyle = color;
-				ctx.fillRect(w - 58, lastY - 8, 56, 16);
-				ctx.fillStyle = '#03060b';
-				ctx.font = "12px 'MLPixel',monospace";
-				ctx.fillText(String(pts[pts.length - 1].c), w - 54, lastY + 4);
-			}, [bars, color, volUp, volDown]);
-			return h('canvas', { ref, className: 'ml-pchart', 'aria-hidden': true });
+		// ---------- lamp-matrix screen engine (the Exchange Hall renderer) ----------
+		// 2D-game style pipeline: draw the page to an offscreen content canvas,
+		// sample it into an n x m bulb grid (one bulb = one 4px cell, round with
+		// a soft halo), bake to a bulb canvas, then a cheap rAF loop blits it and
+		// adds the living parts: a scan band, random bulb chatter, and page wipes
+		// that kill and re-light bulbs cell by cell. No libraries, ~1 blit + a
+		// few hundred tiny fills per frame at 24fps.
+		const PITCH = 4;             // css px per bulb cell
+		const HEAD_H = 32;           // caption band
+		const ROW_H = 48;            // one quote row
+		const CHART_H = 128;         // expansion chart strip at the bottom
+		const OFF_BG = '#05080f';
+		const spriteCache = new Map();
+		const offTile = (() => {
+			const c = document.createElement('canvas');
+			c.width = PITCH;
+			c.height = PITCH;
+			const x = c.getContext('2d');
+			x.fillStyle = 'rgba(24,48,74,0.9)';
+			x.beginPath();
+			x.arc(2, 2, 1.4, 0, 6.3);
+			x.fill();
+			return c;
+		})();
+		function lampSprite(color) {
+			let s = spriteCache.get(color);
+			if (s !== void 0) return s;
+			s = document.createElement('canvas');
+			s.width = PITCH;
+			s.height = PITCH;
+			const x = s.getContext('2d');
+			const g = x.createRadialGradient(2, 2, 0.2, 2, 2, 2.9);
+			g.addColorStop(0, color);
+			g.addColorStop(0.6, color);
+			g.addColorStop(1, 'rgba(0,0,0,0)');
+			x.fillStyle = g;
+			x.fillRect(0, 0, PITCH, PITCH);
+			spriteCache.set(color, s);
+			return s;
+		}
+		/** content canvas -> baked bulb screen; hue buckets keep the LED palette honest */
+		function bakeLamps(content) {
+			const led = document.createElement('canvas');
+			led.width = content.width;
+			led.height = content.height;
+			const lx = led.getContext('2d');
+			lx.fillStyle = OFF_BG;
+			lx.fillRect(0, 0, led.width, led.height);
+			lx.fillStyle = lx.createPattern(offTile, 'repeat');
+			lx.fillRect(0, 0, led.width, led.height);
+			const d = content.getContext('2d').getImageData(0, 0, content.width, content.height).data;
+			for (let gy = 0; gy + PITCH <= content.height; gy += PITCH) {
+				for (let gx = 0; gx + PITCH <= content.width; gx += PITCH) {
+					let r = 0;
+					let g = 0;
+					let b = 0;
+					for (let dy = 0; dy < PITCH; dy++) {
+						for (let dx = 0; dx < PITCH; dx++) {
+							const i = ((gy + dy) * content.width + gx + dx) * 4;
+							r += d[i];
+							g += d[i + 1];
+							b += d[i + 2];
+						}
+					}
+					const lum = Math.max(r, g, b) / (PITCH * PITCH * 255);
+					if (lum < 0.3) continue;
+					let color = '#cfe6ff';
+					if (r >= g && r > g * 1.35 && r > b * 1.2) color = '#ff7d7d';
+					else if (g > r * 1.2 && g >= b) color = '#63f5b0';
+					else if (r > 4200 && g > 3200 && b < 2400) color = '#ffd75e';
+					lx.globalAlpha = Math.min(1, lum * 1.3);
+					lx.drawImage(lampSprite(color), gx, gy);
+				}
+			}
+			lx.globalAlpha = 1;
+			return led;
 		}
 
 		/**
-		 * LED exchange board: one pixel table that auto-rotates; the lit row
-		 * expands an inline chart under itself. Bars for every row are prefetched
-		 * in small batches, so rotation only moves DOM, it never refetches or
-		 * repaints blank. Hover pauses and grabs the hovered row; leaving resumes.
+		 * The hall itself: a fixed viewport of N quote rows (computed from the
+		 * real height), rotating row by row; when a page is done a bulb wipe
+		 * clears the screen and the next page lights up. The lit row expands the
+		 * chart strip; hover pauses and grabs, click returns to the desk.
 		 */
 		function LedBoard({ rows, quotes, seenQuote, meta, onPick, getKline, ledUp, ledDown, t }) {
-			const [cursor, setCursor] = React.useState(0);
+			const wrapRef = React.useRef(null);
+			const canvasRef = React.useRef(null);
+			const contentRef = React.useRef(null);
+			const sceneRef = React.useRef(null);
+			const transRef = React.useRef(null);
+			const pendingRef = React.useRef(null);
+			const feedsRef = React.useRef(new Map());
+			const [size, setSize] = React.useState({ w: 0, h: 0 });
+			const [page, setPage] = React.useState(0);
+			const [lit, setLit] = React.useState(0);
 			const [paused, setPaused] = React.useState(false);
-			const [feeds, setFeeds] = React.useState(() => new Map());
-			const scrollRef = React.useRef(null);
-			const count = rows.length;
+			const [feedTick, setFeedTick] = React.useState(0);
+			const pageSize = Math.max(2, Math.floor((size.h - HEAD_H - CHART_H) / ROW_H));
+			const pages = Math.max(1, Math.ceil(rows.length / pageSize));
+			const start = Math.min(page * pageSize, Math.max(0, rows.length - pageSize));
+			const view = rows.slice(start, start + pageSize);
 			const ticker = (meta?.indexBar ?? []).map((symbol) => quotes.get(symbol) ?? seenQuote(symbol)).filter((q) => q !== void 0);
 			const tape = ticker.length === 0 ? [] : [...ticker, ...ticker];
 			const rowsKey = rows.map((row) => row.symbol).join(',');
-			React.useEffect(() => {
-				if (paused === true || count < 2) return void 0;
-				const timer = window.setInterval(() => setCursor((current) => (current + 1) % count), 4000);
-				return () => window.clearInterval(timer);
-			}, [paused, count]);
+			// prefetch every row's bars in batches; rotation then never waits on the network
 			React.useEffect(() => {
 				let dead = false;
 				const symbols = rowsKey === '' ? [] : rowsKey.split(',');
 				const pull = () => {
 					for (let i = 0; i < symbols.length; i += 3) {
 						const batch = symbols.slice(i, i + 3);
-						Promise.all(batch.map((symbol) => getKline(symbol).then(
+						void Promise.all(batch.map((symbol) => getKline(symbol).then(
 							(body) => {
-								if (!dead) setFeeds((current) => new Map(current).set(symbol, body));
+								if (!dead) {
+									feedsRef.current.set(symbol, body);
+								}
 							},
 							() => void 0,
-						))).then(() => void 0);
+						))).then(() => {
+							if (!dead) setFeedTick((current) => current + 1);
+						});
 					}
 				};
 				pull();
-				// bars refresh every two minutes; the host cache (30s TTL) makes follow-up pulls cheap
 				const timer = window.setInterval(pull, 120000);
 				return () => {
 					dead = true;
 					window.clearInterval(timer);
 				};
 			}, [rowsKey]);
+			// fit the canvas to the wrapper (rule 7: the board follows its container)
 			React.useEffect(() => {
-				if (paused === true || scrollRef.current === null) return;
-				const row = scrollRef.current.querySelector(`tr[data-i="${String(cursor % count)}"]`);
-				if (row !== null) row.scrollIntoView({ block: 'nearest' });
-			}, [cursor, paused, count]);
+				const wrap = wrapRef.current;
+				if (wrap === null) return void 0;
+				const fit = () => setSize({ w: Math.max(280, wrap.clientWidth), h: Math.max(240, wrap.clientHeight) });
+				fit();
+				const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(fit) : null;
+				if (ro !== null) ro.observe(wrap);
+				else window.addEventListener('resize', fit);
+				void document.fonts?.load("36px 'MLPixel'").then(() => setFeedTick((current) => current + 1), () => void 0);
+				return () => {
+					if (ro !== null) ro.disconnect();
+					else window.removeEventListener('resize', fit);
+				};
+			}, []);
+			// paint the visible page to the content canvas and bake the bulb screen
+			React.useEffect(() => {
+				if (size.w === 0 || view.length === 0) return;
+				let c = contentRef.current;
+				if (c === null) {
+					c = contentRef.current = document.createElement('canvas');
+				}
+				c.width = size.w;
+				c.height = HEAD_H + view.length * ROW_H + CHART_H;
+				const x = c.getContext('2d');
+				x.fillStyle = '#000';
+				x.fillRect(0, 0, c.width, c.height);
+				x.textBaseline = 'middle';
+				x.textAlign = 'left';
+				const cols = [0.55, 0.7, 0.85, 0.995];
+				x.fillStyle = '#3f618a';
+				x.font = "20px 'MLPixel',monospace";
+				x.fillText(t('board.col.instrument'), 8, HEAD_H / 2);
+				[t('board.col.last'), t('board.col.chg'), t('board.col.chgPct'), t('board.col.amount')].forEach((label, i) => {
+					x.textAlign = 'right';
+					x.fillText(label, Math.floor(c.width * cols[i]) - 2, HEAD_H / 2);
+				});
+				view.forEach((row, i) => {
+					const y = HEAD_H + i * ROW_H + ROW_H / 2;
+					const q = quotes.get(row.symbol) ?? seenQuote(row.symbol);
+					const pct = q?.changePct ?? null;
+					const color = pct === null ? '#cfe6ff' : pct > 0 ? ledUp : pct < 0 ? ledDown : '#8fb3d9';
+					const isLit = i === lit;
+					if (isLit) {
+						x.fillStyle = '#0e2c4c';
+						x.fillRect(0, HEAD_H + i * ROW_H, c.width, ROW_H);
+						x.fillStyle = '#ffd75e';
+						x.font = "20px 'MLPixel',monospace";
+						x.textAlign = 'left';
+						x.fillText('▶', 8, y);
+					}
+					x.textAlign = 'left';
+					x.fillStyle = isLit ? '#ffffff' : color;
+					x.font = "36px 'MLPixel',monospace";
+					x.fillText((q?.name ?? row.name ?? '').slice(0, 6), isLit ? 40 : 24, y - 8);
+					x.fillStyle = '#3f618a';
+					x.font = "16px 'MLPixel',monospace";
+					x.fillText(row.symbol, isLit ? 40 : 24, y + 15);
+					const cells = [
+						q?.price === null || q?.price === void 0 ? '—' : fmtNum(q.price),
+						q?.change === null || q?.change === void 0 ? '—' : fmtSigned(q.change),
+						pct === null || pct === void 0 ? '—' : `${fmtSigned(pct)}%`,
+						q?.amount === null || q?.amount === void 0 ? '—' : fmtBig(q.amount),
+					];
+					cells.forEach((text, i2) => {
+						x.textAlign = 'right';
+						x.font = "36px 'MLPixel',monospace";
+						x.fillStyle = i2 === 3 ? '#9fc4e8' : i2 === 2 ? color : isLit ? '#ffffff' : color;
+						x.fillText(text, Math.floor(c.width * cols[i2]) - 2, y);
+					});
+				});
+				// chart strip for the lit row, grid-aligned so it samples cleanly
+				const cy0 = HEAD_H + view.length * ROW_H;
+				const litSymbol = view[lit]?.symbol;
+				const bars = (litSymbol === void 0 ? void 0 : feedsRef.current.get(litSymbol)?.bars) ?? [];
+				const pts = bars.filter((b2) => b2.c !== null);
+				if (pts.length > 1) {
+					const nCols = Math.floor((c.width - 16) / PITCH);
+					const lo = Math.min(...pts.map((b2) => b2.c));
+					const hi = Math.max(...pts.map((b2) => b2.c));
+					const span = hi - lo || 1;
+					const volMax = Math.max(...pts.map((b2) => b2.v ?? 0), 1);
+					const litQ = quotes.get(litSymbol) ?? seenQuote(litSymbol);
+					const lineColor = (litQ?.changePct ?? 0) >= 0 ? ledUp : ledDown;
+					for (let col = 0; col < nCols; col++) {
+						const idx = Math.min(pts.length - 1, Math.round((col / nCols) * (pts.length - 1)));
+						const b2 = pts[idx];
+						const lvl = Math.max(1, Math.round(((b2.c - lo) / span) * ((CHART_H - 40) / PITCH)));
+						const vh = Math.max(1, Math.round((((b2.v ?? 0) / volMax) * 64) / PITCH));
+						x.fillStyle = lineColor;
+						x.fillRect(8 + col * PITCH, cy0 + 8 + (CHART_H - 40) - lvl * PITCH, PITCH, PITCH);
+						x.globalAlpha = 0.42;
+						x.fillStyle = idx > 0 && b2.c < pts[idx - 1].c ? ledDown : ledUp;
+						for (let vk = 0; vk < vh; vk++) x.fillRect(8 + col * PITCH, cy0 + CHART_H - 4 - (vk + 1) * PITCH, PITCH, PITCH);
+						x.globalAlpha = 1;
+					}
+				} else {
+					x.fillStyle = '#3f618a';
+					x.font = "20px 'MLPixel',monospace";
+					x.textAlign = 'left';
+					x.fillText('···', 12, cy0 + CHART_H / 2);
+				}
+				sceneRef.current = bakeLamps(c);
+			}, [size, view.length, page, lit, feedTick, quotes]);
+			// rotation: one row every four seconds; a finished page queues a wipe
+			const rotRef = React.useRef(() => void 0);
+			rotRef.current = () => {
+				if (paused === true || transRef.current !== null || view.length < 2) return;
+				if (lit + 1 < view.length) {
+					setLit(lit + 1);
+					return;
+				}
+				transRef.current = { phase: 'out', f: 0 };
+				pendingRef.current = () => {
+					setPage(start + pageSize >= rows.length ? 0 : (page + 1) % pages);
+					setLit(0);
+				};
+			};
+			React.useEffect(() => {
+				const timer = window.setInterval(() => rotRef.current(), 4000);
+				return () => window.clearInterval(timer);
+			}, []);
+			// the living screen: one blit + scan band + bulb chatter + wipe
+			React.useEffect(() => {
+				const cv = canvasRef.current;
+				if (cv === null || size.w === 0) return void 0;
+				cv.width = size.w;
+				cv.height = size.h;
+				const x = cv.getContext('2d');
+				let raf = 0;
+				let last = 0;
+				let scanY = 0;
+				const gw = Math.floor(size.w / PITCH);
+				const gh = Math.floor(size.h / PITCH);
+				const total = Math.max(1, gw * gh);
+				const step = (ts) => {
+					raf = window.requestAnimationFrame(step);
+					if (ts - last < 40) return;
+					last = ts;
+					const scene = sceneRef.current;
+					if (scene === null) return;
+					x.drawImage(scene, 0, 0);
+					scanY = (scanY + 1) % gh;
+					x.fillStyle = 'rgba(130,200,255,0.05)';
+					x.fillRect(0, scanY * PITCH, size.w, PITCH);
+					for (let k = 0; k < 70; k++) {
+						const bx = Math.floor(Math.random() * gw) * PITCH;
+						const by = Math.floor(Math.random() * gh) * PITCH;
+						x.fillStyle = k % 4 === 0 ? 'rgba(150,210,255,0.12)' : 'rgba(5,8,15,0.45)';
+						x.fillRect(bx + 1, by + 1, 2, 2);
+					}
+					const tr = transRef.current;
+					if (tr !== null) {
+						tr.f++;
+						const n = Math.floor((total / 7) * 1.25);
+						if (tr.phase === 'out') {
+							x.fillStyle = OFF_BG;
+							for (let k = 0; k < n; k++) x.fillRect(Math.floor(Math.random() * gw) * PITCH, Math.floor(Math.random() * gh) * PITCH, PITCH, PITCH);
+							if (tr.f >= 7) {
+								transRef.current = { phase: 'in', f: 6 };
+								const commit = pendingRef.current;
+								pendingRef.current = null;
+								if (commit !== null) commit();
+							}
+						} else {
+							for (let k = 0; k < n; k++) {
+								const sx = Math.floor(Math.random() * gw) * PITCH;
+								const sy = Math.floor(Math.random() * gh) * PITCH;
+								x.drawImage(scene, sx, sy, PITCH, PITCH, sx, sy, PITCH, PITCH);
+							}
+							if (tr.f <= 0) transRef.current = null;
+						}
+					}
+				};
+				raf = window.requestAnimationFrame(step);
+				return () => window.cancelAnimationFrame(raf);
+			}, [size]);
+			const hit = (event) => {
+				const rect = canvasRef.current.getBoundingClientRect();
+				const i = Math.floor((event.clientY - rect.top - HEAD_H) / ROW_H);
+				return i >= 0 && i < view.length ? i : -1;
+			};
 			return h('div', { className: 'ml-led' },
 				tape.length === 0 ? null : h('div', { className: 'ml-ticker' },
 					tape.map((q, index) => h('span', { key: `${String(q.symbol)}|${String(index)}`, className: dirClass(q.changePct ?? 0) },
 						q.name ?? q.symbol, ' ', fmtNum(q.price, (q.price ?? 0) > 1000 ? 0 : 2), '  ', q.changePct === null || q.changePct === void 0 ? '—' : `${fmtSigned(q.changePct)}%`))),
-				h('div', { className: 'ml-ledscroll', ref: scrollRef, onMouseLeave: () => setPaused(false) },
-					h('table', null,
-						h('thead', null, h('tr', null,
-							h('th', null, t('board.col.instrument')), h('th', null, t('board.col.last')), h('th', null, t('board.col.chg')), h('th', null, t('board.col.chgPct')), h('th', null, t('board.col.amount')))),
-						h('tbody', { onMouseEnter: () => setPaused(true) }, rows.flatMap((row, index) => {
-							const q = quotes.get(row.symbol) ?? seenQuote(row.symbol);
-							const pct = q?.changePct ?? null;
-							const lit = index === cursor % count;
-							const cells = [h('tr', {
-								key: row.symbol, 'data-i': String(index), className: `${dirClass(pct ?? 0)}${lit ? ' hl' : ''}`,
-								onClick: () => onPick(row.symbol), onMouseEnter: () => setCursor(index),
-								title: t('board.pickHint'),
-							},
-								h('td', { className: 'nm' }, h('b', null, q?.name ?? row.name), h('code', null, row.symbol)),
-								h('td', { className: 'num' }, q?.price === null || q?.price === void 0 ? '—' : fmtNum(q.price)),
-								h('td', { className: 'num' }, q?.change === null || q?.change === void 0 ? '—' : fmtSigned(q.change)),
-								h('td', { className: 'num big' }, pct === null || pct === void 0 ? '—' : `${fmtSigned(pct)}%`),
-								h('td', { className: 'num' }, q?.amount === null || q?.amount === void 0 ? '—' : fmtBig(q.amount)))];
-							if (!lit) return cells;
-							const body = feeds.get(row.symbol);
-							cells.push(h('tr', { key: `${row.symbol}|x`, className: 'ml-ledexpand' },
-								h('td', { colSpan: 5 }, body === void 0
-									? h('div', { className: 'ml-pad' }, t('news.loading'))
-									: h(PixelChart, {
-										bars: body.bars ?? [],
-										color: (pct ?? 0) >= 0 ? ledUp : ledDown,
-										volUp: ledUp, volDown: ledDown,
-									}))));
-							return cells;
-						})))));
+				h('div', {
+					className: 'ml-ledstage',
+					ref: wrapRef,
+					onMouseMove: (event) => {
+						const i = hit(event);
+						if (i >= 0) {
+							setPaused(true);
+							if (transRef.current === null) setLit(i);
+						} else setPaused(false);
+					},
+					onMouseLeave: () => setPaused(false),
+					onClick: (event) => {
+						const i = hit(event);
+						if (i >= 0) onPick(view[i].symbol);
+					},
+				}, h('canvas', { ref: canvasRef, className: 'ml-ledscreen', 'aria-label': t('board.title') })));
 		}
 
 		/** Keeps a render crash inside the board instead of blanking the slot. */
