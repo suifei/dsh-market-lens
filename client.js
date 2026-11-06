@@ -183,25 +183,21 @@ window.__ModuleLoader__.load({
 .ml-led thead th:first-child{text-align:left}
 .ml-led tbody tr{border-bottom:1px solid #0c1c2e;cursor:pointer}
 .ml-led tbody tr:hover{background:#0b1e33}
-.ml-led td{padding:11px 16px}
-.ml-led .nm b{font-size:17px;font-weight:600;letter-spacing:1px}
-.ml-led .nm code{display:block;font-size:11px;color:#4f7196}
+.ml-led td{padding:10px 16px}
+.ml-led .nm b{font-size:19px;font-weight:600;letter-spacing:2px}
+.ml-led .nm code{display:block;font-size:12px;color:#4f7196;letter-spacing:1px}
 .ml-led .num{text-align:right;font-size:19px;font-variant-numeric:tabular-nums;text-shadow:0 0 3px currentColor}
-.ml-led .num.big{font-size:24px;font-weight:700;min-width:110px}
-.ml-led .up{color:var(--ml-up)}
-.ml-led .down{color:var(--ml-down)}
+.ml-led .num.big{font-size:21px;font-weight:700;min-width:104px}
+.ml-led .up{color:color-mix(in srgb,var(--ml-up) 68%,#fff)}
+.ml-led .down{color:color-mix(in srgb,var(--ml-down) 68%,#fff)}
 .ml-led .ml-flat{color:#6b87a4}
-.ml-ledbody{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.35fr);gap:0;flex:1;min-height:0}
-.ml-ledscroll{overflow-y:auto;min-height:0}
-.ml-ledchart{display:flex;flex-direction:column;min-width:0;border-left:1px solid #12283f}
-.ml-ledchart .ml-chart{background:transparent;border:0}
-.ml-led-hd{display:flex;align-items:baseline;gap:12px;padding:8px 14px;border-bottom:1px solid #12283f;background:#03060b}
-.ml-led-hd b{font-size:20px;letter-spacing:2px}
-.ml-led-hd code{color:#4f7196;font-size:12px}
-.ml-led-hd .px{font-size:26px;text-shadow:0 0 4px currentColor;font-variant-numeric:tabular-nums}
 .ml-led tbody tr.hl{background:#0f2c4a}
 .ml-led tbody tr.hl td:first-child::before{content:'▶';color:var(--dsw-alias-brand-primary);margin-right:6px;font-size:11px}
-@media (max-width:1200px){.ml-ledbody{grid-template-columns:minmax(0,1fr)}}
+.ml-ledexpand td{padding:0 16px 12px;border-bottom:1px solid #12314f;cursor:default}
+.ml-pchart{width:100%;height:108px;display:block}
+.ml-ledbtn{display:inline-flex;align-items:center;gap:6px}
+.ml-ledbtn svg{display:block}
+.ml-ledbtn[aria-pressed="true"]{border-color:var(--dsw-alias-brand-primary);box-shadow:0 0 0 1px var(--dsw-alias-brand-primary),0 0 10px -2px var(--dsw-alias-brand-primary)}
 .ml-bub{transition:top .15s,right .15s}
 .ml-tabs{display:flex;gap:2px}
 .ml-tabs button{background:none;border:0;padding:5px 9px;border-radius:8px;font:inherit;font-size:12px;color:var(--dsw-alias-label-secondary);cursor:pointer}
@@ -326,6 +322,12 @@ window.__ModuleLoader__.load({
 			if (value === null || value === void 0 || !Number.isFinite(value)) return 'ml-flat';
 			return value > 0 ? 'up' : value < 0 ? 'down' : 'ml-flat';
 		}
+		// lighten a hex tone toward white for the dark LED panel (mix 0..1)
+		function ledTone(hex, mix) {
+			const n = parseInt(String(hex).slice(1), 16);
+			const f = (v) => Math.round(v + (255 - v) * mix);
+			return `rgb(${String(f((n >> 16) & 255))},${String(f((n >> 8) & 255))},${String(f(n & 255))})`;
+		}
 		function loadLs(key, fallback) {
 			try {
 				const raw = window.localStorage.getItem(key);
@@ -375,7 +377,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.9.1';
+		const CLIENT_REV = '0.10.0';
 		const diagQueue = [];
 		let diagTimer = 0;
 		function diagSend(rows) {
@@ -1821,9 +1823,15 @@ window.__ModuleLoader__.load({
 									)),
 							) : null),
 						h('button', {
-							type: 'button', className: 'ml-btn', 'aria-pressed': led, title: t('board.title'),
+							type: 'button', className: 'ml-btn ml-ledbtn', 'aria-pressed': led, title: t('board.title'),
 							onClick: () => setLed((current) => !current),
-						}, '▦ ' + t('board.short')),
+						},
+							h('svg', { width: 14, height: 14, viewBox: '0 0 14 14', fill: 'currentColor', 'aria-hidden': true },
+								[0, 1, 2].flatMap((r) => [0, 1, 2].map((c) => h('rect', {
+									key: `${String(r)}${String(c)}`, x: String(c * 5), y: String(r * 5),
+									width: String(r === 1 && c === 1 ? 4 : 3), height: String(r === 1 && c === 1 ? 4 : 3),
+								})))),
+							t('board.short')),
 						h('span', { className: 'ml-palwrap', style: { position: 'relative' } },
 							h('button', {
 								type: 'button', className: 'ml-btn', title: t('toolbar.palette'), 'aria-expanded': palOpen,
@@ -1844,7 +1852,7 @@ window.__ModuleLoader__.load({
 						h('span', { className: 'ml-status', 'data-err': refresh.state === 'error' ? '1' : '0' },
 							refresh.state === 'busy' ? t('toolbar.refreshing') : refresh.state === 'error' ? t('toolbar.error') : refresh.at === 0 ? '' : new Date(refresh.at).toLocaleTimeString()),
 					),
-					h(IndexBar, { indexBar: meta?.indexBar ?? [], quotes }),
+					led === true ? null : h(IndexBar, { indexBar: meta?.indexBar ?? [], quotes }),
 					metaError !== null ? h('div', { className: 'ml-errorbar' }, `${t('meta.error')}（${metaError}）`) : null,
 					h('div', {
 						className: 'ml-main',
@@ -1852,7 +1860,8 @@ window.__ModuleLoader__.load({
 					},
 					led === true ? h(LedBoard, {
 						rows: sorted, quotes, seenQuote, meta, t,
-						showMa: prefs.showMa, hollow: PALETTES[prefs.palette]?.hollow === true,
+						ledUp: ledTone(PALETTES[prefs.palette]?.up ?? '#e04f4f', 0.34),
+						ledDown: ledTone(PALETTES[prefs.palette]?.down ?? '#2fa36b', 0.34),
 						getKline: (symbol) => api('kline', { symbol, period: 'day', count: 160 }),
 						onPick: (symbol) => {
 							pick(symbol);
@@ -1924,36 +1933,110 @@ window.__ModuleLoader__.load({
 		}
 
 		/**
-		 * LED exchange board: pixel-font quote table that auto-rotates, with a
-		 * chart that follows the highlighted row. Hover takes the wheel - pausing
-		 * the rotation and selecting the hovered row - and leaving resumes.
+		 * Static pixel chart for the board: a stepped close line (no smoothing,
+		 * no interaction) over blocky volume. Renders from prefetched bars, so
+		 * switching rows never blanks or flickers.
 		 */
-		function LedBoard({ rows, quotes, seenQuote, meta, onPick, getKline, showMa, hollow, t }) {
+		function PixelChart({ bars, color, volUp, volDown }) {
+			const ref = React.useRef(null);
+			React.useEffect(() => {
+				const cv = ref.current;
+				if (cv === null) return;
+				const dpr = window.devicePixelRatio || 1;
+				const w = Math.max(80, cv.clientWidth);
+				const hgt = 108;
+				cv.width = w * dpr;
+				cv.height = hgt * dpr;
+				const ctx = cv.getContext('2d');
+				ctx.scale(dpr, dpr);
+				ctx.clearRect(0, 0, w, hgt);
+				const pts = bars.filter((b) => b.c !== null);
+				if (pts.length < 2) return;
+				const vs = pts.map((b) => b.v ?? 0);
+				const volMax = Math.max(...vs, 1);
+				const volH = 22;
+				const priceH = hgt - volH - 6;
+				const lo = Math.min(...pts.map((b) => b.c));
+				const hi = Math.max(...pts.map((b) => b.c));
+				const span = hi - lo || 1;
+				const step = w / pts.length;
+				const px = (i) => Math.round(i * step + step / 2);
+				const py = (v) => Math.round(priceH - ((v - lo) / span) * (priceH - 8)) + 0.5;
+				ctx.fillStyle = '#16324d';
+				for (let g = 1; g < 4; g++) ctx.fillRect(0, Math.round((priceH / 4) * g), w, 1);
+				ctx.globalAlpha = 0.55;
+				pts.forEach((b, i) => {
+					const vh = Math.max(1, Math.round(((b.v ?? 0) / volMax) * volH));
+					ctx.fillStyle = (i > 0 ? b.c >= pts[i - 1].c : true) ? volUp : volDown;
+					ctx.fillRect(Math.round(i * step + 1), hgt - vh, Math.max(1, Math.round(step) - 2), vh);
+				});
+				ctx.globalAlpha = 1;
+				ctx.strokeStyle = color;
+				ctx.lineWidth = 2;
+				ctx.lineJoin = 'miter';
+				ctx.beginPath();
+				let prevY = py(pts[0].c);
+				pts.forEach((b, i) => {
+					const x = px(i);
+					const y = py(b.c);
+					if (i === 0) ctx.moveTo(x, y);
+					// horizontal to this column, then a vertical step: every segment sits on the grid
+					else { ctx.lineTo(x, prevY); ctx.lineTo(x, y); }
+					prevY = y;
+				});
+				ctx.stroke();
+				const lastY = py(pts[pts.length - 1].c);
+				ctx.fillStyle = color;
+				ctx.fillRect(w - 58, lastY - 8, 56, 16);
+				ctx.fillStyle = '#03060b';
+				ctx.font = "12px 'MLPixel',monospace";
+				ctx.fillText(String(pts[pts.length - 1].c), w - 54, lastY + 4);
+			}, [bars, color, volUp, volDown]);
+			return h('canvas', { ref, className: 'ml-pchart', 'aria-hidden': true });
+		}
+
+		/**
+		 * LED exchange board: one pixel table that auto-rotates; the lit row
+		 * expands an inline chart under itself. Bars for every row are prefetched
+		 * in small batches, so rotation only moves DOM, it never refetches or
+		 * repaints blank. Hover pauses and grabs the hovered row; leaving resumes.
+		 */
+		function LedBoard({ rows, quotes, seenQuote, meta, onPick, getKline, ledUp, ledDown, t }) {
 			const [cursor, setCursor] = React.useState(0);
 			const [paused, setPaused] = React.useState(false);
-			const [feed, setFeed] = React.useState(null);
+			const [feeds, setFeeds] = React.useState(() => new Map());
 			const scrollRef = React.useRef(null);
 			const count = rows.length;
-			const at = count === 0 ? void 0 : rows[cursor % count];
-			const atQuote = at === void 0 ? void 0 : quotes.get(at.symbol) ?? seenQuote(at.symbol);
 			const ticker = (meta?.indexBar ?? []).map((symbol) => quotes.get(symbol) ?? seenQuote(symbol)).filter((q) => q !== void 0);
 			const tape = ticker.length === 0 ? [] : [...ticker, ...ticker];
+			const rowsKey = rows.map((row) => row.symbol).join(',');
 			React.useEffect(() => {
 				if (paused === true || count < 2) return void 0;
 				const timer = window.setInterval(() => setCursor((current) => (current + 1) % count), 4000);
 				return () => window.clearInterval(timer);
 			}, [paused, count]);
 			React.useEffect(() => {
-				const symbol = at?.symbol;
-				if (symbol === void 0) return void 0;
 				let dead = false;
-				getKline(symbol).then((body) => {
-					if (!dead) setFeed({ symbol, body });
-				}, () => void 0);
+				const symbols = rowsKey === '' ? [] : rowsKey.split(',');
+				const pull = () => {
+					for (let i = 0; i < symbols.length; i += 3) {
+						const batch = symbols.slice(i, i + 3);
+						Promise.all(batch.map((symbol) => getKline(symbol).then(
+							(body) => {
+								if (!dead) setFeeds((current) => new Map(current).set(symbol, body));
+							},
+							() => void 0,
+						))).then(() => void 0);
+					}
+				};
+				pull();
+				// bars refresh every two minutes; the host cache (30s TTL) makes follow-up pulls cheap
+				const timer = window.setInterval(pull, 120000);
 				return () => {
 					dead = true;
+					window.clearInterval(timer);
 				};
-			}, [at?.symbol]);
+			}, [rowsKey]);
 			React.useEffect(() => {
 				if (paused === true || scrollRef.current === null) return;
 				const row = scrollRef.current.querySelector(`tr[data-i="${String(cursor % count)}"]`);
@@ -1963,33 +2046,36 @@ window.__ModuleLoader__.load({
 				tape.length === 0 ? null : h('div', { className: 'ml-ticker' },
 					tape.map((q, index) => h('span', { key: `${String(q.symbol)}|${String(index)}`, className: dirClass(q.changePct ?? 0) },
 						q.name ?? q.symbol, ' ', fmtNum(q.price, (q.price ?? 0) > 1000 ? 0 : 2), '  ', q.changePct === null || q.changePct === void 0 ? '—' : `${fmtSigned(q.changePct)}%`))),
-				h('div', { className: 'ml-ledbody' },
-					h('div', { className: 'ml-ledscroll', ref: scrollRef, onMouseLeave: () => setPaused(false) },
-						h('table', null,
-							h('thead', null, h('tr', null,
-								h('th', null, t('board.col.instrument')), h('th', null, t('board.col.last')), h('th', null, t('board.col.chg')), h('th', null, t('board.col.chgPct')), h('th', null, t('board.col.amount')))),
-							h('tbody', { onMouseEnter: () => setPaused(true) }, rows.map((row, index) => {
-								const q = quotes.get(row.symbol) ?? seenQuote(row.symbol);
-								const pct = q?.changePct ?? null;
-								return h('tr', {
-									key: row.symbol, 'data-i': String(index), className: `${dirClass(pct ?? 0)}${index === cursor % count ? ' hl' : ''}`,
-									onClick: () => onPick(row.symbol), onMouseEnter: () => setCursor(index),
-									title: t('board.pickHint'),
-								},
-									h('td', { className: 'nm' }, h('b', null, q?.name ?? row.name), h('code', null, row.symbol)),
-									h('td', { className: 'num' }, q?.price === null || q?.price === void 0 ? '—' : fmtNum(q.price)),
-									h('td', { className: 'num' }, q?.change === null || q?.change === void 0 ? '—' : fmtSigned(q.change)),
-									h('td', { className: 'num big' }, pct === null || pct === void 0 ? '—' : `${fmtSigned(pct)}%`),
-									h('td', { className: 'num' }, q?.amount === null || q?.amount === void 0 ? '—' : fmtBig(q.amount)));
-							})))),
-					h('div', { className: 'ml-ledchart' },
-						h('header', { className: 'ml-led-hd' }, at === void 0 ? null : [
-							h('b', { key: `n${String(at.symbol)}` }, atQuote?.name ?? at.name),
-							h('code', null, at.symbol),
-							atQuote?.price === null || atQuote?.price === void 0 ? null : h('span', { className: `px ${dirClass(atQuote.changePct ?? 0)}` }, fmtNum(atQuote.price, (atQuote.price ?? 0) > 1000 ? 0 : 2), '  ', atQuote.changePct === null || atQuote.changePct === void 0 ? '—' : `${fmtSigned(atQuote.changePct)}%`),
-						]),
-						feed === null || feed.symbol !== at?.symbol ? h('div', { className: 'ml-pad' }, t('news.loading'))
-							: h(KLineChart, { data: feed.body, showMa, hollow, t }))));
+				h('div', { className: 'ml-ledscroll', ref: scrollRef, onMouseLeave: () => setPaused(false) },
+					h('table', null,
+						h('thead', null, h('tr', null,
+							h('th', null, t('board.col.instrument')), h('th', null, t('board.col.last')), h('th', null, t('board.col.chg')), h('th', null, t('board.col.chgPct')), h('th', null, t('board.col.amount')))),
+						h('tbody', { onMouseEnter: () => setPaused(true) }, rows.flatMap((row, index) => {
+							const q = quotes.get(row.symbol) ?? seenQuote(row.symbol);
+							const pct = q?.changePct ?? null;
+							const lit = index === cursor % count;
+							const cells = [h('tr', {
+								key: row.symbol, 'data-i': String(index), className: `${dirClass(pct ?? 0)}${lit ? ' hl' : ''}`,
+								onClick: () => onPick(row.symbol), onMouseEnter: () => setCursor(index),
+								title: t('board.pickHint'),
+							},
+								h('td', { className: 'nm' }, h('b', null, q?.name ?? row.name), h('code', null, row.symbol)),
+								h('td', { className: 'num' }, q?.price === null || q?.price === void 0 ? '—' : fmtNum(q.price)),
+								h('td', { className: 'num' }, q?.change === null || q?.change === void 0 ? '—' : fmtSigned(q.change)),
+								h('td', { className: 'num big' }, pct === null || pct === void 0 ? '—' : `${fmtSigned(pct)}%`),
+								h('td', { className: 'num' }, q?.amount === null || q?.amount === void 0 ? '—' : fmtBig(q.amount)))];
+							if (!lit) return cells;
+							const body = feeds.get(row.symbol);
+							cells.push(h('tr', { key: `${row.symbol}|x`, className: 'ml-ledexpand' },
+								h('td', { colSpan: 5 }, body === void 0
+									? h('div', { className: 'ml-pad' }, t('news.loading'))
+									: h(PixelChart, {
+										bars: body.bars ?? [],
+										color: (pct ?? 0) >= 0 ? ledUp : ledDown,
+										volUp: ledUp, volDown: ledDown,
+									}))));
+							return cells;
+						})))));
 		}
 
 		/** Keeps a render crash inside the board instead of blanking the slot. */
