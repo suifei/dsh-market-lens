@@ -60,7 +60,7 @@ window.__ModuleLoader__.load({
 			'advice.surge': '强势拉升', 'advice.rise': '稳步走高', 'advice.flat': '窄幅盘整', 'advice.drop': '正快速下降', 'advice.slump': '加速下挫',
 			'feed.notice': '公告', 'feed.posts': '评论', 'feed.pick': '选中一只股票后显示', 'feed.badge': '未读新公告',
 			'day.hi20': '20日新高', 'day.lo20': '20日新低', 'day.volUp': '放量',
-			'board.title': '交易所大看板', 'board.short': '看板', 'board.split': '拖动调整列宽', 'board.pickHint': '点击查看该股全景',
+			'board.title': '证券大厅 · 自动轮播大屏', 'board.short': '证券大厅', 'board.tip': '自动轮播 · 悬停接管 · 点行回落', 'board.split': '拖动调整列宽', 'board.pickHint': '点击查看该股全景',
 			'board.col.instrument': '名称', 'board.col.last': '现价', 'board.col.chg': '涨跌', 'board.col.chgPct': '涨幅', 'board.col.amount': '成交额',
 			'import.title': '批量导入自选', 'import.placeholder': '每行一个代码或名称，最多 50 条',
 			'import.confirm': '导入', 'import.cancel': '取消', 'import.toomany': '超出 50 条的部分已忽略',
@@ -107,7 +107,7 @@ window.__ModuleLoader__.load({
 			'advice.surge': 'surging', 'advice.rise': 'trending up', 'advice.flat': 'consolidating', 'advice.drop': 'falling fast', 'advice.slump': 'breaking down',
 			'feed.notice': 'Filings', 'feed.posts': 'Comments', 'feed.pick': 'Select a stock to load its feeds', 'feed.badge': 'unread filings',
 			'day.hi20': '20-bar high', 'day.lo20': '20-bar low', 'day.volUp': 'Volume',
-			'board.title': 'Exchange LED board', 'board.short': 'Board', 'board.split': 'Drag to resize columns', 'board.pickHint': 'Click to open the full view',
+			'board.title': 'Exchange Hall — auto-rotating board', 'board.short': 'Exchange Hall', 'board.tip': 'Auto-rotation · hover takes over · click a row to return', 'board.split': 'Drag to resize columns', 'board.pickHint': 'Click to open the full view',
 			'board.col.instrument': 'Instrument', 'board.col.last': 'Last', 'board.col.chg': 'Chg', 'board.col.chgPct': 'Chg %', 'board.col.amount': 'Turnover',
 			'import.title': 'Bulk import watchlist', 'import.placeholder': 'One code or name per line, up to 50',
 			'import.confirm': 'Import', 'import.cancel': 'Cancel', 'import.toomany': 'Lines beyond 50 ignored',
@@ -195,9 +195,14 @@ window.__ModuleLoader__.load({
 .ml-led tbody tr.hl td:first-child::before{content:'▶';color:var(--dsw-alias-brand-primary);margin-right:6px;font-size:11px}
 .ml-ledexpand td{padding:0 16px 12px;border-bottom:1px solid #12314f;cursor:default}
 .ml-pchart{width:100%;height:108px;display:block}
-.ml-ledbtn{display:inline-flex;align-items:center;gap:6px}
-.ml-ledbtn svg{display:block}
-.ml-ledbtn[aria-pressed="true"]{border-color:var(--dsw-alias-brand-primary);box-shadow:0 0 0 1px var(--dsw-alias-brand-primary),0 0 10px -2px var(--dsw-alias-brand-primary)}
+.ml-hall{position:relative;flex:none;display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:10px;border:1px solid #2a4f7a;font:inherit;font-size:13px;font-weight:600;letter-spacing:2px;color:#dcecff;cursor:pointer;align-self:center;background:linear-gradient(160deg,#0d1f38,#123a63 60%,#0d2c4c);box-shadow:0 2px 12px -4px rgba(31,111,235,.65),inset 0 0 14px rgba(31,111,235,.25)}
+.ml-hall:hover{filter:brightness(1.25)}
+.ml-hall[aria-pressed="true"]{border-color:var(--ml-up);background:linear-gradient(160deg,#241016,#4a1520 60%,#2a0d14);box-shadow:0 0 16px -2px var(--ml-up),inset 0 0 14px rgba(255,120,120,.25)}
+.ml-hall::after{content:attr(data-tip);position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%) translateY(4px);white-space:nowrap;padding:6px 11px;border-radius:8px;background:#071426;color:#d7e9ff;font-size:11px;font-weight:400;letter-spacing:2px;border:1px solid #1f6feb;box-shadow:0 0 12px -2px #1f6feb;font-family:'MLPixel',monospace;opacity:0;pointer-events:none;transition:opacity .15s,transform .15s;z-index:30}
+.ml-hall:hover::after{opacity:1;transform:translateX(-50%) translateY(0)}
+.ml-hall svg{display:block}
+@keyframes mlhallblink{50%{opacity:.15}}
+.ml-hall .led{animation:mlhallblink 1.1s steps(2) infinite}
 .ml-bub{transition:top .15s,right .15s}
 .ml-tabs{display:flex;gap:2px}
 .ml-tabs button{background:none;border:0;padding:5px 9px;border-radius:8px;font:inherit;font-size:12px;color:var(--dsw-alias-label-secondary);cursor:pointer}
@@ -377,7 +382,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.11.0';
+		const CLIENT_REV = '0.12.0';
 		const diagQueue = [];
 		let diagTimer = 0;
 		// the host meta tells the real level; until then assume the shipped 'errors' default
@@ -1805,7 +1810,18 @@ window.__ModuleLoader__.load({
 
 				return h('div', { className: 'ml-root', ref: rootRef, 'data-wide': wide ? '1' : '0', 'data-pal': prefs.palette },
 					h('header', { className: 'ml-top' },
-						h('span', { className: 'ml-brand' }, t('panel.title'), h('small', null, t('notice'))),
+						h('span', { className: 'ml-brand' }, t('panel.title'), h('small', null, t('notice')),
+							h('button', {
+								type: 'button', className: 'ml-hall', 'aria-pressed': led,
+								'data-tip': t('board.tip'), title: t('board.title'),
+								onClick: () => setLed((current) => !current),
+							},
+								h('svg', { width: 16, height: 16, viewBox: '0 0 16 16', 'aria-hidden': true },
+									h('rect', { x: 0, y: 0, width: 16, height: 16, rx: 3, fill: '#071426' }),
+									h('rect', { x: 2.5, y: 6, width: 2.5, height: 6.5, fill: 'var(--ml-down)' }),
+									h('rect', { x: 6.5, y: 3, width: 2.5, height: 9.5, fill: 'var(--ml-up)' }),
+									h('rect', { x: 11.5, y: 11.5, width: 2.5, height: 2.5, fill: '#ffd75e', className: 'led' })),
+								t('board.short'))),
 						h('span', { className: 'ml-searchbox' },
 							h('input', {
 								className: 'ml-search', type: 'search', role: 'searchbox',
@@ -1827,16 +1843,6 @@ window.__ModuleLoader__.load({
 										h('code', { style: { color: 'var(--dsw-alias-label-secondary)' } }, item.symbol),
 									)),
 							) : null),
-						h('button', {
-							type: 'button', className: 'ml-btn ml-ledbtn', 'aria-pressed': led, title: t('board.title'),
-							onClick: () => setLed((current) => !current),
-						},
-							h('svg', { width: 14, height: 14, viewBox: '0 0 14 14', fill: 'currentColor', 'aria-hidden': true },
-								[0, 1, 2].flatMap((r) => [0, 1, 2].map((c) => h('rect', {
-									key: `${String(r)}${String(c)}`, x: String(c * 5), y: String(r * 5),
-									width: String(r === 1 && c === 1 ? 4 : 3), height: String(r === 1 && c === 1 ? 4 : 3),
-								})))),
-							t('board.short')),
 						h('span', { className: 'ml-palwrap', style: { position: 'relative' } },
 							h('button', {
 								type: 'button', className: 'ml-btn', title: t('toolbar.palette'), 'aria-expanded': palOpen,
