@@ -309,11 +309,11 @@ window.__ModuleLoader__.load({
 			if (value === null || value === void 0 || !Number.isFinite(value)) return '—';
 			return value.toFixed(digits);
 		}
-		function fmtBig(value) {
+		function fmtBig(value, digits = 2) {
 			if (value === null || value === void 0 || !Number.isFinite(value)) return '—';
 			const abs = Math.abs(value);
-			if (abs >= 1e8) return `${(value / 1e8).toFixed(2)}亿`;
-			if (abs >= 1e4) return `${(value / 1e4).toFixed(2)}万`;
+			if (abs >= 1e8) return `${(value / 1e8).toFixed(digits)}亿`;
+			if (abs >= 1e4) return `${(value / 1e4).toFixed(digits)}万`;
 			return value.toFixed(0);
 		}
 		function dirClass(value) {
@@ -369,7 +369,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.14.0';
+		const CLIENT_REV = '0.14.1';
 		const diagQueue = [];
 		let diagTimer = 0;
 		// the host meta tells the real level; until then assume the shipped 'errors' default
@@ -1939,10 +1939,10 @@ window.__ModuleLoader__.load({
 		// adds the living parts: a scan band, random bulb chatter, and page wipes
 		// that kill and re-light bulbs cell by cell. No libraries, ~1 blit + a
 		// few hundred tiny fills per frame at 24fps.
-		const PITCH = 4;             // css px per bulb cell
-		const HEAD_H = 72;           // caption band (one 16-dot line + margins)
-		const ROW_H = 80;            // one quote row (16-dot glyphs + 4-dot gutter)
-		const CHART_H = 128;         // expansion chart strip at the bottom
+		const PITCH = 3;             // css px per bulb cell
+		const HEAD_H = 56;           // caption band (one 16-dot line + margins)
+		const ROW_H = 60;            // one quote row (16-dot glyphs + 4-dot gutter)
+		const CHART_H = 112;         // expansion chart strip at the bottom
 		const OFF_BG = '#05080f';
 		// UCDOS-style bitmap font (HZK16 + ASC16, 8178 glyphs) served by
 		// /market-lens/lampfont: one bitmap dot = exactly one bulb, no AA, razor
@@ -2012,7 +2012,7 @@ window.__ModuleLoader__.load({
 			const x = c.getContext('2d');
 			x.fillStyle = 'rgba(24,48,74,0.9)';
 			x.beginPath();
-			x.arc(2, 2, 1.4, 0, 6.3);
+			x.arc(PITCH / 2, PITCH / 2, PITCH * 0.36, 0, 6.3);
 			x.fill();
 			return c;
 		})();
@@ -2023,7 +2023,7 @@ window.__ModuleLoader__.load({
 			s.width = PITCH;
 			s.height = PITCH;
 			const x = s.getContext('2d');
-			const g = x.createRadialGradient(2, 2, 0.2, 2, 2, 2.9);
+			const g = x.createRadialGradient(PITCH / 2, PITCH / 2, 0.15, PITCH / 2, PITCH / 2, PITCH * 0.72);
 			g.addColorStop(0, color);
 			g.addColorStop(0.6, color);
 			g.addColorStop(1, 'rgba(0,0,0,0)');
@@ -2153,32 +2153,33 @@ window.__ModuleLoader__.load({
 				const x = c.getContext('2d');
 				x.fillStyle = '#000';
 				x.fillRect(0, 0, c.width, c.height);
-				const cols = [0.55, 0.7, 0.85, 0.995];
-				ledText(x, 8, 8, t('board.col.instrument'), '#3f618a');
+				const cols = [0.52, 0.68, 0.86, 0.995];
+				ledText(x, 8, 4, t('board.col.instrument'), '#3f618a');
 				[t('board.col.last'), t('board.col.chg'), t('board.col.chgPct'), t('board.col.amount')].forEach((label, i) => {
-					ledText(x, 0, 8, label, '#3f618a', Math.floor(c.width * cols[i]) - 4);
+					ledText(x, 0, 4, label, '#3f618a', Math.floor(c.width * cols[i]) - 4);
 				});
 				view.forEach((row, i) => {
 					const top = HEAD_H + i * ROW_H;
-					const y = top + (ROW_H - 64) / 2;
+					const y = top + (ROW_H - 16 * PITCH) / 2;
 					const q = quotes.get(row.symbol) ?? seenQuote(row.symbol);
 					const pct = q?.changePct ?? null;
 					const color = pct === null ? '#cfe6ff' : pct > 0 ? ledUp : pct < 0 ? ledDown : '#8fb3d9';
 					const isLit = i === lit;
 					if (isLit) {
 						x.fillStyle = '#0e2c4c';
-						x.fillRect(0, top, c.width, ROW_H - 4);
+						x.fillRect(0, top, c.width, ROW_H - 3);
 						ledText(x, 8, y, '>', '#ffd75e');
 					}
 					const name = (q?.name ?? row.name ?? '').slice(0, 4);
-					ledText(x, isLit ? 80 : 24, y, name, isLit ? '#ffffff' : color);
+					const nameX = isLit ? 44 : 20;
+					ledText(x, nameX, y, name, isLit ? '#ffffff' : color);
 					// code sits after the name in half width, same glyph line
-					ledText(x, (isLit ? 80 : 24) + (ledTextW(name) + 3) * PITCH, y, row.symbol, '#3f618a');
+					ledText(x, nameX + (ledTextW(name) + 4) * PITCH, y, row.symbol, '#3f618a');
 					const cells = [
 						q?.price === null || q?.price === void 0 ? '—' : fmtNum(q.price),
 						q?.change === null || q?.change === void 0 ? '—' : fmtSigned(q.change),
 						pct === null || pct === void 0 ? '—' : `${fmtSigned(pct)}%`,
-						q?.amount === null || q?.amount === void 0 ? '—' : fmtBig(q.amount),
+						q?.amount === null || q?.amount === void 0 ? '—' : fmtBig(q.amount, 0),
 					];
 					cells.forEach((text, i2) => {
 						ledText(x, 0, y, text, i2 === 3 ? '#9fc4e8' : i2 === 2 ? color : isLit ? '#ffffff' : color, Math.floor(c.width * cols[i2]) - 4);
@@ -2200,17 +2201,17 @@ window.__ModuleLoader__.load({
 					for (let col = 0; col < nCols; col++) {
 						const idx = Math.min(pts.length - 1, Math.round((col / nCols) * (pts.length - 1)));
 						const b2 = pts[idx];
-						const lvl = Math.max(1, Math.round(((b2.c - lo) / span) * ((CHART_H - 40) / PITCH)));
-						const vh = Math.max(1, Math.round((((b2.v ?? 0) / volMax) * 64) / PITCH));
+						const lvl = Math.max(1, Math.round(((b2.c - lo) / span) * ((CHART_H - 32) / PITCH)));
+						const vh = Math.max(1, Math.round((((b2.v ?? 0) / volMax) * 40) / PITCH));
 						x.fillStyle = lineColor;
-						x.fillRect(8 + col * PITCH, cy0 + 8 + (CHART_H - 40) - lvl * PITCH, PITCH, PITCH);
+						x.fillRect(8 + col * PITCH, cy0 + 4 + (CHART_H - 32) - lvl * PITCH, PITCH, PITCH);
 						x.globalAlpha = 0.42;
 						x.fillStyle = idx > 0 && b2.c < pts[idx - 1].c ? ledDown : ledUp;
 						for (let vk = 0; vk < vh; vk++) x.fillRect(8 + col * PITCH, cy0 + CHART_H - 4 - (vk + 1) * PITCH, PITCH, PITCH);
 						x.globalAlpha = 1;
 					}
 				} else {
-					ledText(x, 12, cy0 + (CHART_H - 64) / 2, 'LOADING', '#3f618a');
+					ledText(x, 12, cy0 + (CHART_H - 16 * PITCH) / 2, 'LOADING', '#3f618a');
 				}
 				sceneRef.current = bakeLamps(c);
 			}, [size, view.length, page, lit, feedTick, quotes]);
@@ -2255,21 +2256,21 @@ window.__ModuleLoader__.load({
 					scanY = (scanY + 1) % gh;
 					x.fillStyle = 'rgba(130,200,255,0.05)';
 					x.fillRect(0, scanY * PITCH, size.w, PITCH);
-					for (let k = 0; k < 70; k++) {
+					for (let k = 0; k < 90; k++) {
 						const bx = Math.floor(Math.random() * gw) * PITCH;
 						const by = Math.floor(Math.random() * gh) * PITCH;
 						x.fillStyle = k % 4 === 0 ? 'rgba(150,210,255,0.12)' : 'rgba(5,8,15,0.45)';
-						x.fillRect(bx + 1, by + 1, 2, 2);
+						x.fillRect(bx + 1, by + 1, 1, 1);
 					}
 					const tr = transRef.current;
 					if (tr !== null) {
 						tr.f++;
-						const n = Math.floor((total / 7) * 1.25);
+						const n = Math.floor((total / 10) * 1.2);
 						if (tr.phase === 'out') {
 							x.fillStyle = OFF_BG;
 							for (let k = 0; k < n; k++) x.fillRect(Math.floor(Math.random() * gw) * PITCH, Math.floor(Math.random() * gh) * PITCH, PITCH, PITCH);
-							if (tr.f >= 7) {
-								transRef.current = { phase: 'in', f: 6 };
+							if (tr.f >= 10) {
+								transRef.current = { phase: 'in', f: 9 };
 								const commit = pendingRef.current;
 								pendingRef.current = null;
 								if (commit !== null) commit();
