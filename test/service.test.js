@@ -15,6 +15,8 @@ const CONFIG = {
 	quoteTtlMs: 5000,
 	klineTtlMs: 60000,
 	searchTtlMs: 300000,
+	newsTtlMs: 60000,
+	finTtlMs: 21600000,
 	upstreamTimeoutMs: 500,
 	maxQuoteSymbols: 200,
 	maxKlineCount: 320,
@@ -197,5 +199,40 @@ test('meta exposes the board defaults', async () => {
 	assert.equal(value.pollIntervalMs, 5000);
 	assert.ok(value.indexBar.includes('sh000001'));
 	assert.ok(value.defaultWatchlist.includes('hk00700'));
+	assert.equal(value.defaultWatchlist.length, 12, 'seeded star watchlist for a contentful first open');
 	assert.equal(value.limits.maxQuoteSymbols, 200);
+});
+
+test('news uses the sina roll and degrades to eastmoney 724', async () => {
+	const roll = json({ result: { data: [{ title: '央行公告', url: 'https://sina/1', intime: '1793967899' }, { title: '市场波动', intlurl: 'https://sina/2', intime: '1793967800' }] } });
+	let sinaOk = true;
+	const { service } = makeService(async (url) => {
+		if (url.startsWith('https://feed.mix.sina.com.cn/') && sinaOk) return roll;
+		if (url.includes('np-listapi.eastmoney.com')) return json({ code: '1', data: { fastNewsList: [{ title: '美银观点', code: '2026110639', showTime: '2026-11-06 20:21:33', summary: '' }] } });
+		throw new Error(`unexpected ${url}`);
+	});
+	const first = await service.news('', 10);
+	assert.equal(first.source, 'sina-roll');
+	assert.equal(first.items[0].title, '央行公告');
+	assert.ok(first.items[0].time.startsWith('2026-'), 'unix seconds become an ISO stamp');
+	sinaOk = false;
+	service.cache.clear();
+	const second = await service.news('', 10);
+	assert.equal(second.source, 'em-724');
+	assert.equal(second.items[0].url, 'https://finance.eastmoney.com/a/2026110639.html');
+});
+
+test('financials serve A-shares and mark HK/US unsupported', async () => {
+	const f10 = json({ result: { data: [{ SECUCODE: '600519.SH', REPORT_DATE: '2026-09-30 00:00:00', REPORT_DATE_NAME: '2026三季报', NOTICE_DATE: '2026-10-31 00:00:00', EPSJB: 51.53, TOTALOPERATEREVE: 133283652508.95, TOTALOPERATEREVETZ: 1.82, PARENTNETPROFIT: 64467425981.95, PARENTNETPROFITTZ: -0.25, BPS: 216.95, CURRENCY: 'CNY' }] } });
+	const { service } = makeService(async (url) => {
+		if (url.includes('datacenter.eastmoney.com')) return f10;
+		throw new Error(`unexpected ${url}`);
+	});
+	const cn = await service.financials('sh600519');
+	assert.equal(cn.unsupported, false);
+	assert.equal(cn.rows[0].report, '2026三季报');
+	assert.equal(cn.rows[0].eps, 51.53);
+	const hk = await service.financials('hk00700');
+	assert.equal(hk.unsupported, true);
+	assert.deepEqual(hk.rows, []);
 });

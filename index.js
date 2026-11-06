@@ -29,6 +29,10 @@ export const Config = z.object({
 	klineTtlMs: z.number().step(1).min(5000).max(3600000).default(60000),
 	// freshness window for search results
 	searchTtlMs: z.number().step(1).min(5000).max(86400000).default(300000),
+	// freshness window for the news flash feed
+	newsTtlMs: z.number().step(1).min(15000).max(3600000).default(60000),
+	// freshness window for A-share financial reports
+	finTtlMs: z.number().step(1).min(60000).max(86400000).default(21600000),
 	// per-request timeout for every upstream fetch
 	upstreamTimeoutMs: z.number().step(1).min(1000).max(30000).default(6000),
 	// hard cap on symbols per quote batch
@@ -166,13 +170,15 @@ export function apply(ctx, config) {
 		const tail = url.pathname.slice(prefix.length);
 		const params = url.searchParams;
 		try {
-			if (tail === 'meta') return json({ ...service.meta(), service: 'market-lens', version: '0.1.0' });
+			if (tail === 'meta') return json({ ...service.meta(), service: 'market-lens', version: '0.2.0' });
 			if (tail === 'quotes') return json(await service.quotes(params.get('symbols') ?? ''));
 			if (tail === 'kline') {
 				const count = Number(params.get('count') ?? '120');
 				return json(await service.kline(params.get('symbol') ?? '', params.get('period') ?? 'day', count));
 			}
 			if (tail === 'search') return json(await service.search(params.get('q') ?? '', params.get('limit') === null ? void 0 : Number(params.get('limit'))));
+			if (tail === 'news') return json(await service.news(params.get('q') ?? '', params.get('limit') === null ? void 0 : Number(params.get('limit'))));
+			if (tail === 'financials') return json(await service.financials(params.get('symbol') ?? ''));
 			return json({ error: { code: 'NOT_FOUND', message: `unknown endpoint ${tail}` } }, 404);
 		} catch (error) {
 			if (error instanceof MarketError) return json({ error: { code: error.code, message: error.message } }, error.code === 'BAD_INPUT' ? 400 : 502);

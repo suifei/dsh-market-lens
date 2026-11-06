@@ -56,6 +56,8 @@ A 股 / 港股 / 美股的**只读**行情看板 DSH Web 插件。定位一句�
 | `GET /market-lens/quotes` | `symbols`（逗号分隔，≤200） | `{ quotes: QuoteRow[], failed: [{symbol, reason}] }` |
 | `GET /market-lens/kline` | `symbol, period=day|week|month, count=20–320` | `{ symbol, period, adjust, bars: Bar[], source }` |
 | `GET /market-lens/search` | `q`（1–50）, `limit≤30` | `{ items: [{symbol, name, market, kind}] }` |
+| `GET /market-lens/news` | `q?`（关键词，可空）, `limit≤30` | `{ items: [{title, url, time, source}], source }` |
+| `GET /market-lens/financials` | `symbol` | A 股：`{ rows: [{report, revenue, revenueYoY, netProfit, netProfitYoY, eps, bps}] }`；港/美：`{ unsupported: true }` |
 
 `QuoteRow = { symbol, name, price, prevClose, open, high, low, change, changePct, volume(股), amount(元), turnoverRate, pe, marketCap, floatMarketCap, currency?, updatedAt, source, stale? }`。字段可得性因市场与源而异：**缺失为 `null`，UI 显示 `—`，绝不补 0**。K 线前复权固定在宿主侧，UI 与工具都不暴露复权参数。
 
@@ -81,7 +83,13 @@ A 股 / 港股 / 美股的**只读**行情看板 DSH Web 插件。定位一句�
 
 ## 配置（`cordis.patch.yml` 行内 `config`）
 
-`pollIntervalMs 5000 · quoteTtlMs 5000 · klineTtlMs 60000 · searchTtlMs 300000 · upstreamTimeoutMs 6000 · maxQuoteSymbols ≤200 · maxKlineCount ≤320 · routePath /market-lens`
+`pollIntervalMs 5000 · quoteTtlMs 5000 · klineTtlMs 60000 · searchTtlMs 300000 · newsTtlMs 60000 · finTtlMs 21600000 · upstreamTimeoutMs 6000 · maxQuoteSymbols ≤200 · maxKlineCount ≤320 · routePath /market-lens`
+
+## 数据内容
+
+- **预制自选**：首次打开即有 12 只中外明星股（茅台/宁德/比亚迪/招行/平安/腾讯/阿里/美团/苹果/微软/英伟达/特斯拉）+ 顶部 10 指数条。
+- **财经快讯**：新浪财经滚动（支持按标的名称过滤）为主，东财 7×24 备源；60s TTL。
+- **财报**：东财 F10 主要财务指标（营收/净利/EPS/BPS + 同比），A 股已支持，港/美股显式标注暂不支持。
 
 ## 开发
 
@@ -101,9 +109,9 @@ node scripts/live-probe.mjs   # 真网络冒烟（不在测试里跑，避免 CI
 
 ## 首版范围与后续
 
-**首版必做**：自选列表（过滤/排序/批量导入）+ 三市场报价 + 日/周/月 K（MA5/10/20/60 可开关、量副图）+ 指数条 + 搜索 + 移动端布局模式切换 + 宿主缓存与多源降级 + 三个只读工具。
+**首版必做**：自选列表（过滤/排序/批量导入，预制 12 只中外明星股）+ 三市场报价 + 日/周/月 K（MA5/10/20/60 可开关、量副图）+ 指数条 + 搜索 + 财经快讯 + A 股财报指标 + 移动端布局模式切换 + 宿主缓存与多源降级 + 三个只读工具。（快讯与财报原在说明书第二版范围，按用户要求提前落地；新闻为全局滚动流 + 标的关键词过滤，非独立新闻聚合面。）
 
-**已明确不做**：交易、持仓、选股、AI 投研、新闻、L2 盘口。
+**明确不做**：交易、持仓、选股、AI 投研、L2 盘口。
 
 **后续（按数据源稳定性排序）**：分时图 → 板块/行业视图 → 热力图 → 新闻/快讯 → 自定义布局保存。原则不变：**新数据源先落在宿主侧，UI 只消费归一化结构。**
 

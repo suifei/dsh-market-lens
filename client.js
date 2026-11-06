@@ -19,6 +19,12 @@ window.__ModuleLoader__.load({
 
 		const zh = {
 			'panel.title': '寰镜行情',
+			'news.title': '快讯', 'news.loading': '快讯加载中…', 'news.empty': '暂无快讯',
+			'fin.title': '财报 · 主要指标', 'fin.unsupported': '财报暂支持 A 股', 'fin.error': '财报获取失败',
+			'fin.col.report': '报告期', 'fin.col.revenue': '营收', 'fin.col.revYoY': '营收同比',
+			'fin.col.profit': '归母净利', 'fin.col.profitYoY': '净利同比', 'fin.col.eps': 'EPS',
+			'crash.prefix': '面板渲染异常：', 'crash.hint': '（请把这条消息贴给我修；其它面板不受影响）',
+			'meta.error': '无法连接行情服务（宿主插件未激活或路由被拦截）',
 			'search.placeholder': '代码 / 名称 / 拼音，如 600519、gzmt、腾讯',
 			'search.empty': '无匹配结果',
 			'toolbar.palette': '红涨绿跌 ⇄ 绿涨红跌',
@@ -42,6 +48,12 @@ window.__ModuleLoader__.load({
 		};
 		const en = {
 			'panel.title': 'MarketLens',
+			'news.title': 'News flash', 'news.loading': 'Loading news…', 'news.empty': 'No news',
+			'fin.title': 'Reports · key metrics', 'fin.unsupported': 'Financial reports cover A-shares only for now', 'fin.error': 'Reports unavailable',
+			'fin.col.report': 'Period', 'fin.col.revenue': 'Revenue', 'fin.col.revYoY': 'Rev YoY',
+			'fin.col.profit': 'Net profit', 'fin.col.profitYoY': 'NP YoY', 'fin.col.eps': 'EPS',
+			'crash.prefix': 'Panel render error: ', 'crash.hint': ' (paste this message to fix it; other panels are unaffected)',
+			'meta.error': 'Cannot reach the market service (host plugin inactive or route blocked)',
 			'search.placeholder': 'Code / name / pinyin, e.g. 600519, gzmt, tencent',
 			'search.empty': 'No matches',
 			'toolbar.palette': 'Red-up ⇄ Green-up',
@@ -88,7 +100,8 @@ window.__ModuleLoader__.load({
 .ml-idx span{font-size:14px;font-weight:600}
 .ml-idx i{font-size:11px;font-style:normal}
 .ml-main{display:grid;grid-template-columns:300px minmax(0,1fr) 300px;gap:10px;padding:10px 14px;flex:1;min-height:0}
-.ml-root:not([data-wide="1"]) .ml-main{grid-template-columns:minmax(0,1fr)}
+.ml-root:not([data-wide="1"]) .ml-main{grid-template-columns:minmax(0,1fr);display:flex;flex-direction:column;overflow-y:auto}
+.ml-root:not([data-wide="1"]) .ml-panelcol[data-col="chart"]{min-height:340px;flex:none}
 .ml-panelcol{display:flex;flex-direction:column;gap:10px;min-height:0;min-width:0}
 .ml-panel{border:1px solid var(--dsw-alias-border-l1);border-radius:12px;background:var(--dsw-alias-bg-layer-1);display:flex;flex-direction:column;min-height:0;min-width:0;overflow:hidden}
 .ml-panel>header{display:flex;gap:6px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--dsw-alias-border-l1);flex-wrap:wrap;font-size:12px;color:var(--dsw-alias-label-secondary)}
@@ -122,6 +135,18 @@ window.__ModuleLoader__.load({
 .ml-dialog{width:min(480px,100%);border:1px solid var(--dsw-alias-border-l2);border-radius:14px;background:var(--dsw-alias-bg-overlay);padding:14px;display:flex;flex-direction:column;gap:10px}
 .ml-dialog textarea{min-height:160px;resize:vertical;border-radius:8px;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);color:inherit;font:inherit;padding:8px}
 .ml-dialog footer{display:flex;justify-content:flex-end;gap:8px}
+.ml-pad{padding:10px 12px;font-size:12px;color:var(--dsw-alias-label-secondary)}
+.ml-errorbar{padding:8px 14px;font-size:12px;color:var(--dsw-alias-state-error-primary);border-bottom:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1)}
+.ml-fintable{width:100%;border-collapse:collapse;font-size:12px}
+.ml-fintable th{text-align:left;font-weight:400;color:var(--dsw-alias-label-secondary);padding:6px 8px;border-bottom:1px solid var(--dsw-alias-border-l1);white-space:nowrap}
+.ml-fintable td{padding:6px 8px;border-bottom:1px solid var(--dsw-alias-border-l1);white-space:nowrap}
+.ml-fintable tr:last-child td{border-bottom:0}
+.ml-news{overflow-y:auto;flex:1;min-height:0}
+.ml-news-item{display:flex;gap:8px;align-items:baseline;padding:7px 10px;border-bottom:1px solid var(--dsw-alias-border-l1)}
+.ml-news-item:last-child{border-bottom:0}
+.ml-news-item a{color:inherit;text-decoration:none;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ml-news-item a:hover{color:var(--dsw-alias-brand-primary)}
+.ml-news-item time{margin-left:auto;font-size:11px;color:var(--dsw-alias-label-secondary);flex:none}
 	`.trim();
 
 		// ---------- helpers ----------
@@ -525,6 +550,50 @@ window.__ModuleLoader__.load({
 						}, t('import.confirm')))));
 		}
 
+		// ---------- financials & news cards ----------
+		function FinancialCard({ fin, t }) {
+			const body = fin?.body;
+			return h('section', { className: 'ml-panel' },
+				h('header', null, h('span', { className: 'ml-title' }, t('fin.title'))),
+				fin === null || fin.state === 'busy' ? h('div', { className: 'ml-pad' }, t('detail.loading'))
+					: fin.state === 'error' ? h('div', { className: 'ml-pad' }, t('fin.error'))
+						: body.unsupported === true ? h('div', { className: 'ml-pad' }, t('fin.unsupported'))
+							: h('table', { className: 'ml-fintable' },
+								h('thead', null, h('tr', null,
+									[t('fin.col.report'), t('fin.col.revenue'), t('fin.col.revYoY'), t('fin.col.profit'), t('fin.col.profitYoY'), t('fin.col.eps')]
+										.map((label, index) => h('th', { key: index }, label)))),
+								h('tbody', null, body.rows.map((row) => h('tr', { key: row.report },
+									h('td', null, row.report),
+									h('td', null, fmtBig(row.revenue)),
+									h('td', { className: dirClass(row.revenueYoY) }, row.revenueYoY === null ? '—' : `${fmtSigned(row.revenueYoY)}%`),
+									h('td', null, fmtBig(row.netProfit)),
+									h('td', { className: dirClass(row.netProfitYoY) }, row.netProfitYoY === null ? '—' : `${fmtSigned(row.netProfitYoY)}%`),
+									h('td', null, fmtNum(row.eps, 2)))))));
+		}
+
+		function newsTimeText(value) {
+			if (typeof value !== 'string' || value === '') return '';
+			if (value.includes('T')) {
+				const date = new Date(value);
+				return Number.isNaN(date.getTime()) ? '' : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+			}
+			return value.slice(11, 16);
+		}
+
+		function NewsCard({ news, t }) {
+			return h('section', { className: 'ml-panel', style: { flex: 1, minHeight: 140 } },
+				h('header', null,
+					h('span', { className: 'ml-title' }, t('news.title')),
+					news.source === '' || news.source === void 0 ? null : h('span', null, news.source)),
+				news.state === 'busy' && news.items.length === 0 ? h('div', { className: 'ml-pad' }, t('news.loading'))
+					: news.items.length === 0 ? h('div', { className: 'ml-pad' }, t('news.empty'))
+						: h('div', { className: 'ml-news' },
+							news.items.map((item, index) => h('div', { className: 'ml-news-item', key: `${String(item.time)}|${index}` },
+								item.url === '' ? h('span', null, item.title)
+									: h('a', { href: item.url, target: '_blank', rel: 'noreferrer' }, item.title),
+								newsTimeText(item.time) === '' ? null : h('time', null, newsTimeText(item.time))))));
+		}
+
 		// ---------- panel ----------
 		function createPanel(t) {
 			function Panel() {
@@ -543,6 +612,9 @@ window.__ModuleLoader__.load({
 				const [period, setPeriod] = React.useState('day');
 				const [kline, setKline] = React.useState(null);
 				const [importing, setImporting] = React.useState(false);
+				const [metaError, setMetaError] = React.useState(false);
+				const [fin, setFin] = React.useState(null);
+				const [news, setNews] = React.useState({ state: 'idle', items: [], source: '' });
 
 				React.useEffect(() => {
 					saveLs(LS_WATCH, watchlist ?? []);
@@ -555,8 +627,10 @@ window.__ModuleLoader__.load({
 					const controller = new AbortController();
 					api('meta', {}, controller.signal).then((value) => {
 						setMeta(value);
-						setWatchlist((current) => current ?? value.defaultWatchlist);
-					}, () => void 0);
+						setMetaError(false);
+						setWatchlist((current) => (current === null || current.length === 0 ? value.defaultWatchlist : current));
+						setSelected((current) => current ?? value.defaultWatchlist[0] ?? null);
+					}, () => setMetaError(true));
 					return () => controller.abort();
 				}, []);
 
@@ -634,6 +708,57 @@ window.__ModuleLoader__.load({
 					);
 					return () => controller.abort();
 				}, [selected, period]);
+
+				React.useEffect(() => {
+					if (selected === null) {
+						setFin(null);
+						return void 0;
+					}
+					const controller = new AbortController();
+					setFin({ state: 'busy' });
+					api('financials', { symbol: selected }, controller.signal).then(
+						(body) => setFin({ state: 'ok', body }),
+						() => {
+							if (!controller.signal.aborted) setFin({ state: 'error' });
+						},
+					);
+					return () => controller.abort();
+				}, [selected]);
+
+				const selectedName = quotes.get(selected ?? '')?.name ?? '';
+				React.useEffect(() => {
+					let stopped = false;
+					let timer = 0;
+					let controller = null;
+					const load = async (keyword) => {
+						controller = new AbortController();
+						setNews((current) => ({ ...current, state: 'busy' }));
+						try {
+							const body = await api('news', { q: keyword, limit: 12 }, controller.signal);
+							if (stopped) return;
+							if (keyword !== '' && body.items.length === 0) throw new Error('empty for keyword');
+							setNews({ state: 'ok', items: body.items, source: body.source });
+						} catch {
+							if (!stopped && keyword !== '') {
+								// keyword produced no hits and both feeds failed the same way; fall back to the global feed
+								try {
+									const globalBody = await api('news', { limit: 12 }, controller.signal);
+									if (!stopped) setNews({ state: 'ok', items: globalBody.items, source: globalBody.source });
+								} catch {
+									if (!stopped) setNews((current) => ({ ...current, state: 'error' }));
+								}
+							} else if (!stopped) setNews((current) => ({ ...current, state: 'error' }));
+						} finally {
+							if (!stopped) timer = window.setTimeout(() => void load(keyword), 60000);
+						}
+					};
+					void load(selectedName === selected ? '' : selectedName);
+					return () => {
+						stopped = true;
+						window.clearTimeout(timer);
+						controller?.abort();
+					};
+				}, [selectedName]);
 
 				const runSearch = (query) => {
 					window.clearTimeout(searchTimer.current);
@@ -735,6 +860,7 @@ window.__ModuleLoader__.load({
 							refresh.state === 'busy' ? t('toolbar.refreshing') : refresh.state === 'error' ? t('toolbar.error') : refresh.at === 0 ? '' : new Date(refresh.at).toLocaleTimeString()),
 					),
 					h(IndexBar, { indexBar: meta?.indexBar ?? [], quotes }),
+					metaError ? h('div', { className: 'ml-errorbar' }, t('meta.error')) : null,
 					h('div', { className: 'ml-main' },
 						showList ? h('div', { className: 'ml-panelcol', 'data-col': 'list' },
 							h('section', { className: 'ml-panel', style: { flex: 1 } },
@@ -780,15 +906,37 @@ window.__ModuleLoader__.load({
 										: h(KLineChart, { data: kline.body, showMa: prefs.showMa, t }),
 							)) : null,
 						showDetail ? h('div', { className: 'ml-panelcol', 'data-col': 'detail' },
-							h('section', { className: 'ml-panel', style: { flex: 1, overflow: 'hidden' } },
+							h('section', { className: 'ml-panel' },
 								h('header', null, h('span', { className: 'ml-title' }, t('detail.title'))),
-								selectedQuote === void 0 ? h('div', { style: { padding: 12, color: 'var(--dsw-alias-label-secondary)' } }, t('toolbar.error'))
+								selectedQuote === void 0 ? h('div', { className: 'ml-pad' }, t('toolbar.error'))
 									: h(Metrics, { quote: selectedQuote, t })),
+							h(FinancialCard, { fin, t }),
+							h(NewsCard, { news, t }),
 						) : null),
 					importing ? h(ImportDialog, { onImport: importTokens, onClose: () => setImporting(false), t }) : null,
 				);
 			}
 			return Panel;
+		}
+
+		/** Keeps a render crash inside the board instead of blanking the slot. */
+		class ErrorBoundary extends React.Component {
+			constructor(props) {
+				super(props);
+				this.state = { error: null };
+			}
+			static getDerivedStateFromError(error) {
+				return { error };
+			}
+			componentDidCatch(error) {
+				console.error(`${PKG}: panel crashed`, error);
+			}
+			render() {
+				if (this.state.error === null) return this.props.children;
+				return h('div', { className: 'ml-root', style: { padding: 16, gap: 6, display: 'flex', flexDirection: 'column' } },
+					h('b', { style: { color: 'var(--dsw-alias-state-error-primary)' } }, this.props.prefix + String(this.state.error?.message ?? this.state.error)),
+					h('span', { className: 'ml-pad' }, this.props.hint === void 0 ? '' : this.props.hint()));
+			}
 		}
 
 		function apply(ctx) {
@@ -804,8 +952,12 @@ window.__ModuleLoader__.load({
 			ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
 				name: 'sidebar.panellist', id: PANEL_ID, order: 30, label: () => ctx.locale.bind(NS)('panel.title'),
 			}, PanelIcon));
-			const Panel = createPanel(t);
+			const PanelInner = createPanel(t);
+			function Panel() {
+				return h(ErrorBoundary, { prefix: t('crash.prefix'), hint: () => t('crash.hint') }, h(PanelInner));
+			}
 			ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: PANEL_ID }, Panel));
+			console.log(`${PKG}: client half applied`);
 		}
 
 		return { inject: ['slots', 'locale'], apply };
