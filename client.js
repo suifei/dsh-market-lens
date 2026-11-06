@@ -55,6 +55,7 @@ window.__ModuleLoader__.load({
 			'alert.barTitle': '寰镜提醒', 'alert.dismiss': '清除',
 			'palette.redup': '红涨绿跌', 'palette.greenup': '绿涨红跌', 'palette.blueorange': '蓝涨橙跌', 'palette.goldviolet': '紫涨金跌', 'palette.tealrose': '青涨玫跌',
 			'day.date': '日期', 'day.change': '涨跌', 'day.changePct': '涨幅', 'day.amplitude': '振幅', 'metric.close': '收盘',
+			'advice.surge': '强势拉升', 'advice.rise': '稳步走高', 'advice.flat': '窄幅盘整', 'advice.drop': '正快速下降', 'advice.slump': '加速下挫',
 			'import.title': '批量导入自选', 'import.placeholder': '每行一个代码或名称，最多 50 条',
 			'import.confirm': '导入', 'import.cancel': '取消', 'import.toomany': '超出 50 条的部分已忽略',
 			'notice': '延迟公开行情 · 非 Level-2 · 只读无交易',
@@ -96,6 +97,7 @@ window.__ModuleLoader__.load({
 			'alert.barTitle': 'MarketLens alerts', 'alert.dismiss': 'Clear',
 			'palette.redup': 'Red up', 'palette.greenup': 'Green up', 'palette.blueorange': 'Blue up', 'palette.goldviolet': 'Violet up', 'palette.tealrose': 'Teal up',
 			'day.date': 'Date', 'day.change': 'Chg', 'day.changePct': 'Chg %', 'day.amplitude': 'Range', 'metric.close': 'Close',
+			'advice.surge': 'surging', 'advice.rise': 'trending up', 'advice.flat': 'consolidating', 'advice.drop': 'falling fast', 'advice.slump': 'breaking down',
 			'import.title': 'Bulk import watchlist', 'import.placeholder': 'One code or name per line, up to 50',
 			'import.confirm': 'Import', 'import.cancel': 'Cancel', 'import.toomany': 'Lines beyond 50 ignored',
 			'notice': 'Delayed public data · not Level-2 · read-only, no trading',
@@ -161,16 +163,19 @@ window.__ModuleLoader__.load({
 .ml-panel>header{display:flex;gap:6px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--dsw-alias-border-l1);flex-wrap:wrap;font-size:12px;color:var(--dsw-alias-label-secondary)}
 .ml-panel>header .ml-title{font-weight:600;color:var(--dsw-alias-label-primary);margin-right:auto}
 .ml-rows{overflow-y:auto;flex:1;min-height:0}
-.ml-row{display:grid;grid-template-columns:minmax(0,1.2fr) auto;gap:4px 10px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--dsw-alias-border-l1);cursor:pointer;background:none;border-left:0;border-right:0;border-top:0;color:inherit;font:inherit;text-align:left;width:100%}
-.ml-row:hover,.ml-row[aria-current="true"]{background:var(--dsw-alias-bg-layer-2)}
+.ml-row{display:grid;grid-template-columns:minmax(0,1.2fr) auto auto;gap:4px 10px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--dsw-alias-border-l1);cursor:pointer;background:none;border-left:0;border-right:0;border-top:0;color:inherit;font:inherit;text-align:left;width:100%}
 .ml-row .nm{display:flex;flex-direction:column;min-width:0}
 .ml-row .nm b{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ml-row .nm code{font-size:11px;color:var(--dsw-alias-label-secondary)}
+.ml-row .nm .ad{font-size:11px;line-height:1.3}
+.ml-row:hover,.ml-row[aria-current="true"]{background:var(--dsw-alias-bg-layer-2)}
 .ml-row .qt{display:grid;grid-template-columns:auto auto;gap:0 10px;justify-items:end;align-items:baseline}
 .ml-row .qt b{font-size:15px;font-weight:600}
 .ml-row .qt .rm{font-size:11px;white-space:nowrap}
-.ml-row .rm-x{grid-column:2;justify-self:end;visibility:hidden}
+.ml-row .rm-x{grid-column:3;justify-self:end;visibility:hidden}
 .ml-row:hover .rm-x{visibility:visible}
+.ml-spark{width:64px;height:26px;display:block;overflow:visible}
+.ml-spark.empty{visibility:hidden}
 .ml-chart{flex:1;min-height:260px;position:relative;display:flex;flex-direction:column}
 .ml-canvas-wrap{flex:1;position:relative;min-height:0}
 .ml-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:crosshair}
@@ -308,7 +313,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.5.3';
+		const CLIENT_REV = '0.6.0';
 		const diagQueue = [];
 		let diagTimer = 0;
 		function diagSend(rows) {
@@ -435,8 +440,61 @@ window.__ModuleLoader__.load({
 				})));
 		}
 
+		// sparkline feed: module-level cache so filters/sorting never refetch within the window
+		const sparkCache = new Map(); // symbol -> { at, closes }
+		function Spark({ symbol, pct }) {
+			const [closes, setCloses] = React.useState(() => {
+				const hit = sparkCache.get(symbol);
+				return hit !== void 0 && hit.fails === void 0 && Date.now() - hit.at < 300000 ? hit.closes : null;
+			});
+			React.useEffect(() => {
+				const hit = sparkCache.get(symbol);
+				if (hit !== void 0 && Date.now() - hit.at < 300000) {
+					setCloses(hit.closes);
+					return void 0;
+				}
+				let dead = false;
+				api('kline', { symbol, period: 'day', count: 22 }).then((body) => {
+					const line = (body.bars ?? []).slice(-22).map((bar) => bar.c).filter((v) => v !== null);
+					sparkCache.set(symbol, { at: Date.now(), closes: line });
+					if (!dead) setCloses(line);
+				}, () => {
+					sparkCache.set(symbol, { at: Date.now(), closes: null }); // cold path, retry after TTL
+					if (!dead) setCloses(null);
+				});
+				return () => {
+					dead = true;
+				};
+			}, [symbol]);
+			if (closes === null || closes.length < 3) return h('svg', { className: 'ml-spark empty', 'aria-hidden': true });
+			const w = 64;
+			const ht = 26;
+			let lo = Infinity;
+			let hi = -Infinity;
+			for (const v of closes) {
+				if (v < lo) lo = v;
+				if (v > hi) hi = v;
+			}
+			const span = hi === lo ? 1 : hi - lo;
+			const px = (i) => i / (closes.length - 1) * w;
+			const py = (v) => ht - 3 - (v - lo) / span * (ht - 6);
+			const line = closes.map((v, i) => `${px(i).toFixed(1)},${py(v).toFixed(1)}`).join(' ');
+			const rising = closes[closes.length - 1] >= closes[0];
+			const stroke = rising ? 'var(--ml-up)' : 'var(--ml-down)';
+			const change5 = (closes[closes.length - 1] - closes[closes.length - 6]) / closes[closes.length - 6] * 100;
+			return h('svg', {
+				className: 'ml-spark', 'aria-hidden': true, viewBox: `0 0 ${String(w)} ${String(ht)}`,
+				title: `${fmtSigned(change5)}% · 5D`,
+			},
+				h('path', { d: `M ${line.replace(/ /g, ' L ')} L ${String(w)},${String(ht)} L 0,${String(ht)} Z`, fill: stroke, opacity: 0.14, stroke: 'none' }),
+				h('polyline', { points: line, fill: 'none', stroke, strokeWidth: 1.3, strokeLinejoin: 'round', strokeLinecap: 'round' }),
+				h('circle', { cx: px(closes.length - 1).toFixed(1), cy: py(closes[closes.length - 1]).toFixed(1), r: 1.9, fill: stroke }),
+			);
+		}
+
 		function WatchRow({ instrument, quote, active, pinned, onPin, onSelect, onRemove, t }) {
 			const pct = quote?.changePct ?? null;
+			const advice = pct === null ? '' : pct >= 3 ? 'advice.surge' : pct >= 1 ? 'advice.rise' : pct > -1 ? 'advice.flat' : pct > -3 ? 'advice.drop' : 'advice.slump';
 			const prev = React.useRef(quote?.price);
 			const moved = quote?.price !== void 0 && prev.current !== void 0 && quote.price !== prev.current;
 			const tick = moved ? (quote.price > prev.current ? ' tick-up' : ' tick-down') : '';
@@ -456,7 +514,9 @@ window.__ModuleLoader__.load({
 							onPin(instrument.symbol);
 						},
 					}, pinned === true ? '📌' : '📍'),
+					advice === '' ? null : h('span', { className: `ad ${dirClass(Math.abs(pct) < 1 ? 0 : pct)}` }, t(advice)),
 				),
+			h(Spark, { symbol: instrument.symbol, pct }),
 				h('span', { className: 'qt' },
 					h('b', { key: String(quote?.price), className: dirClass(pct) + tick }, fmtNum(quote?.price)),
 					h('span', { className: `rm ${dirClass(pct)}`, title: quote?.stale === true ? t('list.staleHint') : void 0 }, quote === void 0 ? t('toolbar.error') : `${fmtSigned(pct)}% · ${fmtSigned(quote.change)} · ${fmtBig(quote.amount)}`),
