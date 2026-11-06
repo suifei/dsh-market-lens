@@ -60,7 +60,7 @@ window.__ModuleLoader__.load({
 			'advice.surge': '强势拉升', 'advice.rise': '稳步走高', 'advice.flat': '窄幅盘整', 'advice.drop': '正快速下降', 'advice.slump': '加速下挫',
 			'feed.notice': '公告', 'feed.posts': '评论', 'feed.pick': '选中一只股票后显示', 'feed.badge': '未读新公告',
 			'day.hi20': '20日新高', 'day.lo20': '20日新低', 'day.volUp': '放量',
-			'board.title': '证券大厅 · 自动轮播大屏', 'board.short': '证券大厅', 'board.tip': '自动轮播 · 悬停接管 · 点行回落', 'toolbar.density': '点阵密度', 'density.std': '标准 16×16', 'density.tiny': '紧凑 8×8', 'board.split': '拖动调整列宽', 'board.pickHint': '点击查看该股全景',
+			'board.title': '证券大厅 · 自动轮播大屏', 'board.short': '证券大厅', 'board.tip': '自动轮播 · 悬停接管 · 点击选中不离场', 'toolbar.density': '点阵密度', 'density.std': '标准 16×16', 'density.tiny': '紧凑 8×8', 'board.split': '拖动调整列宽', 'board.pickHint': '点击查看该股全景',
 			'board.col.instrument': '名称', 'board.col.last': '现价', 'board.col.chg': '涨跌', 'board.col.chgPct': '涨幅', 'board.col.amount': '成交额',
 			'import.title': '批量导入自选', 'import.placeholder': '每行一个代码或名称，最多 50 条',
 			'import.confirm': '导入', 'import.cancel': '取消', 'import.toomany': '超出 50 条的部分已忽略',
@@ -107,7 +107,7 @@ window.__ModuleLoader__.load({
 			'advice.surge': 'surging', 'advice.rise': 'trending up', 'advice.flat': 'consolidating', 'advice.drop': 'falling fast', 'advice.slump': 'breaking down',
 			'feed.notice': 'Filings', 'feed.posts': 'Comments', 'feed.pick': 'Select a stock to load its feeds', 'feed.badge': 'unread filings',
 			'day.hi20': '20-bar high', 'day.lo20': '20-bar low', 'day.volUp': 'Volume',
-			'board.title': 'Exchange Hall — auto-rotating board', 'board.short': 'Exchange Hall', 'board.tip': 'Auto-rotation · hover takes over · click a row to return', 'toolbar.density': 'Dot pitch', 'density.std': 'Standard 16x16', 'density.tiny': 'Compact 8x8', 'board.split': 'Drag to resize columns', 'board.pickHint': 'Click to open the full view',
+			'board.title': 'Exchange Hall — auto-rotating board', 'board.short': 'Exchange Hall', 'board.tip': 'Auto-rotation · hover takes over · click selects, stays on the wall', 'toolbar.density': 'Dot pitch', 'density.std': 'Standard 16x16', 'density.tiny': 'Compact 8x8', 'board.split': 'Drag to resize columns', 'board.pickHint': 'Click to open the full view',
 			'board.col.instrument': 'Instrument', 'board.col.last': 'Last', 'board.col.chg': 'Chg', 'board.col.chgPct': 'Chg %', 'board.col.amount': 'Turnover',
 			'import.title': 'Bulk import watchlist', 'import.placeholder': 'One code or name per line, up to 50',
 			'import.confirm': 'Import', 'import.cancel': 'Cancel', 'import.toomany': 'Lines beyond 50 ignored',
@@ -369,7 +369,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.16.0';
+		const CLIENT_REV = '0.16.1';
 		const diagQueue = [];
 		let diagTimer = 0;
 		// the host meta tells the real level; until then assume the shipped 'errors' default
@@ -1875,7 +1875,6 @@ window.__ModuleLoader__.load({
 						getKline: (symbol) => api('kline', { symbol, period: 'day', count: 160 }),
 						onPick: (symbol) => {
 							pick(symbol);
-							setLed(false);
 						},
 					}) : null,
 					led === true ? null : showList ? h('div', { className: 'ml-panelcol', 'data-col': 'list' },
