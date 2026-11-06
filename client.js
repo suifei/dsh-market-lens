@@ -612,7 +612,7 @@ window.__ModuleLoader__.load({
 				const [period, setPeriod] = React.useState('day');
 				const [kline, setKline] = React.useState(null);
 				const [importing, setImporting] = React.useState(false);
-				const [metaError, setMetaError] = React.useState(false);
+				const [metaError, setMetaError] = React.useState(null);
 				const [fin, setFin] = React.useState(null);
 				const [news, setNews] = React.useState({ state: 'idle', items: [], source: '' });
 
@@ -624,14 +624,30 @@ window.__ModuleLoader__.load({
 				}, [prefs]);
 
 				React.useEffect(() => {
-					const controller = new AbortController();
-					api('meta', {}, controller.signal).then((value) => {
-						setMeta(value);
-						setMetaError(false);
-						setWatchlist((current) => (current === null || current.length === 0 ? value.defaultWatchlist : current));
-						setSelected((current) => current ?? value.defaultWatchlist[0] ?? null);
-					}, () => setMetaError(true));
-					return () => controller.abort();
+					let stopped = false;
+					let timer = 0;
+					let controller = null;
+					const load = async () => {
+						controller = new AbortController();
+						try {
+							const value = await api('meta', {}, controller.signal);
+							if (stopped) return;
+							setMeta(value);
+							setMetaError(null);
+							setWatchlist((current) => (current === null || current.length === 0 ? value.defaultWatchlist : current));
+							setSelected((current) => current ?? value.defaultWatchlist[0] ?? null);
+						} catch (error) {
+							if (stopped) return;
+							setMetaError(String(error?.message ?? error));
+							timer = window.setTimeout(load, 5000);
+						}
+					};
+					void load();
+					return () => {
+						stopped = true;
+						window.clearTimeout(timer);
+						controller?.abort();
+					};
 				}, []);
 
 				React.useEffect(() => {
@@ -860,7 +876,7 @@ window.__ModuleLoader__.load({
 							refresh.state === 'busy' ? t('toolbar.refreshing') : refresh.state === 'error' ? t('toolbar.error') : refresh.at === 0 ? '' : new Date(refresh.at).toLocaleTimeString()),
 					),
 					h(IndexBar, { indexBar: meta?.indexBar ?? [], quotes }),
-					metaError ? h('div', { className: 'ml-errorbar' }, t('meta.error')) : null,
+					metaError !== null ? h('div', { className: 'ml-errorbar' }, `${t('meta.error')}（${metaError}）`) : null,
 					h('div', { className: 'ml-main' },
 						showList ? h('div', { className: 'ml-panelcol', 'data-col': 'list' },
 							h('section', { className: 'ml-panel', style: { flex: 1 } },
