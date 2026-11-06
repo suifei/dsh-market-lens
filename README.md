@@ -58,6 +58,7 @@ A 股 / 港股 / 美股的**只读**行情看板 DSH Web 插件。定位一句�
 | `GET /market-lens/search` | `q`（1–50）, `limit≤30` | `{ items: [{symbol, name, market, kind}] }` |
 | `GET /market-lens/news` | `q?`（关键词，可空）, `limit≤30` | `{ items: [{title, url, time, source}], source }` |
 | `GET /market-lens/posts` | `symbol`（必填）, `name?`（新闻关键词） | `{ symbol, notice[], posts[{title,url,time,comments,reads}], news[], source }` — 公告(A股)/股吧评论(A·港)/个股新闻三源并行，单源失败置空，全空 502 |
+| `GET /market-lens/updates` | `symbols`（逗号列表） | `{ items: [{symbol, notice[], latest, count, unsupported?}] }` — 自选行的**未读公告气泡**数据源（仅公告源，轻量批查） |
 | `GET /market-lens/financials` | `symbol` | A 股：`{ rows: [{report, revenue, revenueYoY, netProfit, netProfitYoY, eps, bps}] }`；港/美：`{ unsupported: true }` |
 | `GET /market-lens/alerts` | `since`（事件游标） | `{ alerts, events, cursor }`；`POST` 新建规则或 `{action:'dismiss'}` 清未读；`DELETE ?id=` 删规则 |
 

@@ -17,6 +17,7 @@ window.__ModuleLoader__.load({
 		const LS_WATCH = 'ml.watchlist.v1';
 		const LS_PREFS = 'ml.prefs.v1';
 		const LS_SEEN = 'ml.seen.v1';
+		const LS_NEWS = 'ml.seenews.v1';
 
 		const zh = {
 			'panel.title': '寰镜行情',
@@ -57,7 +58,7 @@ window.__ModuleLoader__.load({
 			'day.date': '日期', 'day.change': '涨跌', 'day.changePct': '涨幅', 'day.amplitude': '振幅', 'metric.close': '收盘',
 			'metric.floatCap': '流通市值', 'metric.updated': '更新',
 			'advice.surge': '强势拉升', 'advice.rise': '稳步走高', 'advice.flat': '窄幅盘整', 'advice.drop': '正快速下降', 'advice.slump': '加速下挫',
-			'feed.notice': '公告', 'feed.posts': '评论', 'feed.pick': '选中一只股票后显示',
+			'feed.notice': '公告', 'feed.posts': '评论', 'feed.pick': '选中一只股票后显示', 'feed.badge': '未读新公告',
 			'day.hi20': '20日新高', 'day.lo20': '20日新低', 'day.volUp': '放量',
 			'board.title': '交易所大看板', 'board.short': '看板', 'board.split': '拖动调整列宽', 'board.pickHint': '点击查看该股全景',
 			'board.col.instrument': '名称', 'board.col.last': '现价', 'board.col.chg': '涨跌', 'board.col.chgPct': '涨幅', 'board.col.amount': '成交额',
@@ -104,7 +105,7 @@ window.__ModuleLoader__.load({
 			'day.date': 'Date', 'day.change': 'Chg', 'day.changePct': 'Chg %', 'day.amplitude': 'Range', 'metric.close': 'Close',
 			'metric.floatCap': 'Float cap', 'metric.updated': 'Updated',
 			'advice.surge': 'surging', 'advice.rise': 'trending up', 'advice.flat': 'consolidating', 'advice.drop': 'falling fast', 'advice.slump': 'breaking down',
-			'feed.notice': 'Filings', 'feed.posts': 'Comments', 'feed.pick': 'Select a stock to load its feeds',
+			'feed.notice': 'Filings', 'feed.posts': 'Comments', 'feed.pick': 'Select a stock to load its feeds', 'feed.badge': 'unread filings',
 			'day.hi20': '20-bar high', 'day.lo20': '20-bar low', 'day.volUp': 'Volume',
 			'board.title': 'Exchange LED board', 'board.short': 'Board', 'board.split': 'Drag to resize columns', 'board.pickHint': 'Click to open the full view',
 			'board.col.instrument': 'Instrument', 'board.col.last': 'Last', 'board.col.chg': 'Chg', 'board.col.chgPct': 'Chg %', 'board.col.amount': 'Turnover',
@@ -211,6 +212,14 @@ window.__ModuleLoader__.load({
 .ml-row .qt .rm{font-size:11px;white-space:nowrap}
 .ml-row .rm-x{position:absolute;top:6px;right:8px;visibility:hidden;z-index:2}
 .ml-row:hover .rm-x{visibility:visible}
+.ml-row .ml-pin{position:absolute;top:3px;left:4px;z-index:3;font-size:11px;line-height:1;padding:4px;border:0;background:none;cursor:pointer;opacity:0;transition:opacity .12s}
+.ml-row:hover .ml-pin{opacity:.85}
+.ml-row[aria-current="true"] .ml-pin{opacity:0}
+.ml-row[aria-current="true"]:hover .ml-pin{opacity:.85}
+.ml-row.pinned .ml-pin{opacity:.95}
+.ml-row.pinned .nm{padding-left:16px}
+.ml-bub{position:absolute;top:5px;left:26px;min-width:16px;height:16px;padding:0 4px;border-radius:9px;background:var(--ml-up);color:#fff;font-size:10px;font-weight:700;line-height:16px;text-align:center;box-shadow:0 0 0 2px var(--dsw-alias-bg-layer-1),0 0 8px var(--ml-up);animation:mlbub 1.6s ease-in-out infinite;z-index:3}
+@keyframes mlbub{50%{transform:scale(1.13)}}
 .ml-row .ml-spark{flex:none}
 .ml-spark{width:56px;height:26px;display:block;overflow:visible}
 .ml-spark.empty{visibility:hidden}
@@ -351,7 +360,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.7.0';
+		const CLIENT_REV = '0.8.0';
 		const diagQueue = [];
 		let diagTimer = 0;
 		function diagSend(rows) {
@@ -530,7 +539,7 @@ window.__ModuleLoader__.load({
 			);
 		}
 
-		function WatchRow({ instrument, quote, active, pinned, onPin, onSelect, onRemove, t }) {
+		function WatchRow({ instrument, quote, active, pinned, badge, onPin, onSelect, onRemove, t }) {
 			const pct = quote?.changePct ?? null;
 			const advice = pct === null ? '' : pct >= 3 ? 'advice.surge' : pct >= 1 ? 'advice.rise' : pct > -1 ? 'advice.flat' : pct > -3 ? 'advice.drop' : 'advice.slump';
 			const prev = React.useRef(quote?.price);
@@ -541,17 +550,18 @@ window.__ModuleLoader__.load({
 				type: 'button', className: 'ml-row' + (pinned === true ? ' pinned' : ''), 'aria-current': active ? true : void 0,
 				onClick: () => onSelect(instrument.symbol),
 			},
-				h('span', { className: 'nm' },
+				onPin === void 0 ? null : h('span', {
+					className: 'ml-pin' + (pinned === true ? ' on' : ''), role: 'button', tabIndex: -1,
+					title: pinned === true ? t('list.unpin') : t('list.pin'),
+					onClick: (event) => {
+						event.stopPropagation();
+						onPin(instrument.symbol);
+					},
+				}, '📍'),
+				badge === null || badge === void 0 || badge === 0 || active === true ? null : h('span', { className: 'ml-bub', title: `${String(badge)} ${t('feed.badge')}` }, String(badge > 9 ? '9+' : badge)),
+			h('span', { className: 'nm' },
 					h('b', null, quote?.name ?? instrument.name ?? instrument.symbol),
 					h('code', null, instrument.symbol),
-					onPin === void 0 ? null : h('span', {
-						className: 'row-pin' + (pinned === true ? ' on' : ''), role: 'button', tabIndex: -1,
-						title: pinned === true ? t('list.unpin') : t('list.pin'),
-						onClick: (event) => {
-							event.stopPropagation();
-							onPin(instrument.symbol);
-						},
-					}, pinned === true ? '📌' : '📍'),
 					advice === '' ? null : h('span', { className: `ad ${dirClass(Math.abs(pct) < 1 ? 0 : pct)}` }, t(advice)),
 				),
 			h(Spark, { symbol: instrument.symbol, pct }),
@@ -1339,6 +1349,38 @@ window.__ModuleLoader__.load({
 					};
 					// refetches when the selection changes; name reads the live quote once
 				}, [selected]);
+				const [seenNews, setSeenNews] = React.useState(() => loadLs(LS_NEWS, {}));
+				const [updates, setUpdates] = React.useState({});
+				function pick(symbol) {
+					setSelected(symbol);
+					if (symbol === null || symbol === void 0) return;
+					setSeenNews((current) => {
+						const next = { ...current, [symbol]: new Date().toISOString() };
+						saveLs(LS_NEWS, next);
+						return next;
+					});
+				}
+				// unread-filings poll: one light batched call every three minutes
+				React.useEffect(() => {
+					const symbols = (watchlist ?? (meta === null ? [] : meta.defaultWatchlist)).join(',');
+					if (symbols === '') return void 0;
+					let dead = false;
+					const pull = () => api('updates', { symbols }).then((body) => {
+						if (!dead) setUpdates(Object.fromEntries((body.items ?? []).map((item) => [item.symbol, item])));
+					}, () => void 0);
+					pull();
+					const timer = window.setInterval(pull, 180000);
+					return () => {
+						dead = true;
+						window.clearInterval(timer);
+					};
+				}, [meta === null ? '' : (watchlist ?? meta.defaultWatchlist).join(',')]);
+				const badgeFor = (symbol) => {
+					const entry = updates[symbol];
+					if (entry === void 0 || entry.notice === void 0 || symbol === selected) return 0;
+					const since = Date.parse(seenNews[symbol] ?? '') || 0;
+					return entry.notice.filter((item) => (Date.parse(item.time ?? '') || 0) > since).length;
+				};
 				const [alertsList, setAlertsList] = React.useState([]);
 				const [palOpen, setPalOpen] = React.useState(false);
 				React.useEffect(() => {
@@ -1389,7 +1431,7 @@ window.__ModuleLoader__.load({
 					const onActivate = (event) => {
 						const symbol = event.detail?.symbol;
 						if (typeof symbol !== 'string') return;
-						setSelected(symbol);
+						pick(symbol);
 						setView('detail');
 						setWatchlist((current) => {
 							const list = current ?? (meta?.defaultWatchlist ?? []);
@@ -1658,14 +1700,14 @@ window.__ModuleLoader__.load({
 						const list = current ?? [];
 						return list.includes(symbol) ? list : [...list, symbol];
 					});
-					setSelected(symbol);
+					pick(symbol);
 					setSearch((current) => ({ ...current, q: '', items: [], open: false }));
 				};
 				const removeFromWatch = (symbol) => {
 					setWatchlist((current) => (current ?? []).filter((item) => item !== symbol));
 					if (selected === symbol) {
 						const rest = (watchlist ?? []).filter((item) => item !== symbol);
-						setSelected(rest[0] ?? null);
+						pick(rest[0] ?? null);
 					}
 				};
 				const importTokens = async (lines) => {
@@ -1796,7 +1838,7 @@ window.__ModuleLoader__.load({
 					led === true ? h(LedBoard, {
 						rows: sorted, quotes, seenQuote, meta, t,
 						onPick: (symbol) => {
-							setSelected(symbol);
+							pick(symbol);
 							setLed(false);
 						},
 					}) : null,
@@ -1818,9 +1860,10 @@ window.__ModuleLoader__.load({
 										: sorted.map((row) => h(WatchRow, {
 											key: row.symbol, instrument: row, quote: quotes.get(row.symbol) ?? seenQuote(row.symbol),
 											pinned: (prefs.pinned ?? []).includes(row.symbol), onPin: togglePin,
+											badge: badgeFor(row.symbol),
 											active: row.symbol === selected,
 											onSelect: (symbol) => {
-												setSelected(symbol);
+												pick(symbol);
 												setView('detail');
 											},
 											onRemove: removeFromWatch,

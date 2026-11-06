@@ -77,6 +77,22 @@ test('one dead source degrades to an empty bucket instead of failing the route',
 	await rm(dir, { recursive: true, force: true });
 });
 
+test('updates batch-checks filings per symbol and marks non-A-shares unsupported', async () => {
+	const { dir, routeResource } = await mount(async (url) => {
+		if (String(url).includes('np-anotice-stock')) return res(ANN);
+		throw new Error('unexpected');
+	});
+	const handled = await routeResource(get('/market-lens/updates?symbols=sh600519,hk00700'));
+	assert.equal(handled.status, 200);
+	const body = await handled.json();
+	const cn = body.items.find((item) => item.symbol === 'sh600519');
+	const hk = body.items.find((item) => item.symbol === 'hk00700');
+	assert.equal(cn.notice.length, 1);
+	assert.equal(cn.latest, cn.notice[0].time);
+	assert.equal(hk.unsupported, true);
+	await rm(dir, { recursive: true, force: true });
+});
+
 test('posts route rejects a missing symbol with 400', async () => {
 	const { dir, routeResource } = await mount(async () => res('{}'));
 	const handled = await routeResource(get('/market-lens/posts'));
