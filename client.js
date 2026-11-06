@@ -28,7 +28,7 @@ window.__ModuleLoader__.load({
 			'meta.error': '无法连接行情服务（宿主插件未激活或路由被拦截）',
 			'search.placeholder': '代码 / 名称 / 拼音，如 600519、gzmt、腾讯',
 			'search.empty': '无匹配结果',
-			'toolbar.palette': '红涨绿跌 ⇄ 绿涨红跌',
+			'toolbar.palette': '配色',
 			'toolbar.import': '批量导入',
 			'toolbar.refreshing': '刷新中',
 			'toolbar.paused': '已暂停',
@@ -39,7 +39,7 @@ window.__ModuleLoader__.load({
 			'indexbar.title': '指数',
 			'detail.title': '详情', 'detail.back': '返回自选',
 			'detail.period.day': '日K', 'detail.period.week': '周K', 'detail.period.month': '月K',
-			'chart.hint': '拖拽框选放大 · 滚轮缩放 · 双击回全览 · Shift+拖拽平移', 'chart.reset': '全览',
+			'chart.hint': '拖拽框选放大 · 滚轮缩放 · 右键拖动平移 · 点击K线看当日 · 双击回全览 · Shift+拖拽平移', 'chart.reset': '全览',
 			'list.staleHint': '缓存数据，恢复轮询后自动更新', 'kline.retry': '重试',
 			'detail.ma': 'MA', 'detail.chartError': 'K线获取失败', 'detail.loading': '加载中…',
 			'metric.price': '现价', 'metric.change': '涨跌幅', 'metric.open': '今开', 'metric.prev': '昨收',
@@ -53,6 +53,8 @@ window.__ModuleLoader__.load({
 			'alert.threshold': '阈值', 'alert.cooldown': '静默期(分)', 'alert.save': '保存', 'alert.cancel': '取消', 'alert.delete': '删除',
 			'alert.armed': '监控中', 'alert.fired': '已触发', 'alert.fireNote': '{{symbol}} {{rule}}',
 			'alert.barTitle': '寰镜提醒', 'alert.dismiss': '清除',
+			'palette.redup': '红涨绿跌', 'palette.greenup': '绿涨红跌', 'palette.blueorange': '蓝涨橙跌', 'palette.goldviolet': '紫涨金跌', 'palette.tealrose': '青涨玫跌',
+			'day.date': '日期', 'day.change': '涨跌', 'day.changePct': '涨幅', 'day.amplitude': '振幅', 'metric.close': '收盘',
 			'import.title': '批量导入自选', 'import.placeholder': '每行一个代码或名称，最多 50 条',
 			'import.confirm': '导入', 'import.cancel': '取消', 'import.toomany': '超出 50 条的部分已忽略',
 			'notice': '延迟公开行情 · 非 Level-2 · 只读无交易',
@@ -67,7 +69,7 @@ window.__ModuleLoader__.load({
 			'meta.error': 'Cannot reach the market service (host plugin inactive or route blocked)',
 			'search.placeholder': 'Code / name / pinyin, e.g. 600519, gzmt, tencent',
 			'search.empty': 'No matches',
-			'toolbar.palette': 'Red-up ⇄ Green-up',
+			'toolbar.palette': 'Colors',
 			'toolbar.import': 'Bulk import',
 			'toolbar.refreshing': 'Refreshing',
 			'toolbar.paused': 'Paused',
@@ -78,7 +80,7 @@ window.__ModuleLoader__.load({
 			'indexbar.title': 'Indices',
 			'detail.title': 'Detail', 'detail.back': 'Back to watchlist',
 			'detail.period.day': 'Daily', 'detail.period.week': 'Weekly', 'detail.period.month': 'Monthly',
-			'chart.hint': 'drag to box-zoom · wheel zooms · double-click shows all · shift+drag pans', 'chart.reset': 'Overview',
+			'chart.hint': 'drag to box-zoom · wheel zooms · right-drag pans · click a bar for the day · double-click shows all', 'chart.reset': 'Overview',
 			'list.staleHint': 'cached values; live once polling recovers', 'kline.retry': 'Retry',
 			'detail.ma': 'MA', 'detail.chartError': 'K-line unavailable', 'detail.loading': 'Loading…',
 			'metric.price': 'Last', 'metric.change': 'Chg %', 'metric.open': 'Open', 'metric.prev': 'Prev',
@@ -92,6 +94,8 @@ window.__ModuleLoader__.load({
 			'alert.threshold': 'Threshold', 'alert.cooldown': 'Silence (min)', 'alert.save': 'Save', 'alert.cancel': 'Cancel', 'alert.delete': 'Delete',
 			'alert.armed': 'armed', 'alert.fired': 'fired', 'alert.fireNote': '{{symbol}} {{rule}}',
 			'alert.barTitle': 'MarketLens alerts', 'alert.dismiss': 'Clear',
+			'palette.redup': 'Red up', 'palette.greenup': 'Green up', 'palette.blueorange': 'Blue up', 'palette.goldviolet': 'Violet up', 'palette.tealrose': 'Teal up',
+			'day.date': 'Date', 'day.change': 'Chg', 'day.changePct': 'Chg %', 'day.amplitude': 'Range', 'metric.close': 'Close',
 			'import.title': 'Bulk import watchlist', 'import.placeholder': 'One code or name per line, up to 50',
 			'import.confirm': 'Import', 'import.cancel': 'Cancel', 'import.toomany': 'Lines beyond 50 ignored',
 			'notice': 'Delayed public data · not Level-2 · read-only, no trading',
@@ -100,6 +104,17 @@ window.__ModuleLoader__.load({
 		const CSS = `
 .ml-root{--ml-up:#e04f4f;--ml-down:#2fa36b;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-base);display:flex;flex-direction:column;height:100%;min-height:0;overflow:hidden;font-variant-numeric:tabular-nums}
 .ml-root[data-pal="greenup"]{--ml-up:#2fa36b;--ml-down:#e04f4f}
+.ml-root[data-pal="blueorange"]{--ml-up:#4f8fe0;--ml-down:#e09b3c}
+.ml-root[data-pal="goldviolet"]{--ml-up:#9a5ce8;--ml-down:#c9a227}
+.ml-root[data-pal="tealrose"]{--ml-up:#1f9e8e;--ml-down:#d9527f}
+.ml-palmenu{position:absolute;top:34px;right:8px;z-index:20;background:var(--dsw-alias-bg-overlay);border:1px solid var(--dsw-alias-border-l2);border-radius:10px;padding:4px;display:flex;flex-direction:column;box-shadow:0 6px 24px rgba(0,0,0,.28)}
+.ml-palmenu button{display:flex;align-items:center;gap:8px;padding:6px 10px;background:none;border:0;border-radius:8px;color:var(--dsw-alias-label-primary);font-size:12px;cursor:pointer;white-space:nowrap}
+.ml-palmenu button:hover{background:var(--dsw-alias-bg-layer-2)}
+.ml-palmenu i{display:inline-flex;gap:2px}
+.ml-palmenu i s{width:10px;height:10px;border-radius:3px;display:block}
+.ml-daybar{display:flex;flex-wrap:wrap;gap:2px 14px;padding:5px 10px;border-top:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);font-size:11px;flex:none}
+.ml-daybar span{display:flex;gap:5px;align-items:baseline}
+.ml-daybar i{font-style:normal;color:var(--dsw-alias-label-secondary)}
 .ml-flat{color:var(--dsw-alias-label-secondary)}
 .ml-top{display:flex;gap:8px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--dsw-alias-border-l1);flex-wrap:wrap}
 .ml-brand{font-weight:600;margin-right:auto;display:flex;gap:8px;align-items:baseline;min-width:0}
@@ -267,7 +282,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.4.0';
+		const CLIENT_REV = '0.5.0';
 		const diagQueue = [];
 		let diagTimer = 0;
 		function diagSend(rows) {
@@ -309,6 +324,14 @@ window.__ModuleLoader__.load({
 		});
 
 		// ---------- small components ----------
+		const PALETTES = {
+			redup: { up: '#e04f4f', down: '#2fa36b', hollow: true },
+			greenup: { up: '#2fa36b', down: '#e04f4f', hollow: true },
+			blueorange: { up: '#4f8fe0', down: '#e09b3c', hollow: false },
+			goldviolet: { up: '#9a5ce8', down: '#c9a227', hollow: false },
+			tealrose: { up: '#1f9e8e', down: '#d9527f', hollow: false },
+		};
+
 		function PanelIcon({ size, active }) {
 			const s = size ?? 18;
 			const iconRef = React.useRef(null);
@@ -447,12 +470,13 @@ window.__ModuleLoader__.load({
 			return out;
 		}
 
-		function KLineChart({ data, showMa, t }) {
+		function KLineChart({ data, showMa, hollow, t }) {
 			const wrapRef = React.useRef(null);
 			const canvasRef = React.useRef(null);
 			const [view, setView] = React.useState({ count: 90, offset: 0 }); // offset = bars hidden on the right
 			const [cross, setCross] = React.useState(null); // crosshair: global bar index + pixel position
 			const [sel, setSel] = React.useState(null); // box-zoom selection in canvas pixels
+			const [picked, setPicked] = React.useState(null); // bar clicked for the day-detail strip
 			const geo = React.useRef({ start: 0, count: 1, step: 1, plotWidth: 1, priceHeight: 1, low: 0, high: 1 });
 			const bars = data?.bars ?? [];
 			const total = bars.length;
@@ -467,6 +491,7 @@ window.__ModuleLoader__.load({
 				setView((current) => ({ count: Math.min(Math.max(20, current.count), Math.max(20, total)), offset: 0 }));
 				setCross(null);
 				setSel(null);
+				setPicked(null);
 			}, [data]);
 
 			const draw = React.useCallback(() => {
@@ -534,6 +559,16 @@ window.__ModuleLoader__.load({
 				}
 				let maxVolume = 0;
 				for (const bar of visible) if (bar.v !== null && bar.v > maxVolume) maxVolume = bar.v;
+				// volume pane: subtle ground + divider line, like pro terminals
+				ctx2.globalAlpha = 0.16;
+				ctx2.fillStyle = colorGrid;
+				ctx2.fillRect(0, volumeTop - 8, plotWidth, height - volumeTop + 8);
+				ctx2.globalAlpha = 1;
+				ctx2.strokeStyle = colorGrid;
+				ctx2.beginPath();
+				ctx2.moveTo(0, Math.round(priceHeight + 7) + 0.5);
+				ctx2.lineTo(plotWidth, Math.round(priceHeight + 7) + 0.5);
+				ctx2.stroke();
 				for (let index = 0; index < visible.length; index++) {
 					const bar = visible[index];
 					if (bar.c === null) continue;
@@ -551,7 +586,14 @@ window.__ModuleLoader__.load({
 					const bodyTop = y(Math.max(bar.o ?? bar.c, bar.c));
 					const bodyHeight = Math.max(1, Math.abs(y(bar.o ?? bar.c) - y(bar.c)));
 					const bodyWidth = Math.max(1, Math.min(step * 0.62, 13));
-					ctx2.fillRect(cx - bodyWidth / 2, bodyTop, bodyWidth, bodyHeight);
+					if (up && hollow === true) {
+						// hollow bullish candle (classic A-share terminal look): bg fill + outline
+						ctx2.fillStyle = colorBg;
+						ctx2.fillRect(cx - bodyWidth / 2, bodyTop, bodyWidth, bodyHeight);
+						ctx2.fillStyle = color;
+						ctx2.lineWidth = 1;
+						ctx2.strokeRect(cx - bodyWidth / 2 + 0.5, bodyTop + 0.5, Math.max(1, bodyWidth - 1), Math.max(1, bodyHeight - 1));
+					} else ctx2.fillRect(cx - bodyWidth / 2, bodyTop, bodyWidth, bodyHeight);
 					if (bar.v !== null && maxVolume > 0) {
 						const volumeHeight = bar.v / maxVolume * (height - volumeTop - 6);
 						ctx2.globalAlpha = 0.55;
@@ -584,6 +626,32 @@ window.__ModuleLoader__.load({
 				const lastBar = visible[visible.length - 1]?.t ?? '';
 				ctx2.fillText(String(first), 4, height - 4);
 				ctx2.fillText(String(lastBar), Math.max(4, plotWidth - 84), height - 4);
+				// selected bar: translucent column so the picked day stays findable after zoom
+				if (picked !== null && picked >= start && picked < start + count) {
+					ctx2.fillStyle = colorText;
+					ctx2.globalAlpha = 0.1;
+					ctx2.fillRect(picked - start === 0 ? 0 : x(picked - start) - step / 2, 0, step, height - 16);
+					ctx2.globalAlpha = 1;
+				}
+				// last-price line: dashed, tagged on the axis, colored by direction
+				const lastV = visible[visible.length - 1];
+				if (lastV?.c !== null && lastV?.c !== void 0) {
+					const prevC = visible[visible.length - 2]?.c ?? lastV.prevClose ?? lastV.c;
+					const lastColor = lastV.c >= prevC ? colorUp : colorDown;
+					const ly = Math.round(y(lastV.c)) + 0.5;
+					ctx2.setLineDash([5, 4]);
+					ctx2.strokeStyle = lastColor;
+					ctx2.lineWidth = 1;
+					ctx2.beginPath();
+					ctx2.moveTo(0, ly);
+					ctx2.lineTo(plotWidth, ly);
+					ctx2.stroke();
+					ctx2.setLineDash([]);
+					ctx2.fillStyle = lastColor;
+					ctx2.fillRect(plotWidth + 2, ly - 8.5, axisWidth - 4, 17);
+					ctx2.fillStyle = '#ffffff';
+					ctx2.fillText(lastV.c.toFixed(lastV.c > 1000 ? 0 : 2), plotWidth + 6, ly + 3);
+				}
 				geo.current = {
 					start,
 					count,
@@ -642,7 +710,7 @@ window.__ModuleLoader__.load({
 						ctx2.fillText(dlabel, dx + 4, height - 4);
 					}
 				}
-			}, [bars, view, total, showMa, cross, sel, maSeries]);
+			}, [bars, view, total, showMa, cross, sel, picked, hollow, maSeries]);
 
 			React.useEffect(() => {
 				const wrap = wrapRef.current;
@@ -689,9 +757,10 @@ window.__ModuleLoader__.load({
 				}
 				if (event.pointerType === 'touch') {
 					const at = localXY(event);
-					pressTimer.current = window.setTimeout(() => setCross({ gi: barAtPixel(at.x), x: at.x, y: at.y }), 450);
+					pressTimer.current = window.setTimeout(() => setCross({ gi: barAtPixel(at.x), y: at.y, x: at.x }), 450);
 					pan.current = { x: event.clientX, offset: view.offset };
-				} else if (event.shiftKey || event.button === 1) {
+				} else if (event.shiftKey || event.button === 1 || event.button === 2) {
+					// right-drag pans the time axis, like every desktop charting tool
 					pan.current = { x: event.clientX, offset: view.offset };
 				} else {
 					const { x } = localXY(event);
@@ -729,6 +798,11 @@ window.__ModuleLoader__.load({
 				const i0 = Math.max(0, Math.min(g.count - 1, Math.floor(Math.min(sel.x0, sel.x1) / g.step)));
 				const i1 = Math.max(0, Math.min(g.count - 1, Math.floor(Math.max(sel.x0, sel.x1) / g.step)));
 				setSel(null);
+				if (Math.abs(sel.x1 - sel.x0) < 4) {
+					// a click, not a drag: pin that day's detail strip
+					setPicked((current) => current === g.start + i0 ? null : g.start + i0);
+					return;
+				}
 				if (i1 - i0 < 3) return;
 				const count = Math.max(5, i1 - i0 + 1);
 				const startG = g.start + i0;
@@ -772,17 +846,36 @@ window.__ModuleLoader__.load({
 			const resetView = () => setView({ count: Math.min(total, 90), offset: 0 });
 			function onDoubleClick() {
 				resetView();
+				setPicked(null);
 			}
 
 			const zoomed = total > 0 && (view.count < total - 1 || view.offset > 0);
 			const legendBar = cross === null ? void 0 : bars[cross.gi];
 			const legendPrev = legendBar === void 0 ? void 0 : bars[bars.indexOf(legendBar) - 1];
 			const legendChg = legendBar?.c !== void 0 && legendBar?.c !== null && (legendPrev?.c ?? null) !== null ? (legendBar.c - legendPrev.c) / legendPrev.c * 100 : null;
+			// day detail strip: the clicked bar expanded like a terminal's bottom readout
+			const dayBar = picked === null ? void 0 : bars[picked];
+			const dayPrev = picked === null || picked === 0 ? void 0 : bars[picked - 1];
+			const dayChg = dayBar?.c != null && dayPrev?.c != null ? dayBar.c - dayPrev.c : null;
+			const dayPct = dayChg !== null && dayPrev?.c ? dayChg / dayPrev.c * 100 : null;
+			const dayAmp = dayBar?.h != null && dayBar?.l != null && dayPrev?.c ? (dayBar.h - dayBar.l) / dayPrev.c * 100 : null;
+			const dayCells = dayBar === void 0 ? void 0 : [
+				['day.date', String(dayBar.t), ''],
+				['metric.open', fmtNum(dayBar.o), ''],
+				['metric.high', fmtNum(dayBar.h), ''],
+				['metric.low', fmtNum(dayBar.l), ''],
+				['metric.close', fmtNum(dayBar.c), dayChg === null ? '' : dirClass(dayChg)],
+				['day.change', dayChg === null ? '—' : fmtSigned(dayChg), dayChg === null ? '' : dirClass(dayChg)],
+				['day.changePct', dayPct === null ? '—' : `${fmtSigned(dayPct)}%`, dayPct === null ? '' : dirClass(dayPct)],
+				['day.amplitude', dayAmp === null ? '—' : `${fmtNum(dayAmp)}%`, ''],
+				['metric.volume', fmtBig(dayBar.v), ''],
+			];
 			return h('div', { className: 'ml-chart' },
 				h('div', { className: 'ml-canvas-wrap', ref: wrapRef },
 					h('canvas', {
 						className: 'ml-canvas', ref: canvasRef,
 						onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp, onDoubleClick,
+						onContextMenu: (event) => event.preventDefault(),
 						onPointerLeave: () => setCross(null),
 					}),
 					h('div', { className: 'ml-legend' }, legendBar === void 0 ? t('chart.hint') : [
@@ -798,7 +891,12 @@ window.__ModuleLoader__.load({
 					]),
 					zoomed ? h('button', {
 						type: 'button', className: 'ml-btn ml-zoomreset', onClick: resetView,
-					}, '⤢ ' + t('chart.reset')) : null));
+					}, '⤢ ' + t('chart.reset')) : null),
+				dayCells === void 0 ? null : h('footer', { className: 'ml-daybar' },
+					dayCells.map(([key, text, cls]) => h('span', { key },
+						h('i', null, t(key)),
+						h('b', { className: cls }, text)))),
+			);
 		}
 
 		// ---------- bulk import dialog ----------
@@ -1028,6 +1126,15 @@ window.__ModuleLoader__.load({
 				const [fin, setFin] = React.useState(null);
 				const [news, setNews] = React.useState({ state: 'idle', items: [], source: '' });
 				const [alertsList, setAlertsList] = React.useState([]);
+				const [palOpen, setPalOpen] = React.useState(false);
+				React.useEffect(() => {
+					if (palOpen === false) return void 0;
+					const onDoc = (event) => {
+						if (event.target?.closest?.('.ml-palwrap') === void 0) setPalOpen(false);
+					};
+					window.document.addEventListener('pointerdown', onDoc, true);
+					return () => window.document.removeEventListener('pointerdown', onDoc, true);
+				}, [palOpen]);
 				const refreshAlerts = React.useCallback(() => {
 					api('alerts', { since: 0 }).then(
 						(body) => setAlertsList(body.alerts ?? []),
@@ -1417,10 +1524,22 @@ window.__ModuleLoader__.load({
 										h('code', { style: { color: 'var(--dsw-alias-label-secondary)' } }, item.symbol),
 									)),
 							) : null),
-						h('button', {
-							type: 'button', className: 'ml-btn', title: t('toolbar.palette'),
-							onClick: () => setPrefs((current) => ({ ...current, palette: current.palette === 'redup' ? 'greenup' : 'redup' })),
-						}, '红/绿'),
+						h('span', { className: 'ml-palwrap', style: { position: 'relative' } },
+							h('button', {
+								type: 'button', className: 'ml-btn', title: t('toolbar.palette'), 'aria-expanded': palOpen,
+								onClick: () => setPalOpen((current) => !current),
+							}, h('i', { style: { display: 'inline-flex', gap: 2, marginRight: 6, verticalAlign: -1 } },
+								h('s', { style: { width: 10, height: 10, borderRadius: 3, background: PALETTES[prefs.palette]?.up ?? PALETTES.redup.up, display: 'block' } }),
+								h('s', { style: { width: 10, height: 10, borderRadius: 3, background: PALETTES[prefs.palette]?.down ?? PALETTES.redup.down, display: 'block' } })),
+								t(`palette.${prefs.palette in PALETTES ? prefs.palette : 'redup'}`)),
+							palOpen ? h('div', { className: 'ml-palmenu' },
+								Object.entries(PALETTES).map(([id, pal]) => h('button', {
+									key: id, type: 'button',
+									onClick: () => {
+										setPrefs((current) => ({ ...current, palette: id }));
+										setPalOpen(false);
+									},
+								}, h('i', null, h('s', { style: { background: pal.up } }), h('s', { style: { background: pal.down } })), t(`palette.${id}`)))) : null),
 						h('button', { type: 'button', className: 'ml-btn', onClick: () => setImporting(true) }, t('toolbar.import')),
 						h('span', { className: 'ml-status', 'data-err': refresh.state === 'error' ? '1' : '0' },
 							refresh.state === 'busy' ? t('toolbar.refreshing') : refresh.state === 'error' ? t('toolbar.error') : refresh.at === 0 ? '' : new Date(refresh.at).toLocaleTimeString()),
@@ -1472,7 +1591,7 @@ window.__ModuleLoader__.load({
 									: kline.state === 'error' ? h('div', { className: 'ml-pad', style: { display: 'flex', gap: 10, alignItems: 'center' } },
 										t('detail.chartError'),
 										h('button', { type: 'button', className: 'ml-btn', onClick: () => setKlineSeq((current) => current + 1) }, t('kline.retry')))
-										: h(KLineChart, { data: kline.body, showMa: prefs.showMa, t }),
+										: h(KLineChart, { data: kline.body, showMa: prefs.showMa, hollow: PALETTES[prefs.palette]?.hollow === true, t }),
 							)) : null,
 						showDetail ? h('div', { className: 'ml-panelcol', 'data-col': 'detail' },
 							h('section', { className: 'ml-panel' },
