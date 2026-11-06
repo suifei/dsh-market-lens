@@ -202,6 +202,7 @@ window.__ModuleLoader__.load({
 .ml-led tbody tr.hl{background:#0f2c4a}
 .ml-led tbody tr.hl td:first-child::before{content:'▶';color:var(--dsw-alias-brand-primary);margin-right:6px;font-size:11px}
 @media (max-width:1200px){.ml-ledbody{grid-template-columns:minmax(0,1fr)}}
+.ml-bub{transition:top .15s,right .15s}
 .ml-tabs{display:flex;gap:2px}
 .ml-tabs button{background:none;border:0;padding:5px 9px;border-radius:8px;font:inherit;font-size:12px;color:var(--dsw-alias-label-secondary);cursor:pointer}
 .ml-tabs button[aria-selected="true"]{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);font-weight:600}
@@ -230,7 +231,8 @@ window.__ModuleLoader__.load({
 .ml-row[aria-current="true"]:hover .ml-pin{opacity:.85}
 .ml-row.pinned .ml-pin{opacity:.95}
 .ml-row.pinned .nm{padding-left:16px}
-.ml-bub{position:absolute;top:5px;right:8px;min-width:16px;height:16px;padding:0 4px;border-radius:9px;background:var(--ml-up);color:#fff;font-size:10px;font-weight:700;line-height:16px;text-align:center;box-shadow:0 0 0 2px var(--dsw-alias-bg-layer-1),0 0 8px var(--ml-up);animation:mlbub 1.6s ease-in-out infinite;z-index:3}
+.ml-bub{position:absolute;top:-6px;right:6px;min-width:16px;height:16px;padding:0 4px;border-radius:9px;background:var(--ml-up);color:#fff;font-size:10px;font-weight:700;line-height:16px;text-align:center;box-shadow:0 0 0 2px var(--dsw-alias-bg-layer-1),0 0 8px var(--ml-up);animation:mlbub 1.6s ease-in-out infinite;z-index:5}
+.ml-row:hover .ml-bub{top:4px;right:30px}
 .ml-row:has(.ml-bub):hover .rm-x{right:28px}
 @keyframes mlbub{50%{transform:scale(1.13)}}
 .ml-row .ml-spark{flex:none}
@@ -373,7 +375,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.9.0';
+		const CLIENT_REV = '0.9.1';
 		const diagQueue = [];
 		let diagTimer = 0;
 		function diagSend(rows) {
