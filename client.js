@@ -39,7 +39,7 @@ window.__ModuleLoader__.load({
 			'indexbar.title': '指数',
 			'detail.title': '详情', 'detail.back': '返回自选',
 			'detail.period.day': '日K', 'detail.period.week': '周K', 'detail.period.month': '月K',
-			'chart.hint': '拖拽框选放大 · 滚轮缩放 · 右键拖动平移 · 点击K线看当日 · 双击回全览 · Shift+拖拽平移', 'chart.reset': '全览',
+			'chart.hint': '框选放大 · 滚轮缩放 · 右键平移 · 点击看当日 · 双击全览', 'chart.reset': '全览',
 			'list.staleHint': '缓存数据，恢复轮询后自动更新', 'kline.retry': '重试',
 			'detail.ma': 'MA', 'detail.chartError': 'K线获取失败', 'detail.loading': '加载中…',
 			'metric.price': '现价', 'metric.change': '涨跌幅', 'metric.open': '今开', 'metric.prev': '昨收',
@@ -55,6 +55,7 @@ window.__ModuleLoader__.load({
 			'alert.barTitle': '寰镜提醒', 'alert.dismiss': '清除',
 			'palette.redup': '红涨绿跌', 'palette.greenup': '绿涨红跌', 'palette.blueorange': '蓝涨橙跌', 'palette.goldviolet': '紫涨金跌', 'palette.tealrose': '青涨玫跌',
 			'day.date': '日期', 'day.change': '涨跌', 'day.changePct': '涨幅', 'day.amplitude': '振幅', 'metric.close': '收盘',
+			'metric.floatCap': '流通市值', 'metric.updated': '更新',
 			'advice.surge': '强势拉升', 'advice.rise': '稳步走高', 'advice.flat': '窄幅盘整', 'advice.drop': '正快速下降', 'advice.slump': '加速下挫',
 			'import.title': '批量导入自选', 'import.placeholder': '每行一个代码或名称，最多 50 条',
 			'import.confirm': '导入', 'import.cancel': '取消', 'import.toomany': '超出 50 条的部分已忽略',
@@ -81,7 +82,7 @@ window.__ModuleLoader__.load({
 			'indexbar.title': 'Indices',
 			'detail.title': 'Detail', 'detail.back': 'Back to watchlist',
 			'detail.period.day': 'Daily', 'detail.period.week': 'Weekly', 'detail.period.month': 'Monthly',
-			'chart.hint': 'drag to box-zoom · wheel zooms · right-drag pans · click a bar for the day · double-click shows all', 'chart.reset': 'Overview',
+			'chart.hint': 'drag=zoom · wheel=scale · right-drag=pan · click=day · dbl-click=all', 'chart.reset': 'Overview',
 			'list.staleHint': 'cached values; live once polling recovers', 'kline.retry': 'Retry',
 			'detail.ma': 'MA', 'detail.chartError': 'K-line unavailable', 'detail.loading': 'Loading…',
 			'metric.price': 'Last', 'metric.change': 'Chg %', 'metric.open': 'Open', 'metric.prev': 'Prev',
@@ -97,6 +98,7 @@ window.__ModuleLoader__.load({
 			'alert.barTitle': 'MarketLens alerts', 'alert.dismiss': 'Clear',
 			'palette.redup': 'Red up', 'palette.greenup': 'Green up', 'palette.blueorange': 'Blue up', 'palette.goldviolet': 'Violet up', 'palette.tealrose': 'Teal up',
 			'day.date': 'Date', 'day.change': 'Chg', 'day.changePct': 'Chg %', 'day.amplitude': 'Range', 'metric.close': 'Close',
+			'metric.floatCap': 'Float cap', 'metric.updated': 'Updated',
 			'advice.surge': 'surging', 'advice.rise': 'trending up', 'advice.flat': 'consolidating', 'advice.drop': 'falling fast', 'advice.slump': 'breaking down',
 			'import.title': 'Bulk import watchlist', 'import.placeholder': 'One code or name per line, up to 50',
 			'import.confirm': 'Import', 'import.cancel': 'Cancel', 'import.toomany': 'Lines beyond 50 ignored',
@@ -135,7 +137,7 @@ window.__ModuleLoader__.load({
 .ml-btn[aria-pressed="true"]{border-color:var(--dsw-alias-brand-primary);color:var(--dsw-alias-brand-primary)}
 .ml-status{font-size:12px;color:var(--dsw-alias-label-secondary);display:flex;gap:6px;align-items:center}
 .ml-status[data-err="1"]{color:var(--dsw-alias-state-error-primary)}
-.ml-indexbar{display:flex;gap:6px;padding:8px 14px}
+.ml-indexbar{display:flex;gap:6px;padding:8px 14px;justify-content:safe space-between}
 .ml-hwrap{position:relative;border-bottom:1px solid var(--dsw-alias-border-l1);flex:none}
 .ml-hscroll{overflow-x:auto;display:flex;scrollbar-width:none;touch-action:pan-x;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;outline:none}
 .ml-hscroll:focus-visible{box-shadow:inset 0 0 0 2px var(--dsw-alias-brand-primary)}
@@ -145,8 +147,9 @@ window.__ModuleLoader__.load({
 .ml-hscroll:hover::-webkit-scrollbar-thumb,.ml-hscroll:focus::-webkit-scrollbar-thumb{background:var(--dsw-alias-border-l2)}
 .ml-hscroll::-webkit-scrollbar-thumb:hover{background:var(--dsw-alias-label-secondary)}
 .ml-hwrap::before,.ml-hwrap::after{content:'';position:absolute;top:0;bottom:0;width:26px;pointer-events:none;z-index:2;opacity:0;transition:opacity .18s}
-.ml-hwrap::before{left:0;background:linear-gradient(90deg,var(--dsw-alias-bg-base),transparent)}
-.ml-hwrap::after{right:0;background:linear-gradient(270deg,var(--dsw-alias-bg-base),transparent)}
+.ml-hwrap::before{left:0;background:linear-gradient(90deg,var(--ml-fade,var(--dsw-alias-bg-base)),transparent)}
+.ml-hwrap::after{right:0;background:linear-gradient(270deg,var(--ml-fade,var(--dsw-alias-bg-base)),transparent)}
+.ml-hwrap.ml-finrow{border-bottom:0;--ml-fade:var(--dsw-alias-bg-layer-1)}
 .ml-hwrap:has([data-f="l"])::before,.ml-hwrap:has([data-f="b"])::before,
 .ml-hwrap:has([data-f="r"])::after,.ml-hwrap:has([data-f="b"])::after{opacity:1}
 .ml-hwrap .ml-hscroll{scrollbar-color:var(--dsw-alias-border-l2) transparent}
@@ -155,7 +158,7 @@ window.__ModuleLoader__.load({
 .ml-idx b{font-size:12px;font-weight:500;color:var(--dsw-alias-label-secondary)}
 .ml-idx span{font-size:14px;font-weight:600}
 .ml-idx i{font-size:11px;font-style:normal}
-.ml-main{display:grid;grid-template-columns:300px minmax(0,1fr) 300px;gap:10px;padding:10px 14px;flex:1;min-height:0}
+.ml-main{display:grid;grid-template-columns:320px minmax(0,1fr) 350px;gap:10px;padding:10px 14px;flex:1;min-height:0}
 .ml-root:not([data-wide="1"]) .ml-main{grid-template-columns:minmax(0,1fr);display:flex;flex-direction:column;overflow-y:auto}
 .ml-root:not([data-wide="1"]) .ml-panelcol[data-col="chart"]{min-height:340px;flex:none}
 .ml-panelcol{display:flex;flex-direction:column;gap:10px;min-height:0;min-width:0}
@@ -169,13 +172,13 @@ window.__ModuleLoader__.load({
 .ml-row .nm code{font-size:11px;color:var(--dsw-alias-label-secondary)}
 .ml-row .nm .ad{font-size:11px;line-height:1.3}
 .ml-row:hover,.ml-row[aria-current="true"]{background:var(--dsw-alias-bg-layer-2)}
-.ml-row .qt{flex:none;display:grid;grid-template-columns:auto auto;gap:0 10px;justify-items:end;align-items:baseline}
+.ml-row .qt{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:1px;min-width:88px}
 .ml-row .qt b{font-size:15px;font-weight:600}
 .ml-row .qt .rm{font-size:11px;white-space:nowrap}
 .ml-row .rm-x{position:absolute;top:6px;right:8px;visibility:hidden;z-index:2}
 .ml-row:hover .rm-x{visibility:visible}
 .ml-row .ml-spark{flex:none}
-.ml-spark{width:64px;height:26px;display:block;overflow:visible}
+.ml-spark{width:56px;height:26px;display:block;overflow:visible}
 .ml-spark.empty{visibility:hidden}
 .ml-chart{flex:1;min-height:260px;position:relative;display:flex;flex-direction:column}
 .ml-canvas-wrap{flex:1;position:relative;min-height:0}
@@ -203,7 +206,8 @@ window.__ModuleLoader__.load({
 .ml-alertform input,.ml-alertform select{font-size:12px;padding:3px 6px;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);border:1px solid var(--dsw-alias-border-l2);border-radius:6px;width:88px}
 .ml-alertform select{width:auto}
 .ml-alertform .acts{display:flex;gap:6px;margin-left:auto}
-.ml-metrics{display:grid;grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:6px 8px;padding:10px}
+.ml-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px 8px;padding:10px}
+@media (max-width:1100px){.ml-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .ml-row.pinned{background:color-mix(in srgb,var(--dsw-alias-brand-primary) 7%,transparent)}
 .row-pin{opacity:0;margin-left:6px;cursor:pointer;font-size:10px;filter:grayscale(1)}
 .ml-row:hover .row-pin{opacity:.55}
@@ -227,7 +231,6 @@ window.__ModuleLoader__.load({
 .ml-errorbar{padding:8px 14px;font-size:12px;color:var(--dsw-alias-state-error-primary);border-bottom:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1)}
 .ml-fintable{width:max-content;min-width:100%;border-collapse:collapse;font-size:12px}
 .ml-hscroll > *{flex:none;min-width:100%}
-.ml-hwrap.ml-finrow{border-bottom:0}
 .ml-root ::-webkit-scrollbar{width:9px;height:9px}
 .ml-root ::-webkit-scrollbar-track{background:transparent}
 .ml-root ::-webkit-scrollbar-thumb{background:var(--dsw-alias-border-l1);border-radius:5px;border:2px solid transparent;background-clip:content-box}
@@ -314,7 +317,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.6.1';
+		const CLIENT_REV = '0.6.2';
 		const diagQueue = [];
 		let diagTimer = 0;
 		function diagSend(rows) {
@@ -519,8 +522,8 @@ window.__ModuleLoader__.load({
 				),
 			h(Spark, { symbol: instrument.symbol, pct }),
 				h('span', { className: 'qt' },
-					h('b', { key: String(quote?.price), className: dirClass(pct) + tick }, fmtNum(quote?.price)),
-					h('span', { className: `rm ${dirClass(pct)}`, title: quote?.stale === true ? t('list.staleHint') : void 0 }, quote === void 0 ? t('toolbar.error') : `${fmtSigned(pct)}% · ${fmtSigned(quote.change)} · ${fmtBig(quote.amount)}`),
+					h('b', { key: String(quote?.price), className: dirClass(pct) + tick }, pct === null ? '—' : `${fmtSigned(pct)}%`),
+					h('span', { className: `rm ${dirClass(pct)}`, title: quote?.stale === true ? t('list.staleHint') : void 0 }, quote === void 0 ? t('toolbar.error') : `${fmtNum(quote.price)} · ${fmtSigned(quote.change)} · ${fmtBig(quote.amount)}`)),
 					onRemove === void 0 ? null : h('span', {
 						className: 'rm-x', role: 'button', tabIndex: -1,
 						title: t('list.remove'),
@@ -529,7 +532,6 @@ window.__ModuleLoader__.load({
 							onRemove(instrument.symbol);
 						},
 					}, '×'),
-				),
 			);
 		}
 
@@ -557,6 +559,8 @@ window.__ModuleLoader__.load({
 				['metric.pe', quote.pe === null ? null : fmtNum(quote.pe), null, ''],
 				['metric.pb', quote.pb === null ? null : fmtNum(quote.pb), null, ''],
 				['metric.marketCap', quote.marketCap === null ? null : fmtBig(quote.marketCap), null, ''],
+				['metric.floatCap', quote.floatMarketCap === null ? null : fmtBig(quote.floatMarketCap), null, ''],
+				['metric.updated', quote.updatedAt === null || quote.updatedAt === void 0 ? null : new Date(quote.updatedAt).toLocaleTimeString(), null, ''],
 			];
 			return h('div', { className: 'ml-metrics' },
 				cells.map(([key, text, pct, tickClass]) => h('div', { className: 'ml-metric', key },
@@ -769,7 +773,11 @@ window.__ModuleLoader__.load({
 					ctx2.stroke();
 					ctx2.setLineDash([]);
 					ctx2.fillStyle = lastColor;
-					ctx2.fillRect(plotWidth + 2, ly - 8.5, axisWidth - 4, 17);
+					if (ctx2.roundRect !== void 0) {
+						ctx2.beginPath();
+						ctx2.roundRect(plotWidth + 2, ly - 8.5, axisWidth - 6, 17, 4);
+						ctx2.fill();
+					} else ctx2.fillRect(plotWidth + 2, ly - 8.5, axisWidth - 4, 17);
 					ctx2.fillStyle = '#ffffff';
 					ctx2.fillText(lastV.c.toFixed(lastV.c > 1000 ? 0 : 2), plotWidth + 6, ly + 3);
 				}
