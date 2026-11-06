@@ -171,7 +171,7 @@ window.__ModuleLoader__.load({
 .ml-split{cursor:col-resize;background:var(--dsw-alias-border-l1);border-radius:3px;transition:background .15s;touch-action:none;margin:2px -7px}
 .ml-split:hover,.ml-split:active{background:var(--dsw-alias-brand-primary)}
 @font-face{font-family:'MLPixel';src:url('/market-lens/font?v=0.9.0') format('woff2');font-display:swap}
-.ml-led{grid-column:1/-1;position:relative;background:#05080f;border:1px solid #12283f;border-radius:12px;display:flex;flex-direction:column;min-height:0;overflow:hidden;color:#d7e9ff;font-family:'MLPixel',ui-monospace,'Cascadia Mono',Consolas,monospace}
+.ml-led{grid-column:1/-1;position:relative;background:#05080f;border:1px solid #12283f;border-radius:12px;display:flex;flex-direction:column;height:calc(100vh - 200px);min-height:360px;overflow:hidden;color:#d7e9ff;font-family:'MLPixel',ui-monospace,'Cascadia Mono',Consolas,monospace}
 .ml-led .num,.ml-led .nm b,.ml-ticker span{letter-spacing:1px}
 .ml-ticker{display:flex;gap:40px;padding:9px 12px;white-space:nowrap;overflow:hidden;border-bottom:1px solid #12283f;background:#03060b;flex:none;animation:mltape 45s linear infinite;width:max-content}
 .ml-ticker:hover{animation-play-state:paused}
@@ -369,7 +369,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.16.2';
+		const CLIENT_REV = '0.17.0';
 		const diagQueue = [];
 		let diagTimer = 0;
 		// the host meta tells the real level; until then assume the shipped 'errors' default
@@ -2053,9 +2053,8 @@ window.__ModuleLoader__.load({
 			spriteCache.set(color, s);
 			return s;
 		}
-		/** content canvas -> baked bulb screen; hue buckets keep the LED palette honest */
-		function bakeLamps(content) {
-			const led = document.createElement('canvas');
+		/** content canvas -> baked bulb screen INTO the given target canvas (no per-bake allocation) */
+		function bakeLamps(content, led) {
 			led.width = content.width;
 			led.height = content.height;
 			const lx = led.getContext('2d');
@@ -2116,6 +2115,8 @@ window.__ModuleLoader__.load({
 			const transRef = React.useRef(null);
 			const pendingRef = React.useRef(null);
 			const feedsRef = React.useRef(new Map());
+			const scenePairRef = React.useRef(null);
+			const pairIdxRef = React.useRef(0);
 			const [size, setSize] = React.useState({ w: 0, h: 0 });
 			const [page, setPage] = React.useState(0);
 			const [lit, setLit] = React.useState(0);
@@ -2164,15 +2165,12 @@ window.__ModuleLoader__.load({
 					window.clearInterval(timer);
 				};
 			}, [rowsKey]);
-			// size the wall in PHYSICAL pixels so the bands reflect real panel
-			// resolution (rule 7: the board follows its container, counted in bulbs)
+			// one canvas pixel per css pixel, no devicePixelRatio games: the
+			// browser never resamples the wall, so bulbs cannot shimmer or spill
 			React.useEffect(() => {
 				const wrap = wrapRef.current;
 				if (wrap === null) return void 0;
-				const fit = () => {
-					const dpr = window.devicePixelRatio || 1;
-					setSize({ w: Math.max(280, Math.floor(wrap.clientWidth * dpr)), h: Math.max(200, Math.floor(wrap.clientHeight * dpr)) });
-				};
+				const fit = () => setSize({ w: Math.max(280, wrap.clientWidth), h: Math.max(200, wrap.clientHeight) });
 				fit();
 				const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(fit) : null;
 				if (ro !== null) ro.observe(wrap);
@@ -2260,7 +2258,10 @@ window.__ModuleLoader__.load({
 				} else {
 					ledText(x, 12, cy0 + (CHART_H - G) / 2, 'LOADING', '#3f618a', void 0, tiny);
 				}
-				sceneRef.current = bakeLamps(c);
+				const pair = scenePairRef.current ?? (scenePairRef.current = [document.createElement('canvas'), document.createElement('canvas')]);
+				bakeLamps(c, pair[pairIdxRef.current ^= 1]);
+				// atomic publish: the loop never sees a half-baked screen
+				sceneRef.current = pair[pairIdxRef.current];
 			}, [size, view.length, page, lit, feedTick, tiny, quotes]);
 			// rotation: one row every four seconds; a finished page queues a wipe
 			const rotRef = React.useRef(() => void 0);
@@ -2280,8 +2281,9 @@ window.__ModuleLoader__.load({
 				const timer = window.setInterval(() => rotRef.current(), 4000);
 				return () => window.clearInterval(timer);
 			}, []);
-			// the living screen: nearest-neighbour blit at the band's scale, plus
-			// scan band, bulb chatter and the wipe - all on the physical grid
+			// the living screen: the frame background (off-bulb field) is baked
+			// once per size, every tick is two drawImage blits + cheap detail -
+			// no per-frame full-surface fills, no pattern cost in the loop
 			React.useEffect(() => {
 				const cv = canvasRef.current;
 				if (cv === null || size.w === 0) return void 0;
@@ -2290,9 +2292,18 @@ window.__ModuleLoader__.load({
 				const x = cv.getContext('2d');
 				x.imageSmoothingEnabled = false;
 				const cell = PITCH * sc;
-				// the whole frame is wall: an off-bulb field tiles the unused area too
-				const base = x.createPattern(offTile, 'repeat');
-				if (base !== null && typeof DOMMatrix !== 'undefined') base.setTransform(new DOMMatrix([sc, 0, 0, sc, 0, 0]));
+				const bg = document.createElement('canvas');
+				bg.width = size.w;
+				bg.height = size.h;
+				const bx = bg.getContext('2d');
+				bx.fillStyle = OFF_BG;
+				bx.fillRect(0, 0, size.w, size.h);
+				const base = bx.createPattern(offTile, 'repeat');
+				if (base !== null && typeof DOMMatrix !== 'undefined') {
+					base.setTransform(new DOMMatrix([sc, 0, 0, sc, 0, 0]));
+					bx.fillStyle = base;
+					bx.fillRect(0, 0, size.w, size.h);
+				}
 				const gw = Math.ceil(size.w / cell);
 				const gh = Math.ceil(size.h / cell);
 				const total = Math.max(1, gw * gh);
@@ -2303,15 +2314,7 @@ window.__ModuleLoader__.load({
 					raf = window.requestAnimationFrame(step);
 					if (ts - last < 110) return; // ~9fps: a bulb wall idles gracefully, it is not a cartoon
 					last = ts;
-					// paint the frame background every tick, even with no scene yet:
-					// a resize clears the canvas, and a transparent wall reads as a
-					// white screen until the next bake lands
-					x.fillStyle = OFF_BG;
-					x.fillRect(0, 0, size.w, size.h);
-					if (base !== null) {
-						x.fillStyle = base;
-						x.fillRect(0, 0, size.w, size.h);
-					}
+					x.drawImage(bg, 0, 0);
 					const scene = sceneRef.current;
 					if (scene === null) return;
 					x.drawImage(scene, 0, 0, Math.round(scene.width * sc), Math.round(scene.height * sc));
@@ -2353,8 +2356,7 @@ window.__ModuleLoader__.load({
 			}, [size]);
 			const hit = (event) => {
 				const rect = canvasRef.current.getBoundingClientRect();
-				const dpr = window.devicePixelRatio || 1;
-				const i = Math.floor((((event.clientY - rect.top) * dpr) / sc - HEAD_H) / ROW_H);
+				const i = Math.floor(((event.clientY - rect.top) / sc - HEAD_H) / ROW_H);
 				return i >= 0 && i < view.length ? i : -1;
 			};
 			return h('div', { className: 'ml-led' },
