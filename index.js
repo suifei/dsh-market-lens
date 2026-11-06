@@ -140,25 +140,26 @@ export function apply(ctx, config) {
 		},
 	});
 
-	/** Same-origin guardrail: a cross-site page must not ride this route. */
-	function trusted(request, url) {
+	/**
+	 * Same-origin guardrail: a cross-site page must not ride this route.
+	 * The web carrier hands resources a placeholder URL origin, so the real
+	 * host is read from the request's `Host` header, not from the parsed URL.
+	 */
+	function trusted(request) {
 		if (request.headers.get('sec-fetch-site') === 'cross-site') return false;
+		const host = request.headers.get('host');
+		if (host === null) return true; // no Host header: an in-process read, not a browser request
+		const sameHost = (value) => {
+			try {
+				return new URL(value).host === host;
+			} catch {
+				return false;
+			}
+		};
 		const origin = request.headers.get('origin');
-		if (origin !== null) {
-			try {
-				if (new URL(origin).host !== url.host) return false;
-			} catch {
-				return false;
-			}
-		}
+		if (origin !== null && origin !== '' && !sameHost(origin)) return false;
 		const referer = request.headers.get('referer');
-		if (referer !== null) {
-			try {
-				if (new URL(referer).host !== url.host) return false;
-			} catch {
-				return false;
-			}
-		}
+		if (referer !== null && referer !== '' && !sameHost(referer)) return false;
 		return true;
 	}
 
@@ -166,7 +167,7 @@ export function apply(ctx, config) {
 
 	async function routeResource(request) {
 		const url = new URL(request.url, 'http://local');
-		if (!trusted(request, url)) return json({ error: { code: 'ORIGIN', message: 'same-origin requests only' } }, 403);
+		if (!trusted(request)) return json({ error: { code: 'ORIGIN', message: 'same-origin requests only' } }, 403);
 		const tail = url.pathname.slice(prefix.length);
 		const params = url.searchParams;
 		try {
