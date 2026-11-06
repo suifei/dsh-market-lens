@@ -85,6 +85,14 @@ A 股 / 港股 / 美股的**只读**行情看板 DSH Web 插件。定位一句�
 
 `pollIntervalMs 5000 · quoteTtlMs 5000 · klineTtlMs 60000 · searchTtlMs 300000 · newsTtlMs 60000 · finTtlMs 21600000 · upstreamTimeoutMs 6000 · maxQuoteSymbols ≤200 · maxKlineCount ≤320 · routePath /market-lens`
 
+## 诊断日志（自监控闭环）
+
+面板把关键事件（挂载、每类请求成败、渲染崩溃）批量 POST 到 `/market-lens/diag`，宿主连同护栏拒绝与非常规状态码一起写入 JSONL 日志：
+
+- 位置：`~/.dsh/market-lens/marketlens-diag-<YYYY-MM-DD>.jsonl`（`diagLogDir` / `diagLogMaxBytes` 可在插件配置改，按天分文件、超限轮转为 `.1`）。
+- 回读：`GET /market-lens/diag?tail=50` 返回 `{file, rows}`；面板红条本身也带原因。
+- 排障顺序：先看有没有 `route.reject`（护栏误伤）→ `route.status`（路径/参数错）→ `panel.*.fail`（上游源问题）→ `panel.crash`（渲染问题）。
+
 ## 数据内容
 
 - **预制自选**：首次打开即有 12 只中外明星股（茅台/宁德/比亚迪/招行/平安/腾讯/阿里/美团/苹果/微软/英伟达/特斯拉）+ 顶部 10 指数条。

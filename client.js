@@ -190,12 +190,59 @@ window.__ModuleLoader__.load({
 		const BADGE = { cn: 'A', hk: 'HK', us: 'US' };
 
 		async function api(path, params, signal) {
-			const url = new URL(BASE + path, window.location.origin);
+			const url = new URL(BASE + '/' + path, window.location.origin);
 			for (const [key, value] of Object.entries(params)) if (value !== void 0 && value !== null) url.searchParams.set(key, String(value));
 			const response = await window.fetch(url, { method: 'GET', signal, cache: 'no-store', credentials: 'same-origin' });
-			const body = await response.json().catch(() => null);
-			if (!response.ok || body === null) throw new Error((body?.error?.message) || `HTTP ${String(response.status)}`);
+			const text = await response.text().catch(() => '');
+			let body = null;
+			try {
+				body = JSON.parse(text);
+			} catch { /* keep raw for the diagnostic message */ }
+			if (!response.ok || body === null) {
+				const detail = body?.error?.message ?? text.slice(0, 90).replace(/\s+/g, ' ');
+				const error = new Error(`HTTP ${String(response.status)} ${detail}`);
+				error.status = response.status;
+				throw error;
+			}
 			return body;
+		}
+
+		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
+		const CLIENT_REV = '0.2.2';
+		const diagQueue = [];
+		let diagTimer = 0;
+		function diagSend(rows) {
+			try {
+				const body = JSON.stringify({ rows });
+				if (window.document.hidden && navigator.sendBeacon !== void 0) {
+					navigator.sendBeacon(BASE + '/diag', new Blob([body], { type: 'application/json' }));
+					return;
+				}
+				void window.fetch(BASE + '/diag', {
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					body,
+					credentials: 'same-origin',
+					keepalive: true,
+				}).catch(() => void 0);
+			} catch { /* the log must never break the board */ }
+		}
+		function flushDiag() {
+			window.clearTimeout(diagTimer);
+			diagTimer = 0;
+			const rows = diagQueue.splice(0, 60);
+			if (rows.length > 0) diagSend(rows);
+		}
+		function diag(ev, fields) {
+			diagQueue.push({
+				ev,
+				...fields,
+			});
+			if (diagQueue.length >= 40) {
+				flushDiag();
+				return;
+			}
+			if (diagTimer === 0) diagTimer = window.setTimeout(flushDiag, 1200);
 		}
 
 		// ---------- small components ----------
@@ -624,6 +671,11 @@ window.__ModuleLoader__.load({
 				}, [prefs]);
 
 				React.useEffect(() => {
+					diag('panel.mount', {
+						rev: CLIENT_REV,
+						href: window.location.href.slice(0, 120),
+						nav: window.navigator.userAgent.slice(0, 80),
+					});
 					let stopped = false;
 					let timer = 0;
 					let controller = null;
@@ -632,12 +684,17 @@ window.__ModuleLoader__.load({
 						try {
 							const value = await api('meta', {}, controller.signal);
 							if (stopped) return;
+							diag('panel.meta.ok', { symbols: value.defaultWatchlist.length });
 							setMeta(value);
 							setMetaError(null);
 							setWatchlist((current) => (current === null || current.length === 0 ? value.defaultWatchlist : current));
 							setSelected((current) => current ?? value.defaultWatchlist[0] ?? null);
 						} catch (error) {
 							if (stopped) return;
+							diag('panel.meta.fail', {
+								message: String(error?.message ?? error),
+								status: error?.status ?? null,
+							});
 							setMetaError(String(error?.message ?? error));
 							timer = window.setTimeout(load, 5000);
 						}
@@ -670,6 +727,7 @@ window.__ModuleLoader__.load({
 					let stopped = false;
 					let timer = 0;
 					let controller = null;
+					let lastQuotesState = null;
 					const intervalMs = meta?.pollIntervalMs ?? 5000;
 					const tick = async () => {
 						if (window.document.hidden) {
@@ -684,9 +742,19 @@ window.__ModuleLoader__.load({
 							const next = new Map();
 							for (const quote of body.quotes) next.set(quote.symbol, quote);
 							setQuotes(next);
+							if (lastQuotesState !== 'ok') {
+								lastQuotesState = 'ok';
+								diag('panel.quotes.ok', { rows: next.size });
+							}
 							setRefresh({ state: 'ok', at: Date.now(), error: null });
 						} catch (error) {
-							if (!stopped) setRefresh((current) => ({ ...current, state: 'error', at: Date.now(), error: String(error) }));
+							if (!stopped) {
+								if (lastQuotesState !== 'error') {
+									lastQuotesState = 'error';
+									diag('panel.quotes.fail', { message: String(error?.message ?? error) });
+								}
+								setRefresh((current) => ({ ...current, state: 'error', at: Date.now(), error: String(error) }));
+							}
 						} finally {
 							controller = null;
 							if (!stopped) timer = window.setTimeout(tick, intervalMs);
@@ -716,9 +784,22 @@ window.__ModuleLoader__.load({
 					const controller = new AbortController();
 					setKline({ state: 'busy' });
 					api('kline', { symbol: selected, period, count: 320 }, controller.signal).then(
-						(body) => setKline({ state: 'ok', body }),
+						(body) => {
+							diag('panel.kline.ok', {
+								symbol: selected,
+								period,
+								bars: body.bars.length,
+								source: body.source,
+							});
+							setKline({ state: 'ok', body });
+						},
 						(error) => {
 							if (controller.signal.aborted) return;
+							diag('panel.kline.fail', {
+								symbol: selected,
+								period,
+								message: String(error?.message ?? error),
+							});
 							setKline({ state: 'error', error: String(error) });
 						},
 					);
@@ -733,9 +814,22 @@ window.__ModuleLoader__.load({
 					const controller = new AbortController();
 					setFin({ state: 'busy' });
 					api('financials', { symbol: selected }, controller.signal).then(
-						(body) => setFin({ state: 'ok', body }),
-						() => {
-							if (!controller.signal.aborted) setFin({ state: 'error' });
+						(body) => {
+							diag('panel.fin.ok', {
+								symbol: selected,
+								rows: body.rows.length,
+								unsupported: body.unsupported === true,
+							});
+							setFin({ state: 'ok', body });
+						},
+						(error) => {
+							if (!controller.signal.aborted) {
+								diag('panel.fin.fail', {
+									symbol: selected,
+									message: String(error?.message ?? error),
+								});
+								setFin({ state: 'error' });
+							}
 						},
 					);
 					return () => controller.abort();
@@ -746,6 +840,12 @@ window.__ModuleLoader__.load({
 					let stopped = false;
 					let timer = 0;
 					let controller = null;
+					let lastNewsState = null;
+					const noteNews = (state, fields) => {
+						if (lastNewsState === state) return;
+						lastNewsState = state;
+						diag(state === 'ok' ? 'panel.news.ok' : 'panel.news.fail', fields ?? {});
+					};
 					const load = async (keyword) => {
 						controller = new AbortController();
 						setNews((current) => ({ ...current, state: 'busy' }));
@@ -753,17 +853,33 @@ window.__ModuleLoader__.load({
 							const body = await api('news', { q: keyword, limit: 12 }, controller.signal);
 							if (stopped) return;
 							if (keyword !== '' && body.items.length === 0) throw new Error('empty for keyword');
+							noteNews('ok', {
+								count: body.items.length,
+								source: body.source,
+							});
 							setNews({ state: 'ok', items: body.items, source: body.source });
 						} catch {
 							if (!stopped && keyword !== '') {
 								// keyword produced no hits and both feeds failed the same way; fall back to the global feed
 								try {
 									const globalBody = await api('news', { limit: 12 }, controller.signal);
-									if (!stopped) setNews({ state: 'ok', items: globalBody.items, source: globalBody.source });
+									if (!stopped) {
+										noteNews('ok', {
+											count: globalBody.items.length,
+											source: globalBody.source,
+										});
+										setNews({ state: 'ok', items: globalBody.items, source: globalBody.source });
+									}
 								} catch {
-									if (!stopped) setNews((current) => ({ ...current, state: 'error' }));
+									if (!stopped) {
+										noteNews('error', null);
+										setNews((current) => ({ ...current, state: 'error' }));
+									}
 								}
-							} else if (!stopped) setNews((current) => ({ ...current, state: 'error' }));
+							} else if (!stopped) {
+								noteNews('error', null);
+								setNews((current) => ({ ...current, state: 'error' }));
+							}
 						} finally {
 							if (!stopped) timer = window.setTimeout(() => void load(keyword), 60000);
 						}
@@ -946,6 +1062,7 @@ window.__ModuleLoader__.load({
 			}
 			componentDidCatch(error) {
 				console.error(`${PKG}: panel crashed`, error);
+				diag('panel.crash', { message: String(error?.message ?? error) });
 			}
 			render() {
 				if (this.state.error === null) return this.props.children;
@@ -973,6 +1090,15 @@ window.__ModuleLoader__.load({
 				return h(ErrorBoundary, { prefix: t('crash.prefix'), hint: () => t('crash.hint') }, h(PanelInner));
 			}
 			ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: PANEL_ID }, Panel));
+			ctx.effect(() => {
+				const onHide = () => flushDiag();
+				window.addEventListener('pagehide', onHide);
+				return () => {
+					flushDiag();
+					window.removeEventListener('pagehide', onHide);
+				};
+			}, `${PKG}: diag flush`);
+			diag('client.apply', { rev: CLIENT_REV });
 			console.log(`${PKG}: client half applied`);
 		}
 
