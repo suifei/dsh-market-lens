@@ -57,6 +57,10 @@ window.__ModuleLoader__.load({
 			'day.date': '日期', 'day.change': '涨跌', 'day.changePct': '涨幅', 'day.amplitude': '振幅', 'metric.close': '收盘',
 			'metric.floatCap': '流通市值', 'metric.updated': '更新',
 			'advice.surge': '强势拉升', 'advice.rise': '稳步走高', 'advice.flat': '窄幅盘整', 'advice.drop': '正快速下降', 'advice.slump': '加速下挫',
+			'feed.notice': '公告', 'feed.posts': '评论', 'feed.pick': '选中一只股票后显示',
+			'day.hi20': '20日新高', 'day.lo20': '20日新低', 'day.volUp': '放量',
+			'board.title': '交易所大看板', 'board.short': '看板', 'board.split': '拖动调整列宽', 'board.pickHint': '点击查看该股全景',
+			'board.col.instrument': '名称', 'board.col.last': '现价', 'board.col.chg': '涨跌', 'board.col.chgPct': '涨幅', 'board.col.amount': '成交额',
 			'import.title': '批量导入自选', 'import.placeholder': '每行一个代码或名称，最多 50 条',
 			'import.confirm': '导入', 'import.cancel': '取消', 'import.toomany': '超出 50 条的部分已忽略',
 			'notice': '延迟公开行情 · 非 Level-2 · 只读无交易',
@@ -100,6 +104,10 @@ window.__ModuleLoader__.load({
 			'day.date': 'Date', 'day.change': 'Chg', 'day.changePct': 'Chg %', 'day.amplitude': 'Range', 'metric.close': 'Close',
 			'metric.floatCap': 'Float cap', 'metric.updated': 'Updated',
 			'advice.surge': 'surging', 'advice.rise': 'trending up', 'advice.flat': 'consolidating', 'advice.drop': 'falling fast', 'advice.slump': 'breaking down',
+			'feed.notice': 'Filings', 'feed.posts': 'Comments', 'feed.pick': 'Select a stock to load its feeds',
+			'day.hi20': '20-bar high', 'day.lo20': '20-bar low', 'day.volUp': 'Volume',
+			'board.title': 'Exchange LED board', 'board.short': 'Board', 'board.split': 'Drag to resize columns', 'board.pickHint': 'Click to open the full view',
+			'board.col.instrument': 'Instrument', 'board.col.last': 'Last', 'board.col.chg': 'Chg', 'board.col.chgPct': 'Chg %', 'board.col.amount': 'Turnover',
 			'import.title': 'Bulk import watchlist', 'import.placeholder': 'One code or name per line, up to 50',
 			'import.confirm': 'Import', 'import.cancel': 'Cancel', 'import.toomany': 'Lines beyond 50 ignored',
 			'notice': 'Delayed public data · not Level-2 · read-only, no trading',
@@ -159,6 +167,32 @@ window.__ModuleLoader__.load({
 .ml-idx span{font-size:14px;font-weight:600}
 .ml-idx i{font-size:11px;font-style:normal}
 .ml-main{display:grid;grid-template-columns:320px minmax(0,1fr) 350px;gap:10px;padding:10px 14px;flex:1;min-height:0}
+.ml-split{cursor:col-resize;background:var(--dsw-alias-border-l1);border-radius:3px;transition:background .15s;touch-action:none;margin:2px -7px}
+.ml-split:hover,.ml-split:active{background:var(--dsw-alias-brand-primary)}
+.ml-led{grid-column:1/-1;position:relative;background:#05080f;border:1px solid #12283f;border-radius:12px;display:flex;flex-direction:column;min-height:0;overflow:hidden;color:#d7e9ff;font-family:ui-monospace,'Cascadia Mono',Consolas,monospace;box-shadow:inset 0 0 60px rgba(10,40,80,.45)}
+.ml-led::after{content:'';position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(255,255,255,.03) 0 1px,transparent 1px 3px)}
+.ml-ticker{display:flex;gap:40px;padding:9px 12px;white-space:nowrap;overflow:hidden;border-bottom:1px solid #12283f;background:#03060b;flex:none;animation:mltape 45s linear infinite;width:max-content}
+.ml-ticker:hover{animation-play-state:paused}
+@keyframes mltape{to{transform:translateX(-50%)}}
+.ml-ticker span{font-size:14px;text-shadow:0 0 8px currentColor;letter-spacing:.5px}
+.ml-ledscroll{overflow-y:auto;min-height:0;flex:1}
+.ml-led table{width:100%;border-collapse:collapse;table-layout:auto}
+.ml-led thead th{position:sticky;top:0;background:#03060b;color:#4f7196;font-size:11px;font-weight:400;text-align:right;padding:7px 16px;border-bottom:1px solid #12283f;letter-spacing:2px;text-transform:uppercase}
+.ml-led thead th:first-child{text-align:left}
+.ml-led tbody tr{border-bottom:1px solid #0c1c2e;cursor:pointer}
+.ml-led tbody tr:hover{background:#0b1e33}
+.ml-led td{padding:11px 16px}
+.ml-led .nm b{font-size:17px;font-weight:600;letter-spacing:1px}
+.ml-led .nm code{display:block;font-size:11px;color:#4f7196}
+.ml-led .num{text-align:right;font-size:19px;font-variant-numeric:tabular-nums;text-shadow:0 0 10px currentColor}
+.ml-led .num.big{font-size:24px;font-weight:700;min-width:110px}
+.ml-led .up{color:var(--ml-up)}
+.ml-led .down{color:var(--ml-down)}
+.ml-led .ml-flat{color:#6b87a4}
+.ml-tabs{display:flex;gap:2px}
+.ml-tabs button{background:none;border:0;padding:5px 9px;border-radius:8px;font:inherit;font-size:12px;color:var(--dsw-alias-label-secondary);cursor:pointer}
+.ml-tabs button[aria-selected="true"]{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);font-weight:600}
+.ml-news-item .cmt{font-size:10px;color:var(--dsw-alias-label-secondary);white-space:nowrap}
 .ml-root:not([data-wide="1"]) .ml-main{grid-template-columns:minmax(0,1fr);display:flex;flex-direction:column;overflow-y:auto}
 .ml-root:not([data-wide="1"]) .ml-panelcol[data-col="chart"]{min-height:340px;flex:none}
 .ml-panelcol{display:flex;flex-direction:column;gap:10px;min-height:0;min-width:0}
@@ -317,7 +351,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.6.2';
+		const CLIENT_REV = '0.7.0';
 		const diagQueue = [];
 		let diagTimer = 0;
 		function diagSend(rows) {
@@ -1007,6 +1041,20 @@ window.__ModuleLoader__.load({
 				['day.amplitude', dayAmp === null ? '—' : `${fmtNum(dayAmp)}%`, ''],
 				['metric.volume', fmtBig(dayBar.v), ''],
 			];
+			// context tags: 20-bar extremes and volume expansion, read straight off the bars in hand
+			if (dayBar !== void 0 && picked !== null) {
+				const win = bars.slice(Math.max(0, picked - 19), picked + 1);
+				const cs = win.map((b) => b.c).filter((v) => v !== null);
+				if (dayBar.c !== null && cs.length >= 5) {
+					if (dayBar.c >= Math.max(...cs)) dayCells.push(['day.hi20', '⚑', 'up']);
+					else if (dayBar.c <= Math.min(...cs)) dayCells.push(['day.lo20', '⚑', 'down']);
+				}
+				const vs = win.map((b) => b.v).filter((v) => v !== null && v > 0);
+				if (dayBar.v !== null && vs.length >= 6) {
+					const base = vs.slice(0, -1).reduce((a, b) => a + b, 0) / (vs.length - 1);
+					if (dayBar.v > base * 2) dayCells.push(['day.volUp', `×${(dayBar.v / base).toFixed(1)}`, '']);
+				}
+			}
 			return h('div', { className: 'ml-chart' },
 				h('div', { className: 'ml-canvas-wrap', ref: wrapRef },
 					h('canvas', {
@@ -1220,18 +1268,28 @@ window.__ModuleLoader__.load({
 			return value.slice(11, 16);
 		}
 
-		function NewsCard({ news, t }) {
+		function NewsCard({ news, posts, tab, setTab, symbol, t }) {
+			const tabs = [['roll', t('news.title')], ['notice', t('feed.notice')], ['posts', t('feed.posts')]];
+			const list = tab === 'roll' ? news.items : tab === 'notice' ? posts.notice : posts.posts;
+			const busy = tab === 'roll' ? news.state === 'busy' && news.items.length === 0 : posts.state === 'busy';
 			return h('section', { className: 'ml-panel', style: { flex: 1, minHeight: 140 } },
 				h('header', null,
-					h('span', { className: 'ml-title' }, t('news.title')),
-					news.source === '' || news.source === void 0 ? null : h('span', null, news.source)),
-				news.state === 'busy' && news.items.length === 0 ? h('div', { className: 'ml-pad' }, t('news.loading'))
-					: news.items.length === 0 ? h('div', { className: 'ml-pad' }, t('news.empty'))
-						: h('div', { className: 'ml-news' },
-							news.items.map((item, index) => h('div', { className: 'ml-news-item', key: `${String(item.time)}|${index}` },
-								item.url === '' ? h('span', null, item.title)
-									: h('a', { href: item.url, target: '_blank', rel: 'noreferrer' }, item.title),
-								newsTimeText(item.time) === '' ? null : h('time', null, newsTimeText(item.time))))));
+					symbol === null ? h('span', { className: 'ml-title' }, t('news.title'))
+						: h('span', { className: 'ml-tabs', role: 'tablist' }, tabs.map(([id, label]) => h('button', {
+							key: id, type: 'button', role: 'tab', 'aria-selected': tab === id,
+							onClick: () => setTab(id),
+						}, label))),
+					tab === 'roll' && (news.source === '' || news.source === void 0) ? null
+						: h('span', null, tab === 'roll' ? news.source : posts.source ?? 'em')),
+				busy ? h('div', { className: 'ml-pad' }, t('news.loading'))
+					: symbol === null && tab !== 'roll' ? h('div', { className: 'ml-pad' }, t('feed.pick'))
+						: list.length === 0 ? h('div', { className: 'ml-pad' }, t('news.empty'))
+							: h('div', { className: 'ml-news' },
+								list.map((item, index) => h('div', { className: 'ml-news-item', key: `${String(item.time)}|${index}` },
+									item.url === '' ? h('span', null, item.title)
+										: h('a', { href: item.url, target: '_blank', rel: 'noreferrer' }, item.title),
+									item.comments === void 0 || item.comments === null || item.comments === 0 ? null : h('span', { className: 'cmt' }, `💬${String(item.comments)}`),
+									newsTimeText(item.time) === '' ? null : h('time', null, newsTimeText(item.time))))));
 		}
 
 		// ---------- panel ----------
@@ -1264,6 +1322,23 @@ window.__ModuleLoader__.load({
 				const [metaError, setMetaError] = React.useState(null);
 				const [fin, setFin] = React.useState(null);
 				const [news, setNews] = React.useState({ state: 'idle', items: [], source: '' });
+				const [feedTab, setFeedTab] = React.useState('roll');
+				const [posts, setPosts] = React.useState({ state: 'idle', notice: [], posts: [], news: [], source: '' });
+				React.useEffect(() => {
+					if (selected === null) return void 0;
+					const name = quotes.get(selected)?.name ?? '';
+					let dead = false;
+					setPosts((current) => ({ ...current, state: 'busy' }));
+					api('posts', { symbol: selected, name }).then((body) => {
+						if (!dead) setPosts({ state: 'ok', notice: body.notice ?? [], posts: body.posts ?? [], news: body.news ?? [], source: body.source ?? '' });
+					}, () => {
+						if (!dead) setPosts((current) => ({ ...current, state: 'error' }));
+					});
+					return () => {
+						dead = true;
+					};
+					// refetches when the selection changes; name reads the live quote once
+				}, [selected]);
 				const [alertsList, setAlertsList] = React.useState([]);
 				const [palOpen, setPalOpen] = React.useState(false);
 				React.useEffect(() => {
@@ -1638,6 +1713,31 @@ window.__ModuleLoader__.load({
 				const selectedQuote = selected === null ? void 0 : quotes.get(selected) ?? seenQuote(selected);
 				const showList = wide || view === 'list';
 				const showDetail = wide || view === 'detail';
+				const [cols, setCols] = React.useState(() => prefs.cols ?? { l: 320, r: 350 });
+				const [led, setLed] = React.useState(false);
+				function beginSplit(side) {
+					return (event) => {
+						event.preventDefault();
+						const startX = event.clientX;
+						const start = side === 'l' ? cols.l : cols.r;
+						let next = { ...cols };
+						const move = (ev) => {
+							const delta = ev.clientX - startX;
+							next = side === 'l'
+								? { ...cols, l: Math.max(260, Math.min(460, start + delta)) }
+								: { ...cols, r: Math.max(280, Math.min(560, start - delta)) };
+							setCols(next);
+						};
+						const up = () => {
+							window.document.removeEventListener('pointermove', move);
+							window.document.removeEventListener('pointerup', up);
+							setPrefs((current) => ({ ...current, cols: next }));
+							diag('panel.split', { side: side, l: next.l, r: next.r });
+						};
+						window.document.addEventListener('pointermove', move);
+						window.document.addEventListener('pointerup', up);
+					};
+				}
 
 				return h('div', { className: 'ml-root', ref: rootRef, 'data-wide': wide ? '1' : '0', 'data-pal': prefs.palette },
 					h('header', { className: 'ml-top' },
@@ -1663,6 +1763,10 @@ window.__ModuleLoader__.load({
 										h('code', { style: { color: 'var(--dsw-alias-label-secondary)' } }, item.symbol),
 									)),
 							) : null),
+						h('button', {
+							type: 'button', className: 'ml-btn', 'aria-pressed': led, title: t('board.title'),
+							onClick: () => setLed((current) => !current),
+						}, '▦ ' + t('board.short')),
 						h('span', { className: 'ml-palwrap', style: { position: 'relative' } },
 							h('button', {
 								type: 'button', className: 'ml-btn', title: t('toolbar.palette'), 'aria-expanded': palOpen,
@@ -1685,8 +1789,18 @@ window.__ModuleLoader__.load({
 					),
 					h(IndexBar, { indexBar: meta?.indexBar ?? [], quotes }),
 					metaError !== null ? h('div', { className: 'ml-errorbar' }, `${t('meta.error')}（${metaError}）`) : null,
-					h('div', { className: 'ml-main' },
-						showList ? h('div', { className: 'ml-panelcol', 'data-col': 'list' },
+					h('div', {
+						className: 'ml-main',
+						style: led === true ? { gridTemplateColumns: 'minmax(0,1fr)' } : wide ? { gridTemplateColumns: `${cols.l}px 5px minmax(0,1fr) 5px ${cols.r}px` } : void 0,
+					},
+					led === true ? h(LedBoard, {
+						rows: sorted, quotes, seenQuote, meta, t,
+						onPick: (symbol) => {
+							setSelected(symbol);
+							setLed(false);
+						},
+					}) : null,
+					led === true ? null : showList ? h('div', { className: 'ml-panelcol', 'data-col': 'list' },
 							h('section', { className: 'ml-panel', style: { flex: 1 } },
 								h('header', null,
 									h('span', { className: 'ml-title' }, t('list.title')),
@@ -1713,6 +1827,7 @@ window.__ModuleLoader__.load({
 											t,
 										})))),
 						) : null,
+						led === true || wide === false ? null : h('div', { className: 'ml-split', onPointerDown: beginSplit('l'), role: 'separator', 'aria-orientation': 'vertical', 'aria-label': t('board.split') }),
 						showDetail ? h('div', { className: 'ml-panelcol', 'data-col': 'chart' },
 							h('section', { className: 'ml-panel', style: { flex: 2 } },
 								h('header', null,
@@ -1732,6 +1847,7 @@ window.__ModuleLoader__.load({
 										h('button', { type: 'button', className: 'ml-btn', onClick: () => setKlineSeq((current) => current + 1) }, t('kline.retry')))
 										: h(KLineChart, { data: kline.body, showMa: prefs.showMa, hollow: PALETTES[prefs.palette]?.hollow === true, t }),
 							)) : null,
+						led === true || wide === false ? null : h('div', { className: 'ml-split', onPointerDown: beginSplit('r'), role: 'separator', 'aria-orientation': 'vertical', 'aria-label': t('board.split') }),
 						showDetail ? h('div', { className: 'ml-panelcol', 'data-col': 'detail' },
 							h('section', { className: 'ml-panel' },
 								h('header', null, h('span', { className: 'ml-title' }, t('detail.title'))),
@@ -1739,12 +1855,35 @@ window.__ModuleLoader__.load({
 									: h(Metrics, { quote: selectedQuote, t })),
 							h(AlertsCard, { alerts: alertsList, selected, quote: selectedQuote, onAdd: addAlert, onDelete: dropAlert, t }),
 							h(FinancialCard, { fin, t }),
-							h(NewsCard, { news, t }),
+							h(NewsCard, { news, posts, tab: feedTab, setTab: setFeedTab, symbol: selected, t }),
 						) : null),
 					importing ? h(ImportDialog, { onImport: importTokens, onClose: () => setImporting(false), t }) : null,
 				);
 			}
 			return Panel;
+		}
+
+		/** LED exchange board: dark glass panel, glowing quote rows, ticker tape on top. */
+		function LedBoard({ rows, quotes, seenQuote, meta, onPick, t }) {
+			const ticker = (meta?.indexBar ?? []).map((symbol) => quotes.get(symbol) ?? seenQuote(symbol)).filter((q) => q !== void 0);
+			const tape = ticker.length === 0 ? [] : [...ticker, ...ticker];
+			return h('div', { className: 'ml-led' },
+				tape.length === 0 ? null : h('div', { className: 'ml-ticker' },
+					tape.map((q, index) => h('span', { key: `${String(q.symbol)}|${String(index)}`, className: dirClass(q.changePct ?? 0) },
+						q.name ?? q.symbol, ' ', fmtNum(q.price, (q.price ?? 0) > 1000 ? 0 : 2), '  ', q.changePct === null || q.changePct === void 0 ? '—' : `${fmtSigned(q.changePct)}%`))),
+				h('div', { className: 'ml-ledscroll' }, h('table', null,
+					h('thead', null, h('tr', null,
+						h('th', null, t('board.col.instrument')), h('th', null, t('board.col.last')), h('th', null, t('board.col.chg')), h('th', null, t('board.col.chgPct')), h('th', null, t('board.col.amount')))),
+					h('tbody', null, rows.map((row) => {
+						const q = quotes.get(row.symbol) ?? seenQuote(row.symbol);
+						const pct = q?.changePct ?? null;
+						return h('tr', { key: row.symbol, className: dirClass(pct ?? 0), onClick: () => onPick(row.symbol), title: t('board.pickHint') },
+							h('td', { className: 'nm' }, h('b', null, q?.name ?? row.name), h('code', null, row.symbol)),
+							h('td', { className: 'num' }, q?.price === null || q?.price === void 0 ? '—' : fmtNum(q.price)),
+							h('td', { className: 'num' }, q?.change === null || q?.change === void 0 ? '—' : fmtSigned(q.change)),
+							h('td', { className: 'num big' }, pct === null || pct === void 0 ? '—' : `${fmtSigned(pct)}%`),
+							h('td', { className: 'num' }, q?.amount === null || q?.amount === void 0 ? '—' : fmtBig(q.amount)));
+					})))));
 		}
 
 		/** Keeps a render crash inside the board instead of blanking the slot. */

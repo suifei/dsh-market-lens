@@ -57,6 +57,7 @@ A 股 / 港股 / 美股的**只读**行情看板 DSH Web 插件。定位一句�
 | `GET /market-lens/kline` | `symbol, period=day|week|month, count=20–320` | `{ symbol, period, adjust, bars: Bar[], source }` |
 | `GET /market-lens/search` | `q`（1–50）, `limit≤30` | `{ items: [{symbol, name, market, kind}] }` |
 | `GET /market-lens/news` | `q?`（关键词，可空）, `limit≤30` | `{ items: [{title, url, time, source}], source }` |
+| `GET /market-lens/posts` | `symbol`（必填）, `name?`（新闻关键词） | `{ symbol, notice[], posts[{title,url,time,comments,reads}], news[], source }` — 公告(A股)/股吧评论(A·港)/个股新闻三源并行，单源失败置空，全空 502 |
 | `GET /market-lens/financials` | `symbol` | A 股：`{ rows: [{report, revenue, revenueYoY, netProfit, netProfitYoY, eps, bps}] }`；港/美：`{ unsupported: true }` |
 | `GET /market-lens/alerts` | `since`（事件游标） | `{ alerts, events, cursor }`；`POST` 新建规则或 `{action:'dismiss'}` 清未读；`DELETE ?id=` 删规则 |
 
@@ -106,6 +107,13 @@ A 股 / 港股 / 美股的**只读**行情看板 DSH Web 插件。定位一句�
 ## 横向滚动规范
 
 界面默认不出现横向滚动条。确需横向内容的区域（指数条、财报横表）统一用 `HScroll`：滚动条**悬停/聚焦才现身**（细圆角、跟随主题），两侧**渐隐边缘**提示还有内容（可滚状态实时更新），触屏 `pan-x` 原生拖动、`overscroll-behavior` 防串滚，`tabIndex` 支持键盘横滚。纵向滚动条全局统一为透明轨道 + 悬停显色的细圆角样式。
+
+## 看盘模式（0.7）
+
+- **三列分割条**：列表/K线/详情两缝可拖（260–460 / 280–560 px 限位），宽度写入 `ml.prefs.v1.cols`，窄模式隐藏分割条。
+- **LED 大看板**（工具栏 ▦）：交易所风格整屏板——深色玻璃底 + 扫描线叠层 + 等宽字发光数字，涨跌色仍走配色变量（规则 1）；顶部指数跑马灯（悬停暂停），行点击回落三列并选中该股。
+- **个股资讯区**：原"快讯"卡升级为三 Tab——**快讯**（全市场）/**公告**（东财公告，A 股）/**评论**（股吧热帖，A·港股，带回复数），公告与评论跟随当前选中股票，走 `/market-lens/posts` 聚合路由（三源并行、单源失败置空）。
+- **当日详情条增强**：点选 K 线后除 OHLC/额量外附**信号标签**——20 根内新高/新低、放量倍数（×n），全部由已在手的 K 线数据本地计算，不加请求。
 
 ## 价格提醒（宿主后台评估）
 
