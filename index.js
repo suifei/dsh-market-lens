@@ -167,7 +167,7 @@ export function apply(ctx, config) {
 		service,
 		diag,
 		alerts,
-		config: { ...config, version: '0.14.1' },
+		config: { ...config, version: '0.15.0' },
 	});
 
 	ctx.effect(() => {

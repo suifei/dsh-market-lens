@@ -60,7 +60,7 @@ window.__ModuleLoader__.load({
 			'advice.surge': '强势拉升', 'advice.rise': '稳步走高', 'advice.flat': '窄幅盘整', 'advice.drop': '正快速下降', 'advice.slump': '加速下挫',
 			'feed.notice': '公告', 'feed.posts': '评论', 'feed.pick': '选中一只股票后显示', 'feed.badge': '未读新公告',
 			'day.hi20': '20日新高', 'day.lo20': '20日新低', 'day.volUp': '放量',
-			'board.title': '证券大厅 · 自动轮播大屏', 'board.short': '证券大厅', 'board.tip': '自动轮播 · 悬停接管 · 点行回落', 'board.split': '拖动调整列宽', 'board.pickHint': '点击查看该股全景',
+			'board.title': '证券大厅 · 自动轮播大屏', 'board.short': '证券大厅', 'board.tip': '自动轮播 · 悬停接管 · 点行回落', 'toolbar.density': '点阵密度', 'density.std': '标准 16×16', 'density.tiny': '紧凑 8×8', 'board.split': '拖动调整列宽', 'board.pickHint': '点击查看该股全景',
 			'board.col.instrument': '名称', 'board.col.last': '现价', 'board.col.chg': '涨跌', 'board.col.chgPct': '涨幅', 'board.col.amount': '成交额',
 			'import.title': '批量导入自选', 'import.placeholder': '每行一个代码或名称，最多 50 条',
 			'import.confirm': '导入', 'import.cancel': '取消', 'import.toomany': '超出 50 条的部分已忽略',
@@ -107,7 +107,7 @@ window.__ModuleLoader__.load({
 			'advice.surge': 'surging', 'advice.rise': 'trending up', 'advice.flat': 'consolidating', 'advice.drop': 'falling fast', 'advice.slump': 'breaking down',
 			'feed.notice': 'Filings', 'feed.posts': 'Comments', 'feed.pick': 'Select a stock to load its feeds', 'feed.badge': 'unread filings',
 			'day.hi20': '20-bar high', 'day.lo20': '20-bar low', 'day.volUp': 'Volume',
-			'board.title': 'Exchange Hall — auto-rotating board', 'board.short': 'Exchange Hall', 'board.tip': 'Auto-rotation · hover takes over · click a row to return', 'board.split': 'Drag to resize columns', 'board.pickHint': 'Click to open the full view',
+			'board.title': 'Exchange Hall — auto-rotating board', 'board.short': 'Exchange Hall', 'board.tip': 'Auto-rotation · hover takes over · click a row to return', 'toolbar.density': 'Dot pitch', 'density.std': 'Standard 16x16', 'density.tiny': 'Compact 8x8', 'board.split': 'Drag to resize columns', 'board.pickHint': 'Click to open the full view',
 			'board.col.instrument': 'Instrument', 'board.col.last': 'Last', 'board.col.chg': 'Chg', 'board.col.chgPct': 'Chg %', 'board.col.amount': 'Turnover',
 			'import.title': 'Bulk import watchlist', 'import.placeholder': 'One code or name per line, up to 50',
 			'import.confirm': 'Import', 'import.cancel': 'Cancel', 'import.toomany': 'Lines beyond 50 ignored',
@@ -369,7 +369,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.14.1';
+		const CLIENT_REV = '0.15.0';
 		const diagQueue = [];
 		let diagTimer = 0;
 		// the host meta tells the real level; until then assume the shipped 'errors' default
@@ -1322,7 +1322,7 @@ window.__ModuleLoader__.load({
 				const [wide, setWide] = React.useState(() => (typeof document === 'undefined' ? true : document.documentElement.clientWidth >= 900));
 				const [meta, setMeta] = React.useState(null);
 				const [watchlist, setWatchlist] = React.useState(() => loadLs(LS_WATCH, null));
-				const [prefs, setPrefs] = React.useState(() => ({ pinned: [], ...loadLs(LS_PREFS, { palette: 'redup', filter: 'all', sort: 'default', showMa: true }) }));
+				const [prefs, setPrefs] = React.useState(() => ({ pinned: [], ...loadLs(LS_PREFS, { palette: 'redup', filter: 'all', sort: 'default', showMa: true, density: 'std' }) }));
 				const seenRef = React.useRef(loadLs(LS_SEEN, {}));
 				const seenQuote = (symbol) => {
 					const row = seenRef.current[symbol];
@@ -1848,6 +1848,15 @@ window.__ModuleLoader__.load({
 										setPalOpen(false);
 									},
 								}, h('i', null, h('s', { style: { background: pal.up } }), h('s', { style: { background: pal.down } })), t(`palette.${id}`)))) : null),
+						h('button', {
+							type: 'button', className: 'ml-btn ml-palbtn', 'aria-pressed': prefs.density === 'tiny',
+							title: `${t('toolbar.density')} · ${t(prefs.density === 'tiny' ? 'density.tiny' : 'density.std')}`,
+							onClick: () => setPrefs((current) => ({ ...current, density: current.density === 'tiny' ? 'std' : 'tiny' })),
+						}, h('svg', { width: 16, height: 16, viewBox: '0 0 16 16', 'aria-hidden': true },
+							Array.from({ length: (prefs.density === 'tiny' ? 4 : 2) ** 2 }, (_cell, i) => {
+								const side = prefs.density === 'tiny' ? 4 : 8;
+								return h('rect', { key: i, x: (i % (16 / side)) * side + 0.5, y: Math.floor(i / (16 / side)) * side + 0.5, width: side - 1, height: side - 1, fill: '#8fb3d9' });
+							}))),
 						h('button', { type: 'button', className: 'ml-btn', onClick: () => setImporting(true) }, t('toolbar.import')),
 						h('span', { className: 'ml-status', 'data-err': refresh.state === 'error' ? '1' : '0' },
 							refresh.state === 'busy' ? t('toolbar.refreshing') : refresh.state === 'error' ? t('toolbar.error') : refresh.at === 0 ? '' : new Date(refresh.at).toLocaleTimeString()),
@@ -1860,6 +1869,7 @@ window.__ModuleLoader__.load({
 					},
 					led === true ? h(LedBoard, {
 						rows: sorted, quotes, seenQuote, meta, t,
+						tiny: prefs.density === 'tiny',
 						ledUp: PALETTES[prefs.palette]?.up ?? PALETTES.redup.up,
 						ledDown: PALETTES[prefs.palette]?.down ?? PALETTES.redup.down,
 						getKline: (symbol) => api('kline', { symbol, period: 'day', count: 160 }),
@@ -1939,10 +1949,7 @@ window.__ModuleLoader__.load({
 		// adds the living parts: a scan band, random bulb chatter, and page wipes
 		// that kill and re-light bulbs cell by cell. No libraries, ~1 blit + a
 		// few hundred tiny fills per frame at 24fps.
-		const PITCH = 3;             // css px per bulb cell
-		const HEAD_H = 56;           // caption band (one 16-dot line + margins)
-		const ROW_H = 60;            // one quote row (16-dot glyphs + 4-dot gutter)
-		const CHART_H = 112;         // expansion chart strip at the bottom
+		const PITCH = 2;             // css px per bulb cell
 		const OFF_BG = '#05080f';
 		// UCDOS-style bitmap font (HZK16 + ASC16, 8178 glyphs) served by
 		// /market-lens/lampfont: one bitmap dot = exactly one bulb, no AA, razor
@@ -1970,24 +1977,30 @@ window.__ModuleLoader__.load({
 			}
 			return lampPromise;
 		}
-		const ledCharW = (ch) => ch.codePointAt(0) < 0x100 ? 9 : (LAMP.map[ch.codePointAt(0)] > 0 ? 17 : 9);
+		const ledCharW = (ch, tiny) => tiny ? 9 : (ch.codePointAt(0) < 0x100 ? 9 : 17);
 		/** dot-advance width of a string, in bulbs */
-		function ledTextW(text) {
+		function ledTextW(text, tiny) {
 			let w = 0;
-			for (const ch of text) w += ledCharW(ch);
+			for (const ch of text) w += ledCharW(ch, tiny);
 			return Math.max(0, w - 1);
 		}
-		function ledText(cx, x, y, text, color, rightAt) {
-			let px = rightAt === void 0 ? x : rightAt - ledTextW(text) * PITCH;
+		// std draws the cell as stored (16x16 Han / 8x16 ASCII); tiny folds the
+		// bitmap 2x2 (OR) down to 8x8 - the classic compact terminal cut
+		function ledText(cx, x, y, text, color, rightAt, tiny) {
+			let px = rightAt === void 0 ? x : rightAt - ledTextW(text, tiny) * PITCH;
 			cx.fillStyle = color;
 			for (const ch of text) {
 				const code = ch.codePointAt(0);
 				if (code < 0x100) {
 					const o = code * 16;
 					for (let row = 0; row < 16; row++) {
-						const bits = LAMP.asc[o + row];
+						let bits = LAMP.asc[o + row];
+						if (tiny === true) {
+							if ((row & 1) === 1) continue;
+							bits |= LAMP.asc[o + row + 1];
+						}
 						if (bits === 0) continue;
-						for (let bx = 0; bx < 8; bx++) if (((bits >> (7 - bx)) & 1) === 1) cx.fillRect(px + bx * PITCH, y + row * PITCH, PITCH, PITCH);
+						for (let bx = 0; bx < 8; bx++) if (((bits >> (7 - bx)) & 1) === 1) cx.fillRect(px + bx * PITCH, y + (tiny === true ? row >> 1 : row) * PITCH, PITCH, PITCH);
 					}
 					px += 9 * PITCH;
 					continue;
@@ -1995,12 +2008,21 @@ window.__ModuleLoader__.load({
 				const cell = code < 0x10000 ? LAMP.map[code] : 0;
 				if (cell > 0) {
 					const off = (cell - 1) * 32;
-					for (let row = 0; row < 16; row++) {
-						const bits = (LAMP.hz[off + row * 2] << 8) | LAMP.hz[off + row * 2 + 1];
-						if (bits === 0) continue;
-						for (let bx = 0; bx < 16; bx++) if (((bits >> (15 - bx)) & 1) === 1) cx.fillRect(px + bx * PITCH, y + row * PITCH, PITCH, PITCH);
+					if (tiny !== true) {
+						for (let row = 0; row < 16; row++) {
+							const bits = (LAMP.hz[off + row * 2] << 8) | LAMP.hz[off + row * 2 + 1];
+							if (bits === 0) continue;
+							for (let bx = 0; bx < 16; bx++) if (((bits >> (15 - bx)) & 1) === 1) cx.fillRect(px + bx * PITCH, y + row * PITCH, PITCH, PITCH);
+						}
+						px += 17 * PITCH;
+					} else {
+						for (let row = 0; row < 16; row += 2) {
+							const bits = ((LAMP.hz[off + row * 2] << 8) | LAMP.hz[off + row * 2 + 1])
+								| ((LAMP.hz[off + row * 2 + 2] << 8) | LAMP.hz[off + row * 2 + 3]);
+							for (let bx = 0; bx < 16; bx += 2) if ((((bits >> (15 - bx)) & 1) | ((bits >> (14 - bx)) & 1)) === 1) cx.fillRect(px + (bx >> 1) * PITCH, y + (row >> 1) * PITCH, PITCH, PITCH);
+						}
+						px += 9 * PITCH;
 					}
-					px += 17 * PITCH;
 				} else px += 9 * PITCH;
 			}
 		}
@@ -2076,7 +2098,12 @@ window.__ModuleLoader__.load({
 		 * clears the screen and the next page lights up. The lit row expands the
 		 * chart strip; hover pauses and grabs, click returns to the desk.
 		 */
-		function LedBoard({ rows, quotes, seenQuote, meta, onPick, getKline, ledUp, ledDown, t }) {
+		function LedBoard({ rows, quotes, seenQuote, meta, onPick, getKline, ledUp, ledDown, tiny, t }) {
+			// one 16x16 (std) or 8x8 (tiny) glyph line plus a gutter, in css px
+			const G = (tiny === true ? 8 : 16) * PITCH;
+			const HEAD_H = G + 8;
+			const ROW_H = G + 12;
+			const CHART_H = tiny === true ? 56 : 88;
 			const wrapRef = React.useRef(null);
 			const canvasRef = React.useRef(null);
 			const contentRef = React.useRef(null);
@@ -2154,9 +2181,9 @@ window.__ModuleLoader__.load({
 				x.fillStyle = '#000';
 				x.fillRect(0, 0, c.width, c.height);
 				const cols = [0.52, 0.68, 0.86, 0.995];
-				ledText(x, 8, 4, t('board.col.instrument'), '#3f618a');
+				ledText(x, 8, 4, t('board.col.instrument'), '#3f618a', void 0, tiny);
 				[t('board.col.last'), t('board.col.chg'), t('board.col.chgPct'), t('board.col.amount')].forEach((label, i) => {
-					ledText(x, 0, 4, label, '#3f618a', Math.floor(c.width * cols[i]) - 4);
+					ledText(x, 0, 4, label, '#3f618a', Math.floor(c.width * cols[i]) - 4, tiny);
 				});
 				view.forEach((row, i) => {
 					const top = HEAD_H + i * ROW_H;
@@ -2168,21 +2195,21 @@ window.__ModuleLoader__.load({
 					if (isLit) {
 						x.fillStyle = '#0e2c4c';
 						x.fillRect(0, top, c.width, ROW_H - 3);
-						ledText(x, 8, y, '>', '#ffd75e');
+						ledText(x, 8, y, '>', '#ffd75e', void 0, tiny);
 					}
 					const name = (q?.name ?? row.name ?? '').slice(0, 4);
-					const nameX = isLit ? 44 : 20;
-					ledText(x, nameX, y, name, isLit ? '#ffffff' : color);
+					const nameX = isLit ? 8 + 9 * PITCH + 8 : 20;
+					ledText(x, nameX, y, name, isLit ? '#ffffff' : color, void 0, tiny);
 					// code sits after the name in half width, same glyph line
-					ledText(x, nameX + (ledTextW(name) + 4) * PITCH, y, row.symbol, '#3f618a');
+					ledText(x, nameX + (ledTextW(name, tiny) + 4) * PITCH, y, row.symbol, '#3f618a', void 0, tiny);
 					const cells = [
 						q?.price === null || q?.price === void 0 ? '—' : fmtNum(q.price),
 						q?.change === null || q?.change === void 0 ? '—' : fmtSigned(q.change),
 						pct === null || pct === void 0 ? '—' : `${fmtSigned(pct)}%`,
-						q?.amount === null || q?.amount === void 0 ? '—' : fmtBig(q.amount, 0),
+						q?.amount === null || q?.amount === void 0 ? '—' : fmtBig(q.amount, 1),
 					];
 					cells.forEach((text, i2) => {
-						ledText(x, 0, y, text, i2 === 3 ? '#9fc4e8' : i2 === 2 ? color : isLit ? '#ffffff' : color, Math.floor(c.width * cols[i2]) - 4);
+						ledText(x, 0, y, text, i2 === 3 ? '#9fc4e8' : i2 === 2 ? color : isLit ? '#ffffff' : color, Math.floor(c.width * cols[i2]) - 4, tiny);
 					});
 				});
 				// chart strip for the lit row, grid-aligned so it samples cleanly
@@ -2192,6 +2219,8 @@ window.__ModuleLoader__.load({
 				const pts = bars.filter((b2) => b2.c !== null);
 				if (pts.length > 1) {
 					const nCols = Math.floor((c.width - 16) / PITCH);
+					const priceRows = Math.max(6, Math.floor((CHART_H - 16) * 0.62 / PITCH));
+					const volRows = Math.max(3, Math.floor((CHART_H - 16) * 0.30 / PITCH));
 					const lo = Math.min(...pts.map((b2) => b2.c));
 					const hi = Math.max(...pts.map((b2) => b2.c));
 					const span = hi - lo || 1;
@@ -2201,20 +2230,20 @@ window.__ModuleLoader__.load({
 					for (let col = 0; col < nCols; col++) {
 						const idx = Math.min(pts.length - 1, Math.round((col / nCols) * (pts.length - 1)));
 						const b2 = pts[idx];
-						const lvl = Math.max(1, Math.round(((b2.c - lo) / span) * ((CHART_H - 32) / PITCH)));
-						const vh = Math.max(1, Math.round((((b2.v ?? 0) / volMax) * 40) / PITCH));
+						const lvl = Math.max(1, Math.round(((b2.c - lo) / span) * priceRows));
+						const vh = Math.max(1, Math.round((((b2.v ?? 0) / volMax) * volRows)));
 						x.fillStyle = lineColor;
-						x.fillRect(8 + col * PITCH, cy0 + 4 + (CHART_H - 32) - lvl * PITCH, PITCH, PITCH);
+						x.fillRect(8 + col * PITCH, cy0 + 4 + priceRows * PITCH - lvl * PITCH, PITCH, PITCH);
 						x.globalAlpha = 0.42;
 						x.fillStyle = idx > 0 && b2.c < pts[idx - 1].c ? ledDown : ledUp;
 						for (let vk = 0; vk < vh; vk++) x.fillRect(8 + col * PITCH, cy0 + CHART_H - 4 - (vk + 1) * PITCH, PITCH, PITCH);
 						x.globalAlpha = 1;
 					}
 				} else {
-					ledText(x, 12, cy0 + (CHART_H - 16 * PITCH) / 2, 'LOADING', '#3f618a');
+					ledText(x, 12, cy0 + (CHART_H - G) / 2, 'LOADING', '#3f618a', void 0, tiny);
 				}
 				sceneRef.current = bakeLamps(c);
-			}, [size, view.length, page, lit, feedTick, quotes]);
+			}, [size, view.length, page, lit, feedTick, tiny, quotes]);
 			// rotation: one row every four seconds; a finished page queues a wipe
 			const rotRef = React.useRef(() => void 0);
 			rotRef.current = () => {
@@ -2256,7 +2285,7 @@ window.__ModuleLoader__.load({
 					scanY = (scanY + 1) % gh;
 					x.fillStyle = 'rgba(130,200,255,0.05)';
 					x.fillRect(0, scanY * PITCH, size.w, PITCH);
-					for (let k = 0; k < 90; k++) {
+					for (let k = 0; k < 150; k++) {
 						const bx = Math.floor(Math.random() * gw) * PITCH;
 						const by = Math.floor(Math.random() * gh) * PITCH;
 						x.fillStyle = k % 4 === 0 ? 'rgba(150,210,255,0.12)' : 'rgba(5,8,15,0.45)';
