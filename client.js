@@ -382,7 +382,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.30.1';
+		const CLIENT_REV = '0.30.2';
 		const diagQueue = [];
 		let diagTimer = 0;
 		// the host meta tells the real level; until then assume the shipped 'errors' default
@@ -2116,30 +2116,24 @@ window.__ModuleLoader__.load({
 		'  vec2 tp = vec2(ctr.x, mod(ctr.y - uBand.x + uScroll, uBand.z));',
 		'  vec3 lit = mix(tap5(uStatic, uPx.zw, ctr), tap5(uTape, uSzT, tp), inBand);',
 		'  float lum = max(lit.r, max(lit.g, lit.b));',
-		'  float breath = 0.94 + 0.06 * sin(uTime * 1.1);',
+		'  float breath = 0.97 + 0.03 * sin(uTime * 1.1);',
 		'  vec3 base = mix(vec3(0.016, 0.024, 0.043), vec3(0.05, 0.1, 0.17), mask);',
-		'  vec3 col = mix(base, lit * breath, mask * smoothstep(0.1, 0.3, lum));',
+		'  vec3 col = mix(base, lit * breath * 1.15, mask * smoothstep(0.06, 0.22, lum));',
 		'  vec2 bwn = vec2(wd.x, mod(wd.y - uBand.x + uScroll, uBand.z)) / uSzT;',
 		'  vec3 bleed = mix(texture2D(uStatic, wd / uPx.zw).rgb, texture2D(uTape, bwn).rgb, inBand);',
-		'  col += bleed * 0.16;',
-		'  float ca = 0.002 + 0.010 * r2;',
-		'  vec2 wR = wd + (wd - uPx.zw * 0.5) * ca;',
-		'  float inBR = step(uBand.x, wR.y) * step(wR.y, uBand.x + uBand.y);',
-		'  vec2 tpR = vec2(wR.x, mod(wR.y - uBand.x + uScroll, uBand.z));',
-		'  float red = mix(texture2D(uStatic, wR / uPx.zw).r, texture2D(uTape, tpR / uSzT).r, inBR);',
-		'  col.r = mix(col.r, red, 0.55);',
+		'  col += bleed * 0.18;',
 		'  float hh = fract(sin(dot(cell + vec2(floor(uTime * 3.0) * 17.0, floor(uTime * 2.0) * 31.0), vec2(127.1, 311.7))) * 43758.545);',
 		'  col *= mix(0.93, 1.05, hh);',
 		'  col *= mix(1.0, 0.15, step(hh, 0.002));',
 		'  col *= mix(1.0, 1.5, step(0.9978, hh));',
 		'  float wave = 0.5 + 0.5 * sin(cell.y * 0.35 - uTime * 1.7);',
-		'  col *= 0.985 + 0.015 * wave;',
+		'  col *= 0.995 + 0.005 * wave;',
 		'  float sy = fract(uTime * 0.07) * (uPx.w + 240.0) - 120.0;',
 		'  col += vec3(0.05, 0.085, 0.12) * exp(-pow((w.y - sy) * 0.018, 2.0)) * (0.4 + 0.6 * mask);',
 		'  float refl = 0.5 + 0.5 * sin(dot(wd, vec2(0.9, 1.4)) - uTime * 0.31);',
 		'  col += vec3(0.10, 0.14, 0.20) * smoothstep(0.98, 1.0, refl) * 0.35;',
 		'  vec2 vq = w / uPx.zw - 0.5;',
-		'  col *= 1.0 - dot(vq, vq) * 0.62;',
+		'  col *= 1.0 - dot(vq, vq) * 0.45;',
 		'  gl_FragColor = vec4(min(col, vec3(1.0)), 1.0);',
 		'}',
 	].join('\n');
