@@ -1,8 +1,9 @@
 # 寰镜 MarketLens bundle patch: mounts the Host half.
 # The Client half is discovered from this package's `dsh.client` declaration.
-# diagLevel: 发布口径 'errors'（只留崩溃/失败行）；开发机调测改 'full' 全量，
-# 完全静音用 'off'。普通使用者删掉这一行即可回到默认。
+# diagLevel: 发布口径以包内默认 'errors'（只留崩溃/失败行）为准；本行是**开发机现场值**
+# 'full' 全量（panel.led.bake / panel.led.geo 性能线只在 full 下落盘，巡检依赖它们）。
+# 普通使用者删掉这一行即可回到默认。改本行后需重启宿主生效。
 - insert:
     - id: market-lens
       name: '@suifei/dsh-market-lens'
-      config: { diagLevel: errors }
+      config: { diagLevel: full }
