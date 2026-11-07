@@ -51,6 +51,8 @@ export const Config = z.object({
 	diagLogMaxBytes: z.number().step(1).min(65536).max(16777216).default(1048576),
 	// global log switch: 'off' silent, 'errors' crash/fail rows only (shipped default), 'full' everything (development)
 	diagLevel: z.string().default('errors'),
+	// LED hall tape scroll speed in wall px per second (0 = freeze the tape)
+	scrollVpx: z.number().step(1).min(0).max(160).default(28),
 });
 
 const READ_ONLY_NOTE = ' Read-only delayed market data (not Level-2); never trades.';
@@ -167,7 +169,7 @@ export function apply(ctx, config) {
 		service,
 		diag,
 		alerts,
-		config: { ...config, version: '0.33.0' },
+		config: { ...config, version: '0.34.0' },
 	});
 
 	ctx.effect(() => {

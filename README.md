@@ -114,7 +114,7 @@ DSH 桌面版/Web 版也可直接在「插件管理」里按包名安装（bundl
 
 ## 配置（`cordis.patch.yml` 行内 `config`）
 
-`pollIntervalMs 5000 · quoteTtlMs 5000 · klineTtlMs 60000 · searchTtlMs 300000 · newsTtlMs 60000 · finTtlMs 21600000 · upstreamTimeoutMs 6000 · maxQuoteSymbols ≤200 · maxKlineCount ≤320 · routePath /market-lens · diagLevel errors`
+`pollIntervalMs 5000 · quoteTtlMs 5000 · klineTtlMs 60000 · searchTtlMs 300000 · newsTtlMs 60000 · finTtlMs 21600000 · upstreamTimeoutMs 6000 · maxQuoteSymbols ≤200 · maxKlineCount ≤320 · routePath /market-lens · diagLevel errors · scrollVpx 28（大厅行情带滚动速度，单位墙像素/秒；0=冻结，上限 160）`
 
 ## 诊断日志（自监控闭环，**全局开关**）
 

@@ -382,7 +382,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.33.0';
+		const CLIENT_REV = '0.34.0';
 		const diagQueue = [];
 		let diagTimer = 0;
 		// the host meta tells the real level; until then assume the shipped 'errors' default
@@ -1733,7 +1733,11 @@ window.__ModuleLoader__.load({
 							if (!stopped) timer = window.setTimeout(() => void load(keyword), newsFailRef.current >= 3 ? 300000 : 60000);
 						}
 					};
-					void load(selectedName === selected ? '' : selectedName);
+					// the backoff also gates the first fetch: a fresh mount (symbol switch)
+					// must not bypass the 5-minute cooldown while the upstream is down
+					const firstKeyword = selectedName === selected ? '' : selectedName;
+					if (newsFailRef.current >= 3) timer = window.setTimeout(() => void load(firstKeyword), 300000);
+					else void load(firstKeyword);
 					return () => {
 						stopped = true;
 						window.clearTimeout(timer);
@@ -1920,6 +1924,7 @@ window.__ModuleLoader__.load({
 					},
 					led === true ? h(LedBoard, {
 						rows: sorted, quotes, seenQuote, meta, t,
+						scrollVpx: meta?.scrollVpx,
 						tiny: prefs.density === 'tiny',
 						ledUp: PALETTES[prefs.palette]?.up ?? PALETTES.redup.up,
 						ledDown: PALETTES[prefs.palette]?.down ?? PALETTES.redup.down,
@@ -2088,7 +2093,7 @@ window.__ModuleLoader__.load({
 			}
 		}
 		// ---------- GPU wall compositor: bake once, post-fx every frame ----------
-		const SCROLL_VPX = 28; // wall px/s (~8 lamp rows/s): uniform scroll, smooth and cheap
+		const SCROLL_DEFAULT = 28; // wall px/s (~8 lamp rows/s) when the host does not configure scrollVpx
 		const VERT_SRC = 'attribute vec2 aPos; void main() { gl_Position = vec4(aPos, 0.0, 1.0); }';
 		const FRAG_SRC = [
 		'precision highp float;',
@@ -2322,7 +2327,7 @@ window.__ModuleLoader__.load({
 			return { w: X(C), h: X(env.hC), prims, clip: { y: X(RTOP), h: Math.max(1, X(bandH)) }, tape: { y: X(RTOP), h: Math.max(1, X(pitchC * env.rows.length)) } };
 		}
 
-		function LedBoard({ rows, quotes, seenQuote, meta, onPick, getKline, ledUp, ledDown, tiny, t }) {
+		function LedBoard({ rows, quotes, seenQuote, meta, onPick, getKline, ledUp, ledDown, tiny, t, scrollVpx }) {
 			// fixed-spec wall: 800 x 450 bulb cells live off-screen; layout
 			// constants (ledPlan) sit on a 960-cell basis so this matrix shows
 			// the full five-zone master board, and the baked picture is scaled
@@ -2353,6 +2358,8 @@ window.__ModuleLoader__.load({
 			const [lit, setLit] = React.useState(0);
 			const [paused, setPaused] = React.useState(false);
 			pausedRef.current = paused === true;
+			// config knob: 0 freezes the tape, otherwise wall px per second
+			if (typeof scrollVpx !== 'number') scrollVpx = SCROLL_DEFAULT;
 			const [feedTick, setFeedTick] = React.useState(0);
 			const HROWS = WALL_ROWS;
 			// seamless scroll: the window always holds nWin rows cut from the doubled
@@ -2399,7 +2406,7 @@ window.__ModuleLoader__.load({
 			// report the wall geometry, so live row/col counts and the display
 			// scale can be read straight out of the diag log
 			React.useEffect(() => {
-				diag('panel.led.geo', { wall: `${String(WALL_COLS)}x${String(WALL_ROWS)}`, pitch: pitchC0, winRows: Math.min(rows.length, winN), engine: 'webgl2', scroll: `${String(SCROLL_VPX)}px/s smooth`, disp: size.w === 0 ? 'pending' : `${String(size.w)}x${String(size.h)} @${(Math.min(size.w / WALL_W_PX, size.h / WALL_H_PX)).toFixed(3)}x` });
+				diag('panel.led.geo', { wall: `${String(WALL_COLS)}x${String(WALL_ROWS)}`, pitch: pitchC0, winRows: Math.min(rows.length, winN), engine: 'webgl2', scroll: `${String(scrollVpx)}px/s smooth`, disp: size.w === 0 ? 'pending' : `${String(size.w)}x${String(size.h)} @${(Math.min(size.w / WALL_W_PX, size.h / WALL_H_PX)).toFixed(3)}x` });
 			}, [Math.min(rows.length, winN), size]);
 			// one canvas pixel per css pixel, no devicePixelRatio games: the
 			// browser never resamples the wall, so bulbs cannot shimmer or spill
@@ -2601,7 +2608,7 @@ window.__ModuleLoader__.load({
 					raf = window.requestAnimationFrame(step);
 					const dt = Math.min(0.25, (ts - last) / 1000);
 					last = ts;
-					if (pausedRef.current !== true) scrollPxRef.current += SCROLL_VPX * dt;
+					if (pausedRef.current !== true) scrollPxRef.current += scrollVpx * dt;
 					const gp = geoPlanRef.current;
 					const sC = staticRef.current;
 					const tC = tapeCvRef.current;
