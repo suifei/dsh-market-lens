@@ -382,7 +382,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.32.0';
+		const CLIENT_REV = '0.32.1';
 		const diagQueue = [];
 		let diagTimer = 0;
 		// the host meta tells the real level; until then assume the shipped 'errors' default
@@ -1680,12 +1680,12 @@ window.__ModuleLoader__.load({
 				}, [selected]);
 
 				const selectedName = quotes.get(selected ?? '')?.name ?? '';
+				const newsFailRef = React.useRef(0); // streak survives symbol switches so the backoff holds
 				React.useEffect(() => {
 					let stopped = false;
 					let timer = 0;
 					let controller = null;
 					let lastNewsState = null;
-					let failStreak = 0;
 					const noteNews = (state, fields) => {
 						if (lastNewsState === state) return;
 						lastNewsState = state;
@@ -1702,7 +1702,7 @@ window.__ModuleLoader__.load({
 								count: body.items.length,
 								source: body.source,
 							});
-							failStreak = 0;
+							newsFailRef.current = 0;
 							setNews({ state: 'ok', items: body.items, source: body.source });
 						} catch {
 							if (!stopped && keyword !== '') {
@@ -1714,23 +1714,23 @@ window.__ModuleLoader__.load({
 											count: globalBody.items.length,
 											source: globalBody.source,
 										});
-										failStreak = 0;
+										newsFailRef.current = 0;
 										setNews({ state: 'ok', items: globalBody.items, source: globalBody.source });
 									}
 								} catch {
 									if (!stopped) {
-										failStreak++;
+										newsFailRef.current++;
 										noteNews('error', null);
 										setNews((current) => ({ ...current, state: 'error' }));
 									}
 								}
 							} else if (!stopped) {
-								failStreak++;
+								newsFailRef.current++;
 								noteNews('error', null);
 								setNews((current) => ({ ...current, state: 'error' }));
 							}
 						} finally {
-							if (!stopped) timer = window.setTimeout(() => void load(keyword), failStreak >= 3 ? 300000 : 60000);
+							if (!stopped) timer = window.setTimeout(() => void load(keyword), newsFailRef.current >= 3 ? 300000 : 60000);
 						}
 					};
 					void load(selectedName === selected ? '' : selectedName);
