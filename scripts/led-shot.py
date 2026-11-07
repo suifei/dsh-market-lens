@@ -139,11 +139,15 @@ def audit(plan):
 
 
 def main():
+    global PITCH, BULB
     out = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "shots"
     asc, hz, cmap = load_lamp()
     total = 0
     for js in sorted(out.glob("plan-*.json")):
         plan = json.loads(js.read_text(encoding="utf-8"))
+        lat = plan.get("lattice") or {}
+        PITCH = float(lat.get("P", 3.5))
+        BULB = int(lat.get("bulb", 3))
         plan["w"] = int(round(plan["w"]))
         plan["h"] = int(round(plan["h"]))
         for p in plan["prims"]:

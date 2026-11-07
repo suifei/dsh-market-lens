@@ -88,9 +88,9 @@ const rowsAll = MOCK.map((m) => {
 });
 const side = MOCK.map((m) => ({ name: m[0].slice(0, 4), pct: m[8], pctF: m[6] })).sort((a, b) => b.pct - a.pct);
 
-// container widths (css px) to mock: the wall derives its geometry from them
-for (const CW of [1440, 1640, 1920, 2400, 3360]) {
-	const P = 3.5; // css px per bulb cell (3px bulb + 0.5px seam)
+// [container width, bulb zoom] mocks: the wall derives its geometry from them
+for (const [CW, Z] of [[1440, 1], [1640, 1], [1920, 1], [2400, 1], [3360, 1], [1640, 2], [2400, 2], [3360, 2], [3360, 4]]) {
+	const P = 3.5 * Z; // css px per bulb cell (3z px bulb + 0.5z px seam)
 	const cols = Math.max(80, Math.floor(CW / P));
 	const G = 16; // cells; tiny walls are mocked at std
 	const TH = G + 3;
@@ -102,7 +102,7 @@ for (const CW of [1440, 1640, 1920, 2400, 3360]) {
 	const rows = rowsAll.slice(0, pageSize);
 	const pitchC = Math.max(G + 6, Math.floor((HROWS - RTOP - CHART_C - FH) / rows.length));
 	const hC = RTOP + pitchC * rows.length + CHART_C + FH;
-	const title = '寰镜证券行情总屏';
+	const title = cols >= 200 ? '寰镜证券行情总屏' : '寰镜';
 	const wC = (s) => Array.from(String(s)).reduce((acc, ch2) => acc + (ch2.charCodeAt(0) > 255 ? 17 : 9), 0);
 	const plan = ledPlan({
 		P, cols, hC, tiny: false, pitchC, chartC: CHART_C,
@@ -120,9 +120,10 @@ for (const CW of [1440, 1640, 1920, 2400, 3360]) {
 		L: (k) => L[k] ?? k,
 		colLabels: [L['board.col.prevClose'], L['board.col.high'], L['board.col.low'], L['board.col.last'], L['board.col.chgPct'], L['board.col.amount']],
 		rows, side, lit: 1, chart,
-		footL: '支数:13  涨 6  跌 7  平 0',
+		footL: cols < 340 ? '涨 6  跌 7' : '支数:13  涨 6  跌 7  平 0',
 		footR: '总额 1339.5亿',
 	});
-	await writeFile(join(outDir, `plan-${String(CW)}.json`), JSON.stringify(plan));
-	console.log(`plan ${String(cols)}x${String(hC)} cells (container ${String(CW)}): ${String(plan.prims.length)} prims, ${String(plan.w)}x${String(plan.h)}px`);
+	plan.lattice = { P, bulb: 3 * Z };
+	await writeFile(join(outDir, `plan-${String(CW)}x${String(Z)}.json`), JSON.stringify(plan));
+	console.log(`plan ${String(cols)}x${String(hC)} cells @${String(Z)}x (container ${String(CW)}): ${String(plan.prims.length)} prims, ${String(plan.w)}x${String(plan.h)}px`);
 }
