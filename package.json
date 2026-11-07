@@ -1,6 +1,6 @@
 {
   "name": "@suifei/dsh-market-lens",
-  "version": "0.27.0",
+  "version": "0.27.1",
   "publishConfig": {
     "access": "public"
   },
@@ -40,10 +40,12 @@
   "scripts": {
     "test": "node --test test/"
   },
-  "peerDependencies": {
-    "@deepseek-ai/cordis": "~4.1.0",
+  "dependencies": {
     "@deepseek-ai/dsh-tools": "0.2.2-rc.1",
     "@deepseek-ai/schemastery": "~3.19.0"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "~4.1.0"
   },
   "dsh": {
     "bundle": {
