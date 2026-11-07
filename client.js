@@ -125,6 +125,7 @@ window.__ModuleLoader__.load({
 .ml-palmenu{position:absolute;top:34px;right:8px;z-index:20;background:var(--dsw-alias-bg-overlay);border:1px solid var(--dsw-alias-border-l2);border-radius:10px;padding:4px;display:flex;flex-direction:column;box-shadow:0 6px 24px rgba(0,0,0,.28)}
 .ml-palmenu button{display:flex;align-items:center;gap:8px;padding:6px 10px;background:none;border:0;border-radius:8px;color:var(--dsw-alias-label-primary);font-size:12px;cursor:pointer;white-space:nowrap}
 .ml-palmenu button:hover{background:var(--dsw-alias-bg-layer-2)}
+.ml-palmenu button[aria-pressed='true']{background:var(--dsw-alias-bg-layer-2);font-weight:700}
 .ml-palmenu i{display:inline-flex;gap:2px}
 .ml-palmenu i s{width:10px;height:10px;border-radius:3px;display:block}
 .ml-daybar{display:flex;flex-wrap:wrap;gap:2px 14px;padding:5px 10px;border-top:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);font-size:11px;flex:none}
@@ -381,7 +382,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.24.0';
+		const CLIENT_REV = '0.25.0';
 		const diagQueue = [];
 		let diagTimer = 0;
 		// the host meta tells the real level; until then assume the shipped 'errors' default
@@ -1361,7 +1362,7 @@ window.__ModuleLoader__.load({
 				const [wide, setWide] = React.useState(() => (typeof document === 'undefined' ? true : document.documentElement.clientWidth >= 900));
 				const [meta, setMeta] = React.useState(null);
 				const [watchlist, setWatchlist] = React.useState(() => loadLs(LS_WATCH, null));
-				const [prefs, setPrefs] = React.useState(() => ({ pinned: [], ...loadLs(LS_PREFS, { palette: 'redup', filter: 'all', sort: 'default', showMa: true, density: 'std', zoom: 1 }) }));
+				const [prefs, setPrefs] = React.useState(() => ({ pinned: [], ...loadLs(LS_PREFS, { palette: 'redup', filter: 'all', sort: 'default', showMa: true, density: 'std', zoom: 'x1' }) }));
 				const seenRef = React.useRef(loadLs(LS_SEEN, {}));
 				const seenQuote = (symbol) => {
 					const row = seenRef.current[symbol];
@@ -1435,6 +1436,7 @@ window.__ModuleLoader__.load({
 				};
 				const [alertsList, setAlertsList] = React.useState([]);
 				const [palOpen, setPalOpen] = React.useState(false);
+				const [zOpen, setZOpen] = React.useState(false);
 				React.useEffect(() => {
 					if (palOpen === false) return void 0;
 					const onDoc = (event) => {
@@ -1896,16 +1898,27 @@ window.__ModuleLoader__.load({
 								const side = prefs.density === 'tiny' ? 4 : 8;
 								return h('rect', { key: i, x: (i % (16 / side)) * side + 0.5, y: Math.floor(i / (16 / side)) * side + 0.5, width: side - 1, height: side - 1, fill: '#8fb3d9' });
 							}))),
-						h('button', {
-							type: 'button', className: 'ml-btn ml-palbtn ml-zoombtn', 'aria-pressed': (prefs.zoom ?? 1) !== 1,
-							title: `${t('toolbar.zoom')} · ${String(prefs.zoom ?? 1)}×`,
-							onClick: () => setPrefs((current) => ({ ...current, zoom: ((current.zoom ?? 1) % 4) + 1 })),
-						}, h('svg', { width: 16, height: 16, viewBox: '0 0 16 16', 'aria-hidden': true },
-							(() => {
-								const z = prefs.zoom === 2 || prefs.zoom === 3 || prefs.zoom === 4 ? prefs.zoom : 1;
-								const cell = 16 / z;
-								return Array.from({ length: z * z }, (_cell, i) => h('rect', { key: i, x: (i % z) * cell + cell * 0.18, y: Math.floor(i / z) * cell + cell * 0.18, width: cell * 0.64, height: cell * 0.64, rx: cell * 0.32, fill: '#ffd75e' }));
-							})())),
+						h('span', { className: 'ml-palwrap', style: { position: 'relative' } },
+							h('button', {
+								type: 'button', className: 'ml-btn ml-palbtn ml-zoombtn', 'aria-expanded': zOpen,
+								'aria-label': `${t('toolbar.zoom')} · ${(ZOOMS.find(([k]) => zoomKey(prefs.zoom) === k) ?? ZOOMS[3])[2]}`,
+								title: `${t('toolbar.zoom')} · ${(ZOOMS.find(([k]) => zoomKey(prefs.zoom) === k) ?? ZOOMS[3])[2]}`,
+								onClick: () => setZOpen((current) => !current),
+							}, h('svg', { width: 16, height: 16, viewBox: '0 0 16 16', 'aria-hidden': true },
+								(() => {
+									const z = ZOOM_VAL[zoomKey(prefs.zoom)] ?? 1;
+									const n = z >= 1 ? z : Math.min(4, Math.max(2, Math.round(1 / z)));
+									const cell = 16 / n;
+									return Array.from({ length: n * n }, (_cell, i) => h('rect', { key: i, x: (i % n) * cell + cell * 0.18, y: Math.floor(i / n) * cell + cell * 0.18, width: cell * 0.64, height: cell * 0.64, rx: cell * 0.32, fill: '#ffd75e' }));
+								})())),
+							zOpen ? h('div', { className: 'ml-palmenu' },
+								ZOOMS.map(([k, _v, label]) => h('button', {
+									key: k, type: 'button', 'aria-pressed': zoomKey(prefs.zoom) === k,
+									onClick: () => {
+										setPrefs((current) => ({ ...current, zoom: k }));
+										setZOpen(false);
+									},
+								}, label))) : null),
 						h('button', { type: 'button', className: 'ml-btn', onClick: () => setImporting(true) }, t('toolbar.import')),
 						h('span', { className: 'ml-status', 'data-err': refresh.state === 'error' ? '1' : '0' },
 							refresh.state === 'busy' ? t('toolbar.refreshing') : refresh.state === 'error' ? t('toolbar.error') : refresh.at === 0 ? '' : new Date(refresh.at).toLocaleTimeString()),
@@ -2004,10 +2017,14 @@ window.__ModuleLoader__.load({
 		let BULB = 3;             // bulb footprint in css px (lit and off discs)
 		let PSZ = 4;              // sprite sheet size (integer canvas)
 		const LPX = (v) => Math.round(v); // cell px snap: paint and sampling share this lattice
-		// zoom tiers rescale the whole lattice by an integer factor: a bulb is
-		// then 3z x 3z px with a 0.5z px seam, exactly the 1x wall photographed
-		// closer - the dot font and every primitive stay cell-exact
-		const setLattice = (z) => { PITCH = 3.5 * z; BULB = 3 * z; PSZ = Math.ceil(PITCH); spriteCache.clear(); haloCache.clear(); };
+		// zoom tiers rescale the whole lattice: >1 photographs the 1x wall closer
+		// (bulb 3z x 3z px), <1 sits further back (bulbs never drop under 1 css
+		// px and the pitch under 1, so shrink tops out at ~1/3 in practice).
+		// prefs store the tier key, not the float.
+		const ZOOMS = [['q4', 0.25, '1/4×'], ['t3', 1 / 3, '1/3×'], ['half', 0.5, '1/2×'], ['x1', 1, '1×'], ['x2', 2, '2×'], ['x3', 3, '3×'], ['x4', 4, '4×']];
+		const ZOOM_VAL = Object.fromEntries(ZOOMS.map(([k, v]) => [k, v]));
+		const zoomKey = (stored) => (typeof stored === 'number' ? `x${String(Math.min(4, Math.max(1, Math.round(stored))))}` : (typeof stored === 'string' && stored in ZOOM_VAL ? stored : 'x1'));
+		const setLattice = (z) => { PITCH = Math.max(1, PITCH0 * z); BULB = Math.max(1, Math.floor(3 * z)); PSZ = Math.max(2, Math.ceil(PITCH)); spriteCache.clear(); haloCache.clear(); };
 		const OFF_BG = '#05080f';
 		// UCDOS-style bitmap font (HZK16 + ASC16, 8178 glyphs) served by
 		// /market-lens/lampfont: one bitmap dot = exactly one bulb, no AA, razor
@@ -2148,12 +2165,21 @@ window.__ModuleLoader__.load({
 					let r = 0;
 					let g = 0;
 					let b = 0;
-					for (let dy = 0; dy < BULB; dy++) {
-						for (let dx = 0; dx < BULB; dx++) {
-							const i = ((gy + dy) * content.width + gx + dx) * 4;
-							r += d[i];
-							g += d[i + 1];
-							b += d[i + 2];
+					if (BULB === 1) {
+						// shrink tiers: a one-pixel bulb, sampling more than its
+						// footprint would only bleed neighbours into it anyway
+						const i = (gy * content.width + gx) * 4;
+						r = d[i];
+						g = d[i + 1];
+						b = d[i + 2];
+					} else {
+						for (let dy = 0; dy < BULB; dy++) {
+							for (let dx = 0; dx < BULB; dx++) {
+								const i = ((gy + dy) * content.width + gx + dx) * 4;
+								r += d[i];
+								g += d[i + 1];
+								b += d[i + 2];
+							}
 						}
 					}
 					const lum = Math.max(r, g, b) / (BULB * BULB * 255);
@@ -2335,13 +2361,12 @@ window.__ModuleLoader__.load({
 		}
 
 		function LedBoard({ rows, quotes, seenQuote, meta, onPick, getKline, ledUp, ledDown, tiny, t, zoom }) {
-			// integer bulb zoom (1x..4x): the wall lattice is set before any
-			// geometry is computed, so cells, sprites and sampling all move together.
-			// A zoom whose minimum legible wall (220 columns) would not fit the
-			// container steps down a tier, so 4x is a big-screen option.
-			const zReq = zoom === 2 || zoom === 3 || zoom === 4 ? zoom : 1;
+			// zoom tier key -> factor; an upscale whose minimum legible wall
+			// (220 columns) would not fit the container steps down a tier, so 4x
+			// is a big-screen option; shrink tiers only ever fit (more cells)
+			const zReq = ZOOM_VAL[zoomKey(zoom)] ?? 1;
 			const zMax = Math.max(1, Math.floor(size.w / (PITCH0 * 220)));
-			const Z = Math.min(zReq, zMax);
+			const Z = zReq > 1 ? Math.min(zReq, zMax) : zReq;
 			setLattice(Z);
 			// geometry counts BULB CELLS end to end; the wall is COLS x HROWS cells
 			// and its resolution is the product - a real board is specced by its
