@@ -216,7 +216,8 @@ window.__ModuleLoader__.load({
 .ml-row .nm code{font-size:11px;color:var(--dsw-alias-label-secondary)}
 .ml-row .nm .ad{font-size:11px;line-height:1.3}
 .ml-row:hover{background:var(--dsw-alias-bg-layer-2)}
-.ml-row[aria-current="true"]{background:var(--dsw-alias-bg-layer-2);box-shadow:inset 0 0 0 2px var(--dsw-alias-border-l2)}
+.ml-row[aria-current="true"]{background:color-mix(in srgb,var(--dsw-alias-brand-primary) 11%,var(--dsw-alias-bg-layer-2));box-shadow:inset 3px 0 0 var(--dsw-alias-brand-primary),inset 0 0 0 1.5px color-mix(in srgb,var(--dsw-alias-brand-primary) 50%,transparent)}
+.ml-row[aria-current="true"] .nm b{color:var(--dsw-alias-brand-primary)}
 .ml-row .qt{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:96px}
 .ml-row .qt b{font-size:15.5px;font-weight:650}
 .ml-row .qt .chips{display:flex;gap:5px;align-items:center}
@@ -380,7 +381,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.20.0';
+		const CLIENT_REV = '0.20.1';
 		const diagQueue = [];
 		let diagTimer = 0;
 		// the host meta tells the real level; until then assume the shipped 'errors' default
