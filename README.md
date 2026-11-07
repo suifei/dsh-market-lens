@@ -8,6 +8,22 @@ A股 / 港股 / 美股的**只读**看盘·盯盘股票看板 DSH Web 插件—�
 
 > npm 安装请认准 **0.27.1**：0.27.0 的宿主模块依赖在 link/精简 profile 下解析不到（loader 静默不挂载，无路由无入口），0.27.1 起 schemastery/dsh-tools 为真实依赖，link 与 npm 两条路径自足。
 
+## 安装
+
+```bash
+npm install @suifei/dsh-market-lens
+```
+
+在你的 `cordis.patch.yml` 里挂载宿主半（客户端半由包内 `dsh.client` 声明自动发现）：
+
+```yaml
+- insert:
+    - id: market-lens
+      name: '@suifei/dsh-market-lens'
+```
+
+DSH 桌面版/Web 版也可直接在「插件管理」里按包名安装（bundle 一键装载含上面的 patch 行）。装好后重启宿主，左侧栏出现「寰镜股票看板」，顶部工具栏「证券大厅」进入 800×450 灯墙大屏。可选 `config`（`diagLevel`、`pollIntervalMs` 等）见下节。
+
 ## 截图
 
 | 三列首页 · 暗色 | 证券大厅（灯阵总屏 · 紧凑档） | 三列首页 · 亮色 |
