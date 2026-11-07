@@ -77,7 +77,9 @@ await step('4/8', 'led-shot 800x450 three frames + collision audit', () => {
 await step('5/8', 'git add/commit/tag/push', async () => {
 	const msgFile = join(root, '.release-msg.txt');
 	await writeFile(msgFile, `${msg}\n\nrelease ${version}: version triple synced, tests green, bulb-wall self-check 0 collisions (docs/RELEASE.md §2).`);
-	run('git', ['add', 'package.json', 'index.js', 'client.js', 'README.md', 'SECURITY.md', 'docs/RELEASE.md', 'scripts/release.mjs', 'scripts/led-shot.mjs', 'scripts/led-shot.py', 'cordis.patch.yml', 'pnpm-lock.yaml', 'test/']);
+	// stage everything the ignore rules allow: a hardcoded whitelist silently
+	// dropped lib/ for two releases (0.34.0/0.34.1 shipped to npm but not to git)
+	run('git', ['add', '-A']);
 	run('git', ['commit', '-F', msgFile]);
 	await rm(msgFile);
 	run('git', ['tag', `v${version}`]);
