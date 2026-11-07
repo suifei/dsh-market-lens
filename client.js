@@ -382,7 +382,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.32.1';
+		const CLIENT_REV = '0.33.0';
 		const diagQueue = [];
 		let diagTimer = 0;
 		// the host meta tells the real level; until then assume the shipped 'errors' default
@@ -2109,12 +2109,11 @@ window.__ModuleLoader__.load({
 		'  if (w.x < 0.0 || w.y < 0.0 || w.x >= uPx.z || w.y >= uPx.w) { gl_FragColor = vec4(0.016, 0.027, 0.051, 1.0); return; }',
 		'  vec2 cell = floor(w / uPx.x);',
 		'  vec2 ctr = (cell + 0.5) * uPx.x;',
-		'  float half_ = max(0.5 * uPx.y * uGeo.z, 0.5) - 0.15;',
-		'  vec2 rr = (w - cell * uPx.x) * uGeo.z;',
-		'  vec2 qq = abs(rr - 0.5 * uPx.x * uGeo.z) - max(half_, 0.12);',
-		'  float d = length(max(qq, 0.0)) + min(max(qq.x, qq.y), 0.0);',
-		'  float core = smoothstep(0.42, -0.06, d);',
-		'  float halo = exp(-d * d * 1.7);',
+		'  vec2 dv = w - (cell + 0.5) * uPx.x;',
+		'  float dm = (length(dv) - 0.5 * uPx.y) * uGeo.z;',
+		'  float core = smoothstep(0.35, -0.35, dm);',
+		'  float dOut = max(dm, 0.0);',
+		'  float halo = exp(-dOut * dOut * 5.0);',
 		'  float inBand = step(uBand.x, ctr.y) * step(ctr.y, uBand.x + uBand.y);',
 		'  vec2 tp = vec2(ctr.x, mod(ctr.y - uBand.x + uScroll, uBand.z));',
 		'  vec3 lit = mix(tap5(uStatic, uPx.zw, ctr), tap5(uTape, uSzT, tp), inBand);',
