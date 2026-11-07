@@ -45,3 +45,4 @@ pwsh -Command "node scripts\release.mjs <新版本号 x.y.z> --msg '<一句话�
 - **npm 令牌无 Bypass 2FA**：发布 403 两次；令牌属性写死在渠道表。
 - **release.mjs 首跑即抓虫（0.29.2）**：`node --test test/` 在 execFileSync 下当模块解析而炸（改无参自动发现）；Windows 上 `npm` 需 `shell:true` 解析（已修；publish 失败时提交/推送已完成，脚本会提示**原版本重发**指令而非要求重跑）。
 - **PS 环境变量写法坑**：`$env:"npm_config_//…"` 含冒号会被解析成驱动器路径报错；令牌注入以临时 `.npmrc`（用完还原）为唯一可靠路径，脚本内部用 process.env 展开不受影响。
+- **registry 安装态黑屏（0.34.2 事故，0.34.3 修复）**：宿主模块 runner 在**包安装**（npm/GitHub 源）时给到的是**虚拟 `import.meta.url`**，`new URL('../assets/lamp.bin', import.meta.url)` 直接抛 `Invalid URL` → `/market-lens/lampfont` 全 502（实测 37 秒内 6401 次）→ 点阵字库永远不 ready → 灯墙只剩顶部 DOM 行情条、画布全黑。link/file 安装是 `file:` URL 所以一直正常——**只有换安装方式才暴露**。修复：资源解析加 `import.meta.resolve('<pkg>/assets/<file>')` 兜底通道（并把模块 URL 写进错误信息），`package.json` `exports` 补 `"./assets/*"`。教训：**装完必须验资产路由**（`curl /market-lens/lampfont` 应为 200 且 ≈396880 字节），不能只看 meta。
