@@ -6,7 +6,7 @@ A股 / 港股 / 美股的**只读**看盘·盯盘股票看板 DSH Web 插件—�
 - 市场：A 股（沪/深/北）、港股、美股；指数、个股（板块视图在后续版本）。
 - 不做：下单、撤单、持仓盈亏、量化执行、任何写操作（连配置写回都没有）。
 
-> npm 安装请认准 **0.27.1**：0.27.0 的宿主模块依赖在 link/精简 profile 下解析不到（loader 静默不挂载，无路由无入口），0.27.1 起 schemastery/dsh-tools 为真实依赖，link 与 npm 两条路径自足。
+> npm 安装请认准 **0.29.x**：≤0.27.0 的宿主模块依赖在 link/精简 profile 下解析不到（loader 静默不挂载，无路由无入口），0.27.1 起 schemastery/dsh-tools 为真实依赖；0.29.0 起大厅为 WebGL2 灯墙管线（点阵锐利、无缝滚动）。
 
 ## 安装
 
@@ -167,11 +167,19 @@ node scripts/live-probe.mjs    # 真网络冒烟（不在测试里跑，避免 C
 大厅版式改动必须先跑**离线自检链**（布局唯一事实源是 `client.js` 的纯函数 `ledPlan`，浏览器绘制器与本链共用）：
 
 ```bash
-node scripts/led-shot.mjs      # 固定 1024×768 格矩阵（墙 2800×1575px）mock 行情 → shots/plan-1024x768.json
-python scripts/led-shot.py     # lamp.bin 真点阵重绘 → shots/shot-*.png + 撞字审计
+node scripts/led-shot.mjs      # 固定 800×450 格矩阵（墙 2800×1575px）mock 行情 → shots/plan-800x450.json（灯带三帧：静置/半行裁切/第二周期）
+python scripts/led-shot.py     # lamp.bin 真点阵重绘 + 带窗 clip 对齐浏览器 → shots/shot-*.png + 撞字审计
 ```
 
 审计 0 碰撞才允许提交；`shots/` 为临时产物不入库。
+
+## 发布（三渠道，一条命令）
+
+```bash
+node scripts/release.mjs <x.y.z> --msg "..." --token <npm granular token> [--host-port N]
+```
+
+八道门（版本三同步 → 语法 → 测试 → 灯墙自检 → 提交+tag+push → npm publish → registry/host 核验 → 渠道清单），规程与事故先例见 **`docs/RELEASE.md`**。三个渠道分工：**npm**＝发行本体；**dsh.so 插件市场**＝提交 `github.com/suifei/dsh-market-lens`（注意不是 `market-lens`）；**awesome-dsh-plugin**＝收录 PR（条目 `data/plugins/suifei__dsh-market-lens.yml`，只动这一个文件）。
 
 ## 发布自检（社区市场流程）
 
@@ -179,8 +187,8 @@ python scripts/led-shot.py     # lamp.bin 真点阵重绘 → shots/shot-*.png +
 2. `dsh-plugin` topic；`meta.title/description` 在 `locale/zh.json`、`locale/en.json`。✓
 3. 建仓满 1 天后再提收录 PR。
 4. 向 `awesome-dsh-plugin/awesome-dsh-plugin` 的 `data/plugins/` 提交单文件条目 `suifei__dsh-market-lens.yml`（category 以当时 contributing.md 为准），不动自动生成的 README。
-5. npm 发布（可选但推荐）：`npm view @suifei/dsh-market-lens` 确认包名可用后发布。
-6. 带 UI 包自查：`dsh.bundle.patch` 存在 ✓；`dsh.client.platform: web` ✓；客户端侧无额外运行时依赖（`peerDependencies` 只列宿主侧 cordis/dsh 面）✓。
+5. npm 为必发渠道：`npm view @suifei/dsh-market-lens version` 应等于刚打的 tag；历史版本 `0.0.0-stage` 是 scope 建包副产，已标废弃，无害。
+6. 带 UI 包自查：`dsh.bundle.patch` 存在 ✓；`dsh.client.platform: web` ✓；宿主半自持运行时依赖（`dependencies: @deepseek-ai/schemastery、@deepseek-ai/dsh-tools`，版本对齐宿主），`peerDependencies` 仅 cordis（宿主注入）——link/file/npm 三种安装路径均可解析。
 
 ## 首版范围与后续
 
@@ -188,7 +196,7 @@ python scripts/led-shot.py     # lamp.bin 真点阵重绘 → shots/shot-*.png +
 
 **明确不做**：交易、持仓、选股、AI 投研、L2 盘口。
 
-**后续（按数据源稳定性排序）**：分时图 → 板块/行业视图 → 热力图 → 新闻/快讯 → 自定义布局保存。原则不变：**新数据源先落在宿主侧，UI 只消费归一化结构。**
+**后续（按数据源稳定性排序）**：分时图 → 板块/行业视图 → 热力图 → 自定义布局保存（财经快讯与 A 股财报早在 0.2.0 公开版即已落地，此清单漏划）。原则不变：**新数据源先落在宿主侧，UI 只消费归一化结构。**
 
 ## 已知边界
 

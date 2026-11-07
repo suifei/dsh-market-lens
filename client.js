@@ -382,7 +382,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.29.1';
+		const CLIENT_REV = '0.29.2';
 		const diagQueue = [];
 		let diagTimer = 0;
 		// the host meta tells the real level; until then assume the shipped 'errors' default
@@ -2614,7 +2614,7 @@ window.__ModuleLoader__.load({
 					gl.uniform4f(W.U.uBand, gp.topPx, gp.bandPx, gp.tapePx, 0);
 					gl.uniform4f(W.U.uPx, PITCH, BULB, WALL_W_PX, WALL_H_PX);
 					gl.uniform2f(W.U.uSzT, tC.width, tC.height);
-					gl.uniform1f(W.U.uScroll, scrollPxRef.current);
+					gl.uniform1f(W.U.uScroll, scrollPxRef.current % gp.tapePx); // keep float32 far from its 24h drift zone
 					gl.uniform1f(W.U.uTime, ts / 1000);
 					gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 				};
