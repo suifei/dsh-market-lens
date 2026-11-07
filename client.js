@@ -382,7 +382,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.28.1';
+		const CLIENT_REV = '0.29.0';
 		const diagQueue = [];
 		let diagTimer = 0;
 		// the host meta tells the real level; until then assume the shipped 'errors' default
@@ -1989,12 +1989,12 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- lamp-matrix screen engine (the Exchange Hall renderer) ----------
-		// 2D-game style pipeline: draw the page to an offscreen content canvas,
-		// sample it into an n x m bulb grid (one bulb = one 4px cell, round with
-		// a soft halo), bake to a bulb canvas, then a cheap rAF loop blits it and
-		// adds the living parts: a scan band and random bulb chatter. The rows window
-		// itself scrolls one seamless LED row per step (no page wipes since 0.28).
-		// No libraries, ~1 blit + a few hundred tiny fills per frame at ~9fps.
+		// game pipeline: the planner emits prims, the painter bakes two raw
+		// content textures (static wall, tape period); the WebGL2 compositor
+		// draws every bulb procedurally at display resolution and runs the
+		// post-fx chain per frame - scroll, scan glow, flicker, bleed and
+		// vignette are shader uniforms, zero rebakes per animation. Without
+		// WebGL2 a plain-canvas fallback composites the same two textures.
 		const PITCH = 3.5;        // css px per bulb cell inside the off-screen wall (3px bulb + 0.5px seam)
 		const BULB = 3;           // bulb footprint in wall px
 		const PSZ = 4;            // sprite sheet size (integer canvas)
@@ -2082,117 +2082,72 @@ window.__ModuleLoader__.load({
 				} else px += 9 * PITCH;
 			}
 		}
-		const offTile = () => {
-			const c = document.createElement('canvas');
-			c.width = PSZ;
-			c.height = PSZ;
-			const x = c.getContext('2d');
-			x.fillStyle = 'rgba(24,48,74,0.9)';
-			x.beginPath();
-			x.arc(PITCH / 2, PITCH / 2, BULB / 2, 0, 6.3);
-			x.fill();
-			return c;
-		};
-		let wallBgCanvas = null;
-		// the whole off-bulb field is one seamless tile pattern fill - 360k
-		// per-cell fillRects used to stall the first frame for seconds
-		const getWallBg = () => {
-			if (wallBgCanvas === null) {
-				wallBgCanvas = document.createElement("canvas");
-				wallBgCanvas.width = WALL_W_PX;
-				wallBgCanvas.height = WALL_H_PX;
-				const bxg = wallBgCanvas.getContext("2d");
-				bxg.fillStyle = OFF_BG;
-				bxg.fillRect(0, 0, WALL_W_PX, WALL_H_PX);
-				bxg.fillStyle = bxg.createPattern(offTile(), "repeat");
-				bxg.fillRect(0, 0, WALL_W_PX, WALL_H_PX);
-			}
-			return wallBgCanvas;
-		};
-		const spriteCache = new Map();
-		const haloCache = new Map();
-		function lampSprite(color) {
-			let s = spriteCache.get(color);
-			if (s !== void 0) return s;
-			s = document.createElement('canvas');
-			s.width = PSZ;
-			s.height = PSZ;
-			const x = s.getContext('2d');
-			// bulb with a dark seam around it: solid core to 0.62 of the disc, then clear edge
-			const g = x.createRadialGradient(PITCH / 2, PITCH / 2, 0.05, PITCH / 2, PITCH / 2, BULB / 2 + 0.2);
-			g.addColorStop(0, color);
-			g.addColorStop(0.62, color);
-			g.addColorStop(1, 'rgba(0,0,0,0)');
-			x.fillStyle = g;
-			x.fillRect(0, 0, PSZ, PSZ);
-			spriteCache.set(color, s);
-			return s;
-		}
-		function haloSprite(color) {
-			let s = haloCache.get(color);
-			if (s !== void 0) return s;
-			s = document.createElement('canvas');
-			s.width = PSZ * 3;
-			s.height = PSZ * 3;
-			const x = s.getContext('2d');
-			const g = x.createRadialGradient(PSZ * 1.5, PSZ * 1.5, 0.2, PSZ * 1.5, PSZ * 1.5, PSZ * 1.5);
-			g.addColorStop(0, color);
-			g.addColorStop(0.4, color);
-			g.addColorStop(1, 'rgba(0,0,0,0)');
-			x.fillStyle = g;
-			x.fillRect(0, 0, PSZ * 3, PSZ * 3);
-			haloCache.set(color, s);
-			return s;
-		}
-		/** content canvas -> baked bulb screen INTO the given target canvas (no per-bake allocation) */
-		function bakeLamps(content, led) {
-			led.width = content.width;
-			led.height = content.height;
-			const lx = led.getContext('2d');
-			lx.fillStyle = OFF_BG;
-			lx.fillRect(0, 0, led.width, led.height);
-			lx.fillStyle = lx.createPattern(offTile(), 'repeat');
-			lx.fillRect(0, 0, led.width, led.height);
-			const d = content.getContext('2d').getImageData(0, 0, content.width, content.height).data;
-			const lit = [];
-			for (let cy = 0; LPX(cy * PITCH) + BULB <= content.height; cy++) {
-				const gy = LPX(cy * PITCH);
-				for (let cx = 0; LPX(cx * PITCH) + BULB <= content.width; cx++) {
-					const gx = LPX(cx * PITCH);
-					let r = 0;
-					let g = 0;
-					let b = 0;
-					for (let dy = 0; dy < BULB; dy++) {
-						for (let dx = 0; dx < BULB; dx++) {
-							const i = ((gy + dy) * content.width + gx + dx) * 4;
-							r += d[i];
-							g += d[i + 1];
-							b += d[i + 2];
-						}
-					}
-					const lum = Math.max(r, g, b) / (BULB * BULB * 255);
-					if (lum < 0.3) continue;
-					let color = '#cfe6ff';
-					if (r >= g && r > g * 1.35 && r > b * 1.2) color = '#ff7d7d';
-					else if (g > r * 1.2 && g >= b) color = '#63f5b0';
-					else if (r > 4200 && g > 3200 && b < 2400) color = '#ffd75e';
-					lit.push(gx, gy, lum, color);
-				}
-			}
-			// soft-glow pass first: additive bloom around every lit bulb, so the
-			// seam between neighbours reads as glass, not as a printed grid
-			lx.globalCompositeOperation = 'lighter';
-			for (let k = 0; k < lit.length; k += 4) {
-				lx.globalAlpha = Math.min(0.5, lit[k + 2] * 0.34);
-				lx.drawImage(haloSprite(lit[k + 3]), lit[k] - PSZ, lit[k + 1] - PSZ);
-			}
-			lx.globalCompositeOperation = 'source-over';
-			for (let k = 0; k < lit.length; k += 4) {
-				lx.globalAlpha = Math.min(1, lit[k + 2] * 1.3);
-				lx.drawImage(lampSprite(lit[k + 3]), lit[k], lit[k + 1]);
-			}
-			lx.globalAlpha = 1;
-			return led;
+		// ---------- GPU wall compositor: bake once, post-fx every frame ----------
+		const SCROLL_VPX = 28; // wall px/s (~8 lamp rows/s): uniform scroll, smooth and cheap
+		const VERT_SRC = 'attribute vec2 aPos; void main() { gl_Position = vec4(aPos, 0.0, 1.0); }';
+		const FRAG_SRC = [
+			'precision highp float;',
+			'uniform vec2 iRes; uniform vec4 uGeo; uniform vec4 uBand; uniform vec4 uPx; uniform vec2 uSzT;',
+			'uniform float uScroll; uniform float uTime;',
+			'uniform sampler2D uStatic; uniform sampler2D uTape;',
+			'vec3 tap5(sampler2D s, vec2 sz, vec2 wp) {',
+			'  vec2 uv = wp / sz; vec2 pu = 1.0 / sz; vec3 c = texture2D(s, uv).rgb;',
+			'  c = max(c, texture2D(s, uv + vec2(pu.x, 0.0)).rgb);',
+			'  c = max(c, texture2D(s, uv - vec2(pu.x, 0.0)).rgb);',
+			'  c = max(c, texture2D(s, uv + vec2(0.0, pu.y)).rgb);',
+			'  c = max(c, texture2D(s, uv - vec2(0.0, pu.y)).rgb);',
+			'  return c;',
+			'}',
+			'void main() {',
+			'  vec2 f = vec2(gl_FragCoord.x, iRes.y - gl_FragCoord.y);',
+			'  vec2 w = (f - uGeo.xy) / uGeo.z;',
+			'  if (w.x < 0.0 || w.y < 0.0 || w.x >= uPx.z || w.y >= uPx.w) { gl_FragColor = vec4(0.016, 0.027, 0.051, 1.0); return; }',
+			'  vec2 cell = floor(w / uPx.x);',
+			'  vec2 ctr = (cell + 0.5) * uPx.x;',
+			'  float half_ = max(0.5 * uPx.y * uGeo.z, 0.5) - 0.3;',
+			'  vec2 rr = f - uGeo.xy - cell * uPx.x * uGeo.z;',
+			'  vec2 qq = abs(rr - 0.5 * uPx.x * uGeo.z) - max(half_, 0.12);',
+			'  float d = length(max(qq, 0.0)) + min(max(qq.x, qq.y), 0.0);',
+			'  float mask = smoothstep(0.45, -0.05, d);',
+			'  float inBand = step(uBand.x, ctr.y) * step(ctr.y, uBand.x + uBand.y);',
+			'  vec2 tp = vec2(ctr.x, mod(ctr.y - uBand.x + uScroll, uBand.z));',
+			'  vec3 lit = mix(tap5(uStatic, uPx.zw, ctr), tap5(uTape, uSzT, tp), inBand);',
+			'  vec2 bwn = vec2(w.x, mod(w.y - uBand.x + uScroll, uBand.z)) / uSzT;',
+			'  vec3 bleed = mix(texture2D(uStatic, w / uPx.zw).rgb, texture2D(uTape, bwn).rgb, inBand);',
+			'  float lum = max(lit.r, max(lit.g, lit.b));',
+			'  vec3 base = mix(vec3(0.016, 0.024, 0.043), vec3(0.05, 0.1, 0.17), mask);',
+			'  vec3 col = mix(base, lit, mask * smoothstep(0.1, 0.3, lum));',
+			'  col += bleed * 0.14;',
+			'  float hh = fract(sin(dot(cell + vec2(floor(uTime * 3.0) * 17.0, floor(uTime * 2.0) * 31.0), vec2(127.1, 311.7))) * 43758.545);',
+			'  col *= mix(0.93, 1.05, hh);',
+			'  col *= mix(1.0, 0.15, step(hh, 0.002));',
+			'  col *= mix(1.0, 1.5, step(0.9978, hh));',
+			'  float sy = fract(uTime * 0.07) * (uPx.w + 240.0) - 120.0;',
+			'  col += vec3(0.05, 0.085, 0.12) * exp(-pow((w.y - sy) * 0.018, 2.0)) * (0.4 + 0.6 * mask);',
+			'  vec2 vq = w / uPx.zw - 0.5;',
+			'  col *= 1.0 - dot(vq, vq) * 0.6;',
+			'  gl_FragColor = vec4(min(col, vec3(1.0)), 1.0);',
+			'}',
+		].join('\n');
+		function wallGL(gl) {
+			const sh = (type, s) => { const o = gl.createShader(type); gl.shaderSource(o, s); gl.compileShader(o); return o; };
+			const prog = gl.createProgram();
+			gl.attachShader(prog, sh(gl.VERTEX_SHADER, VERT_SRC));
+			gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FRAG_SRC));
+			gl.linkProgram(prog);
+			if (gl.getProgramParameter(prog, gl.LINK_STATUS) !== true) { diag('panel.crash', { stage: 'wallgl', msg: String(gl.getProgramInfoLog(prog)) }); return null; }
+			gl.useProgram(prog);
+			const buf = gl.createBuffer();
+			gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+			gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+			const al = gl.getAttribLocation(prog, 'aPos');
+			gl.enableVertexAttribArray(al);
+			gl.vertexAttribPointer(al, 2, gl.FLOAT, false, 0, 0);
+			const U = {};
+			['iRes', 'uGeo', 'uBand', 'uPx', 'uSzT', 'uScroll', 'uTime', 'uStatic', 'uTape'].forEach((n) => { U[n] = gl.getUniformLocation(prog, n); });
+			gl.uniform1i(U.uStatic, 0);
+			gl.uniform1i(U.uTape, 1);
+			return { prog, U };
 		}
 
 		/**
@@ -2284,29 +2239,24 @@ window.__ModuleLoader__.load({
 			txt(nameX, TH + 1, env.L('board.col.instrument'), '#ff6a5e');
 			if (!two) txt(codeX, TH + 1, env.L('board.col.code'), '#ff6a5e');
 			pick.forEach((ci, j) => txt(0, TH + 1, env.colLabels[ci], '#ff6a5e', rails[j] - 2));
-			// cell-accurate seamless scroll: the tape repeats enough periods to
-			// cover the band, shifted up by env.scrollCell LED rows; half-rows at
-			// the band edges are cut by the painter via plan.clip
+			// tape: the rows group is ONE period of the watchlist. The GPU sampler
+			// repeats it under the band, so what leaves the top edge re-enters at
+			// the bottom pixel for pixel whatever the band height - the seam CPU
+			// stepping showed (358-cell band over a 351-cell period) is gone
 			const bandH = env.bandH;
-			const period = Math.max(1, pitchC * env.rows.length);
-			const off = env.scrollCell % period;
-			const reps = Math.min(64, Math.ceil((bandH + pitchC) / period));
 			const txtR = (a, b, s, c, r) => { prims.push({ t: 'x', x: X(a), y: X(b), r: r === void 0 ? null : X(r), c, s, g: 'r' }); };
 			const boxR = (a, b, w, h2, c, al) => { prims.push({ t: 'f', x: X(a), y: X(b), w: Math.max(1, X(w)), h: Math.max(1, X(h2)), c, a: al === void 0 ? 1 : al, g: 'r' }); };
-			for (let rep = 0; rep < reps; rep++) {
-				env.rows.forEach((row, i) => {
-					const top = RTOP + rep * period + i * pitchC - off;
-					if (top + pitchC <= RTOP || top >= RTOP + bandH) return;
-					const y = top + Math.floor((pitchC - G) / 2);
-					const color = pctColor(row.pct);
-					const on = i === env.lit;
-					if (on) boxR(MXU, top, tableR - MXU - 8, pitchC - 2, '#0e2c4c');
-					if (on) txtR(MXU, y, '>', '#ffd75e');
-					txtR(nameX, y, row.name, on ? '#ffffff' : color);
-					if (!two) txtR(codeX, y, row.symbol, '#3f618a');
-					pick.forEach((ci, jj) => txtR(0, y, row.cells[ci], ci === 3 || ci === 4 ? (on ? '#ffffff' : color) : on && ci === 5 ? '#ffffff' : row.cellColors[ci], rails[jj] - 2));
-				});
-			}
+			env.rows.forEach((row, i) => {
+				const top = RTOP + i * pitchC;
+				const y = top + Math.floor((pitchC - G) / 2);
+				const color = pctColor(row.pct);
+				const on = i === env.lit;
+				if (on) boxR(MXU, top, tableR - MXU - 8, pitchC - 2, '#0e2c4c');
+				if (on) txtR(MXU, y, '>', '#ffd75e');
+				txtR(nameX, y, row.name, on ? '#ffffff' : color);
+				if (!two) txtR(codeX, y, row.symbol, '#3f618a');
+				pick.forEach((ci, jj) => txtR(0, y, row.cells[ci], ci === 3 || ci === 4 ? (on ? '#ffffff' : color) : on && ci === 5 ? '#ffffff' : row.cellColors[ci], rails[jj] - 2));
+			});
 			// twin ranking boards ride wide walls only
 			if (wide && env.side.length > 0) {
 				const SXU = u(815);
@@ -2356,7 +2306,7 @@ window.__ModuleLoader__.load({
 			const fy = env.hC - FH + 1;
 			txt(4, fy, env.footL, '#c8a24a');
 			txt(0, fy, env.footR, '#c8a24a', C - 4);
-			return { w: X(C), h: X(env.hC), prims, clip: { y: X(RTOP), h: Math.max(1, X(bandH)) } };
+			return { w: X(C), h: X(env.hC), prims, clip: { y: X(RTOP), h: Math.max(1, X(bandH)) }, tape: { y: X(RTOP), h: Math.max(1, X(pitchC * env.rows.length)) } };
 		}
 
 		function LedBoard({ rows, quotes, seenQuote, meta, onPick, getKline, ledUp, ledDown, tiny, t }) {
@@ -2373,22 +2323,22 @@ window.__ModuleLoader__.load({
 			const COLS = WALL_COLS;
 			const wrapRef = React.useRef(null);
 			const canvasRef = React.useRef(null);
-			const contentRef = React.useRef(null);
-			const sceneRef = React.useRef(null);
+			const staticRef = React.useRef(null);
+			const tapeCvRef = React.useRef(null);
+			const dirtyRef = React.useRef(false);
+			const geoPlanRef = React.useRef(null);
 			const pitchRef = React.useRef(0);
 			const topRef = React.useRef(0);
 			const geoRef = React.useRef({ ox: 0, oy: 0, sc: 1 });
-			const offPxRef = React.useRef(0);
-			const bandHPxRef = React.useRef(0);
+			const scrollPxRef = React.useRef(0);
+			const pausedRef = React.useRef(false);
 			const idxKRef = React.useRef(null);
 			const feedsRef = React.useRef(new Map());
-			const scenePairRef = React.useRef(null);
-			const pairIdxRef = React.useRef(0);
 			const sceneSigRef = React.useRef('');
 			const [size, setSize] = React.useState({ w: 0, h: 0 });
-			const [scrollCell, setScrollCell] = React.useState(0);
 			const [lit, setLit] = React.useState(0);
 			const [paused, setPaused] = React.useState(false);
+			pausedRef.current = paused === true;
 			const [feedTick, setFeedTick] = React.useState(0);
 			const HROWS = WALL_ROWS;
 			// seamless scroll: the window always holds nWin rows cut from the doubled
@@ -2402,7 +2352,6 @@ window.__ModuleLoader__.load({
 			const bandH = HROWS - ROWS_TOP_C - CHART_C - FOOT_HC;
 			const winN = Math.max(2, Math.floor(bandH / ROW_MIN_C));
 			const pitchC0 = rows.length === 0 ? ROW_MIN_C : Math.max(ROW_MIN_C, Math.floor(bandH / Math.min(rows.length, winN)));
-			const tapeCells = pitchC0 * rows.length;
 			const view = rows;
 			const ticker = (meta?.indexBar ?? []).map((symbol) => quotes.get(symbol) ?? seenQuote(symbol)).filter((q) => q !== void 0);
 			const tape = ticker.length === 0 ? [] : [...ticker, ...ticker];
@@ -2436,7 +2385,7 @@ window.__ModuleLoader__.load({
 			// report the wall geometry, so live row/col counts and the display
 			// scale can be read straight out of the diag log
 			React.useEffect(() => {
-				diag('panel.led.geo', { wall: `${String(WALL_COLS)}x${String(WALL_ROWS)}`, pitch: pitchC0, winRows: Math.min(rows.length, winN), scroll: '1 cell/s', disp: size.w === 0 ? 'pending' : `${String(size.w)}x${String(size.h)} @${(Math.min(size.w / WALL_W_PX, size.h / WALL_H_PX)).toFixed(3)}x` });
+				diag('panel.led.geo', { wall: `${String(WALL_COLS)}x${String(WALL_ROWS)}`, pitch: pitchC0, winRows: Math.min(rows.length, winN), engine: 'webgl2', scroll: `${String(SCROLL_VPX)}px/s smooth`, disp: size.w === 0 ? 'pending' : `${String(size.w)}x${String(size.h)} @${(Math.min(size.w / WALL_W_PX, size.h / WALL_H_PX)).toFixed(3)}x` });
 			}, [Math.min(rows.length, winN), size]);
 			// one canvas pixel per css pixel, no devicePixelRatio games: the
 			// browser never resamples the wall, so bulbs cannot shimmer or spill
@@ -2479,8 +2428,6 @@ window.__ModuleLoader__.load({
 				const hC = HROWS;
 				pitchRef.current = pitchC * PITCH;
 				topRef.current = ROWS_TOP_C * PITCH;
-				offPxRef.current = (tapeCells === 0 ? 0 : scrollCell % tapeCells) * PITCH;
-				bandHPxRef.current = bandH * PITCH;
 				const fmtv = (v) => (v === null || v === void 0 ? '—' : fmtNum(v));
 				let upN = 0;
 				let dnN = 0;
@@ -2538,7 +2485,7 @@ window.__ModuleLoader__.load({
 				// actually moved: scroll head, lit row, lattice mode, every number
 				// screen, and the minute the clock prints
 				const sig = [
-					String(scrollCell), String(lit), tiny === true ? "T" : "S",
+					String(lit), tiny === true ? "T" : "S",
 					view.map((r) => {
 						const q = quotes.get(r.symbol) ?? seenQuote(r.symbol);
 						return `${String(q?.price)}:${String(q?.changePct)}:${String(q?.high)}:${String(q?.low)}:${String(q?.prevClose)}:${String(q?.amount)}`;
@@ -2552,7 +2499,7 @@ window.__ModuleLoader__.load({
 				const fullTitle = t('led.master');
 				const title = COLS >= 200 ? fullTitle : t('led.min');
 				const plan = ledPlan({
-					P: PITCH, cols: COLS, hC, tiny, pitchC, chartC: CHART_C, scrollCell, bandH,
+					P: PITCH, cols: COLS, hC, tiny, pitchC, chartC: CHART_C, bandH,
 					ledUp, ledDown,
 					title,
 					clock: `${String(nowD.getHours()).padStart(2, '0')}:${String(nowD.getMinutes()).padStart(2, '0')}`,
@@ -2565,96 +2512,111 @@ window.__ModuleLoader__.load({
 					footL: COLS < 340 ? `${t('led.upN')} ${upN}  ${t('led.downN')} ${dnN}` : `${t('led.count')}:${view.length}  ${t('led.upN')} ${upN}  ${t('led.downN')} ${dnN}  ${t('led.flatN')} ${flatN}`,
 					footR: `${t('led.turnover')} ${fmtBig(turn, 1)}`,
 				});
-				let c = contentRef.current;
-				if (c === null) {
-					c = contentRef.current = document.createElement('canvas');
-				}
-				c.width = plan.w;
-				c.height = plan.h;
-				const x = c.getContext('2d', { willReadFrequently: true }); // bake reads pixels on every publish: keep the canvas on the CPU
-				x.fillStyle = '#000';
-				x.fillRect(0, 0, c.width, c.height);
-				x.save();
-				let inRows = false;
+				const t0 = performance.now();
+				const sC = staticRef.current ?? (staticRef.current = document.createElement('canvas'));
+				const tC = tapeCvRef.current ?? (tapeCvRef.current = document.createElement('canvas'));
+				sC.width = plan.w;
+				sC.height = plan.h;
+				tC.width = plan.w;
+				tC.height = Math.max(1, plan.tape.h);
+				const sx = sC.getContext('2d');
+				const tx = tC.getContext('2d');
+				sx.fillStyle = '#000';
+				sx.fillRect(0, 0, sC.width, sC.height);
+				tx.fillStyle = '#000';
+				tx.fillRect(0, 0, tC.width, tC.height);
+				tx.save();
+				tx.translate(0, -plan.tape.y);
 				plan.prims.forEach((p) => {
-					const isR = p.g === 'r';
-					if (isR !== inRows) {
-						x.restore();
-						x.save();
-						inRows = isR;
-						if (isR) { x.beginPath(); x.rect(0, plan.clip.y, c.width, plan.clip.h); x.clip(); }
-					}
+					const x2 = p.g === 'r' ? tx : sx;
 					if (p.t === 'f') {
-						x.globalAlpha = p.a;
-						x.fillStyle = p.c;
-						x.fillRect(p.x, p.y, p.w, p.h);
-						x.globalAlpha = 1;
+						x2.globalAlpha = p.a;
+						x2.fillStyle = p.c;
+						x2.fillRect(p.x, p.y, p.w, p.h);
+						x2.globalAlpha = 1;
 					} else {
-						ledText(x, p.x, p.y, p.s, p.c, p.r === null ? void 0 : p.r, tiny);
+						ledText(x2, p.x, p.y, p.s, p.c, p.r === null ? void 0 : p.r, tiny);
 					}
 				});
-				x.restore();
-				const pair = scenePairRef.current ?? (scenePairRef.current = [document.createElement('canvas'), document.createElement('canvas')]);
-				const t0 = performance.now();
-				bakeLamps(c, pair[pairIdxRef.current ^= 1]);
-				diag("panel.led.bake", { ms: Math.round(performance.now() - t0), cells: WALL_COLS * WALL_ROWS });
-				// atomic publish: the loop never sees a half-baked screen
-				sceneRef.current = pair[pairIdxRef.current];
-			}, [size, view.length, scrollCell, lit, feedTick, tiny, quotes]);
-						// rotation: the tape scrolls up exactly one LED cell per second
-			const rotRef = React.useRef(() => void 0);
-			rotRef.current = () => {
-				if (paused === true || rows.length < 2) return;
-				setScrollCell((cur) => cur + 1);
-			};
-			React.useEffect(() => {
-				const timer = window.setInterval(() => rotRef.current(), 1000);
-				return () => window.clearInterval(timer);
-			}, []);
-			// the living screen: the 800x450 wall lives off-screen at its native
-			// lattice (background and scene in wall px); every frame blits
-			// the two fixed-size layers proportionally scaled onto the container,
-			// then cheap living detail on top, in display px
+				tx.restore();
+				geoPlanRef.current = { topPx: plan.tape.y, bandPx: Math.max(1, plan.clip.h), tapePx: Math.max(1, plan.tape.h) };
+				dirtyRef.current = true;
+				diag('panel.led.bake', { ms: Math.round(performance.now() - t0), px: `${String(plan.w)}x${String(plan.h)}+${String(plan.tape.h)}` });
+			}, [size, rows.length, lit, feedTick, tiny, quotes]);
+			// every frame is one quad draw: the shader rebuilds the bulb grid in
+			// display px (rounded-square masks, no resampled bitmap), samples the
+			// baked content at bulb centres (4-neighbour max = footprint tap) and
+			// wraps the tape under a mod() scroll offset
 			React.useEffect(() => {
 				const cv = canvasRef.current;
 				if (cv === null || size.w === 0) return void 0;
 				cv.width = size.w;
 				cv.height = size.h;
-				const x = cv.getContext('2d');
+				const gl = typeof WebGL2RenderingContext === 'undefined' ? null : cv.getContext('webgl2', { alpha: false, antialias: false });
+				const x2d = gl === null ? cv.getContext('2d') : null;
+				const W = gl === null ? null : wallGL(gl);
+				let tex = null;
+				if (gl !== null && W !== null) {
+					tex = { s: gl.createTexture(), t: gl.createTexture() };
+					[tex.s, tex.t].forEach((tt) => {
+						gl.bindTexture(gl.TEXTURE_2D, tt);
+						gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+						gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+						gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+						gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+					});
+				}
 				const sc = Math.min(size.w / WALL_W_PX, size.h / WALL_H_PX);
 				const dw = Math.round(WALL_W_PX * sc);
 				const dh = Math.round(WALL_H_PX * sc);
 				const ox = Math.round((size.w - dw) / 2);
 				const oy = Math.round((size.h - dh) / 2);
 				geoRef.current = { ox, oy, sc };
-				x.imageSmoothingEnabled = true;
-				x.imageSmoothingQuality = 'high';
-				// frame background: the off-bulb field, pattern-built once per wall
-				const bg = getWallBg();
-				const bulbPx = Math.max(1, Math.round(BULB * sc));
-				const cellPx = Math.max(1, Math.round(PITCH * sc));
 				let raf = 0;
-				let last = 0;
-				let scanY = 0;
+				let last = performance.now();
 				const step = (ts) => {
 					raf = window.requestAnimationFrame(step);
-					if (ts - last < 110) return; // ~9fps: a bulb wall idles gracefully, it is not a cartoon
+					const dt = Math.min(0.25, (ts - last) / 1000);
 					last = ts;
-					x.fillStyle = '#04070d';
-					x.fillRect(0, 0, size.w, size.h);
-					x.drawImage(bg, ox, oy, dw, dh);
-					const scene = sceneRef.current;
-					if (scene === null) return;
-					x.drawImage(scene, ox, oy, dw, dh);
-					scanY = (scanY + 1) % WALL_ROWS;
-					x.fillStyle = 'rgba(130,200,255,0.05)';
-					x.fillRect(ox, oy + Math.round(scanY * PITCH * sc), dw, bulbPx);
-					for (let k = 0; k < 150; k++) {
-						const bxp = ox + Math.floor(Math.random() * WALL_COLS) * cellPx;
-						const byp = oy + Math.floor(Math.random() * WALL_ROWS) * cellPx;
-						x.fillStyle = k % 4 === 0 ? 'rgba(150,210,255,0.12)' : 'rgba(5,8,15,0.45)';
-						x.fillRect(bxp + 1, byp + 1, 1, 1);
+					if (pausedRef.current !== true) scrollPxRef.current += SCROLL_VPX * dt;
+					const gp = geoPlanRef.current;
+					const sC = staticRef.current;
+					const tC = tapeCvRef.current;
+					if (gp === null || sC === null || tC === null) return;
+					if (W === null) {
+						x2d.fillStyle = '#04070d';
+						x2d.fillRect(0, 0, size.w, size.h);
+						x2d.drawImage(sC, ox, oy, dw, dh);
+						const th = gp.tapePx * sc;
+						x2d.save();
+						x2d.beginPath();
+						x2d.rect(ox, oy + gp.topPx * sc, dw, gp.bandPx * sc);
+						x2d.clip();
+						for (let yy = oy + gp.topPx * sc - (scrollPxRef.current % gp.tapePx) * sc; yy < oy + (gp.topPx + gp.bandPx) * sc; yy += th) x2d.drawImage(tC, ox, yy, dw, th);
+						x2d.restore();
+						return;
 					}
+					if (dirtyRef.current) {
+						dirtyRef.current = false;
+						gl.activeTexture(gl.TEXTURE0);
+						gl.bindTexture(gl.TEXTURE_2D, tex.s);
+						gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, sC);
+						gl.activeTexture(gl.TEXTURE1);
+						gl.bindTexture(gl.TEXTURE_2D, tex.t);
+						gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, tC);
+					}
+					gl.viewport(0, 0, size.w, size.h);
+					gl.clearColor(0.016, 0.027, 0.051, 1);
+					gl.clear(gl.COLOR_BUFFER_BIT);
+					gl.useProgram(W.prog);
+					gl.uniform2f(W.U.iRes, size.w, size.h);
+					gl.uniform4f(W.U.uGeo, ox, oy, sc, 0);
+					gl.uniform4f(W.U.uBand, gp.topPx, gp.bandPx, gp.tapePx, 0);
+					gl.uniform4f(W.U.uPx, PITCH, BULB, WALL_W_PX, WALL_H_PX);
+					gl.uniform2f(W.U.uSzT, tC.width, tC.height);
+					gl.uniform1f(W.U.uScroll, scrollPxRef.current);
+					gl.uniform1f(W.U.uTime, ts / 1000);
+					gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 				};
 				raf = window.requestAnimationFrame(step);
 				return () => window.cancelAnimationFrame(raf);
@@ -2663,10 +2625,11 @@ window.__ModuleLoader__.load({
 				const rect = canvasRef.current.getBoundingClientRect();
 				const { ox, oy, sc } = geoRef.current;
 				const wy = (event.clientY - rect.top - oy) / sc;
-				if (wy < topRef.current || wy >= topRef.current + bandHPxRef.current || view.length === 0) return -1;
-				const rel = wy - topRef.current + offPxRef.current;
-				const idx = Math.floor(rel / (pitchRef.current === 0 ? ROW_MIN_C * PITCH : pitchRef.current));
-				return idx % view.length;
+				const gp = geoPlanRef.current;
+				if (gp === null || rows.length === 0 || wy < gp.topPx || wy >= gp.topPx + gp.bandPx) return -1;
+				const per = Math.max(1, gp.tapePx);
+				const rel = ((((wy - gp.topPx + scrollPxRef.current) % per) + per) % per);
+				return Math.floor(rel / (pitchRef.current === 0 ? ROW_MIN_C * PITCH : pitchRef.current)) % rows.length;
 			};
 			return h('div', { className: 'ml-led' },
 				tape.length === 0 ? null : h('div', { className: 'ml-ticker' },
