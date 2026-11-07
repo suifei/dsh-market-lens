@@ -382,7 +382,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.30.2';
+		const CLIENT_REV = '0.30.3';
 		const diagQueue = [];
 		let diagTimer = 0;
 		// the host meta tells the real level; until then assume the shipped 'errors' default
@@ -2108,7 +2108,7 @@ window.__ModuleLoader__.load({
 		'  vec2 cell = floor(wd / uPx.x);',
 		'  vec2 ctr = (cell + 0.5) * uPx.x;',
 		'  float half_ = max(0.5 * uPx.y * uGeo.z, 0.5) - 0.3;',
-		'  vec2 rr = f - uGeo.xy - cell * uPx.x * uGeo.z;',
+		'  vec2 rr = (wd - cell * uPx.x) * uGeo.z;',
 		'  vec2 qq = abs(rr - 0.5 * uPx.x * uGeo.z) - max(half_, 0.12);',
 		'  float d = length(max(qq, 0.0)) + min(max(qq.x, qq.y), 0.0);',
 		'  float mask = smoothstep(0.45, -0.05, d);',
