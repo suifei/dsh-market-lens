@@ -382,7 +382,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.27.1';
+		const CLIENT_REV = '0.28.0';
 		const diagQueue = [];
 		let diagTimer = 0;
 		// the host meta tells the real level; until then assume the shipped 'errors' default
@@ -1992,9 +1992,9 @@ window.__ModuleLoader__.load({
 		// 2D-game style pipeline: draw the page to an offscreen content canvas,
 		// sample it into an n x m bulb grid (one bulb = one 4px cell, round with
 		// a soft halo), bake to a bulb canvas, then a cheap rAF loop blits it and
-		// adds the living parts: a scan band, random bulb chatter, and page wipes
-		// that kill and re-light bulbs cell by cell. No libraries, ~1 blit + a
-		// few hundred tiny fills per frame at 24fps.
+		// adds the living parts: a scan band and random bulb chatter. The rows window
+		// itself scrolls one seamless LED row per step (no page wipes since 0.28).
+		// No libraries, ~1 blit + a few hundred tiny fills per frame at ~9fps.
 		const PITCH = 3.5;        // css px per bulb cell inside the off-screen wall (3px bulb + 0.5px seam)
 		const BULB = 3;           // bulb footprint in wall px
 		const PSZ = 4;            // sprite sheet size (integer canvas)
@@ -2197,8 +2197,8 @@ window.__ModuleLoader__.load({
 
 		/**
 		 * The hall itself: a fixed viewport of N quote rows (computed from the
-		 * real height), rotating row by row; when a page is done a bulb wipe
-		 * clears the screen and the next page lights up. The lit row expands the
+		 * real height), scrolling the whole tape up one seamless LED row per step; the
+		 * lit row expands the chart band, which never moves. Page wipes are gone:
 		 * chart strip; hover pauses and grabs, click returns to the desk.
 		 */
 		// layout planner for the bulb wall: pure coordinates, shared by the
@@ -2349,7 +2349,7 @@ window.__ModuleLoader__.load({
 		}
 
 		function LedBoard({ rows, quotes, seenQuote, meta, onPick, getKline, ledUp, ledDown, tiny, t }) {
-			// fixed-spec wall: 1024 x 768 bulb cells live off-screen; layout
+			// fixed-spec wall: 800 x 450 bulb cells live off-screen; layout
 			// constants (ledPlan) sit on a 960-cell basis so this matrix shows
 			// the full five-zone master board, and the baked picture is scaled
 			// to fit whatever glass the host hands us.
@@ -2364,8 +2364,6 @@ window.__ModuleLoader__.load({
 			const canvasRef = React.useRef(null);
 			const contentRef = React.useRef(null);
 			const sceneRef = React.useRef(null);
-			const transRef = React.useRef(null);
-			const pendingRef = React.useRef(null);
 			const pitchRef = React.useRef(0);
 			const topRef = React.useRef(0);
 			const geoRef = React.useRef({ ox: 0, oy: 0, sc: 1 });
@@ -2375,15 +2373,18 @@ window.__ModuleLoader__.load({
 			const pairIdxRef = React.useRef(0);
 			const sceneSigRef = React.useRef('');
 			const [size, setSize] = React.useState({ w: 0, h: 0 });
-			const [page, setPage] = React.useState(0);
+			const [scrollRow, setScrollRow] = React.useState(0);
 			const [lit, setLit] = React.useState(0);
 			const [paused, setPaused] = React.useState(false);
 			const [feedTick, setFeedTick] = React.useState(0);
 			const HROWS = WALL_ROWS;
-			const pageSize = Math.max(2, Math.floor((HROWS - ROWS_TOP_C - CHART_C - FOOT_HC) / ROW_MIN_C));
-			const pages = Math.max(1, Math.ceil(rows.length / pageSize));
-			const start = Math.min(page * pageSize, Math.max(0, rows.length - pageSize));
-			const view = rows.slice(start, start + pageSize);
+			// seamless scroll: the window always holds nWin rows cut from the doubled
+			// watchlist tape; every rotation step advances the tape by exactly one LED
+			// row and the last row wraps in as the next head; the chart band below
+			// the rows never moves, and there are no pages and no bulb wipe anymore
+			const winN = Math.max(2, Math.floor((HROWS - ROWS_TOP_C - CHART_C - FOOT_HC) / ROW_MIN_C));
+			const nWin = rows.length === 0 ? 0 : Math.min(rows.length, winN);
+			const view = nWin === 0 ? [] : [...rows, ...rows].slice(scrollRow % rows.length, scrollRow % rows.length + nWin);
 			const ticker = (meta?.indexBar ?? []).map((symbol) => quotes.get(symbol) ?? seenQuote(symbol)).filter((q) => q !== void 0);
 			const tape = ticker.length === 0 ? [] : [...ticker, ...ticker];
 			const rowsKey = rows.map((row) => row.symbol).join(',');
@@ -2416,8 +2417,8 @@ window.__ModuleLoader__.load({
 			// report the wall geometry, so live row/col counts and the display
 			// scale can be read straight out of the diag log
 			React.useEffect(() => {
-				diag('panel.led.geo', { wall: `${String(WALL_COLS)}x${String(WALL_ROWS)}`, pitch: PITCH, pageSize, disp: size.w === 0 ? 'pending' : `${String(size.w)}x${String(size.h)} @${(Math.min(size.w / WALL_W_PX, size.h / WALL_H_PX)).toFixed(3)}x` });
-			}, [pageSize, size]);
+				diag('panel.led.geo', { wall: `${String(WALL_COLS)}x${String(WALL_ROWS)}`, pitch: PITCH, winRows: nWin, disp: size.w === 0 ? 'pending' : `${String(size.w)}x${String(size.h)} @${(Math.min(size.w / WALL_W_PX, size.h / WALL_H_PX)).toFixed(3)}x` });
+			}, [nWin, size]);
 			// one canvas pixel per css pixel, no devicePixelRatio games: the
 			// browser never resamples the wall, so bulbs cannot shimmer or spill
 			React.useEffect(() => {
@@ -2513,10 +2514,10 @@ window.__ModuleLoader__.load({
 				} : null;
 				const nowD = new Date();
 				// skip the whole re-bake unless something the wall can show has
-				// actually moved: page, lit row, lattice mode, every number on
+				// actually moved: scroll head, lit row, lattice mode, every number
 				// screen, and the minute the clock prints
 				const sig = [
-					String(page), String(lit), tiny === true ? "T" : "S",
+					String(scrollRow), String(lit), tiny === true ? "T" : "S",
 					view.map((r) => {
 						const q = quotes.get(r.symbol) ?? seenQuote(r.symbol);
 						return `${String(q?.price)}:${String(q?.changePct)}:${String(q?.high)}:${String(q?.low)}:${String(q?.prevClose)}:${String(q?.amount)}`;
@@ -2568,27 +2569,19 @@ window.__ModuleLoader__.load({
 				diag("panel.led.bake", { ms: Math.round(performance.now() - t0), cells: WALL_COLS * WALL_ROWS });
 				// atomic publish: the loop never sees a half-baked screen
 				sceneRef.current = pair[pairIdxRef.current];
-			}, [size, view.length, page, lit, feedTick, tiny, quotes]);
-						// rotation: one row every four seconds; a finished page queues a wipe
+			}, [size, view.length, scrollRow, lit, feedTick, tiny, quotes]);
+						// rotation: the whole rows window advances one LED row every four seconds
 			const rotRef = React.useRef(() => void 0);
 			rotRef.current = () => {
-				if (paused === true || transRef.current !== null || view.length === 0) return;
-				if (lit + 1 < view.length) {
-					setLit(lit + 1);
-					return;
-				}
-				transRef.current = { phase: 'out', f: 0 };
-				pendingRef.current = () => {
-					setPage(start + pageSize >= rows.length ? 0 : (page + 1) % pages);
-					setLit(0);
-				};
+				if (paused === true || rows.length < 2) return;
+				setScrollRow((cur) => (cur + 1) % rows.length);
 			};
 			React.useEffect(() => {
 				const timer = window.setInterval(() => rotRef.current(), 4000);
 				return () => window.clearInterval(timer);
 			}, []);
-			// the living screen: the 1024x768 wall lives off-screen at its native
-			// lattice (background, scene, wipe all in wall px); every frame blits
+			// the living screen: the 800x450 wall lives off-screen at its native
+			// lattice (background and scene in wall px); every frame blits
 			// the two fixed-size layers proportionally scaled onto the container,
 			// then cheap living detail on top, in display px
 			React.useEffect(() => {
@@ -2605,9 +2598,8 @@ window.__ModuleLoader__.load({
 				geoRef.current = { ox, oy, sc };
 				x.imageSmoothingEnabled = true;
 				x.imageSmoothingQuality = 'high';
-				// frame background: the off-bulb field, pattern-built once per page
+				// frame background: the off-bulb field, pattern-built once per wall
 				const bg = getWallBg();
-				const total = WALL_COLS * WALL_ROWS;
 				const bulbPx = Math.max(1, Math.round(BULB * sc));
 				const cellPx = Math.max(1, Math.round(PITCH * sc));
 				let raf = 0;
@@ -2632,31 +2624,6 @@ window.__ModuleLoader__.load({
 						x.fillStyle = k % 4 === 0 ? 'rgba(150,210,255,0.12)' : 'rgba(5,8,15,0.45)';
 						x.fillRect(bxp + 1, byp + 1, 1, 1);
 					}
-					const tr = transRef.current;
-					if (tr !== null) {
-						// a wipe flips a tenth of the wall's lamps per frame, capped
-						// so the 786k-cell matrix stays a few ms of fillRects
-						const n = Math.min(24000, Math.floor((total / 10) * 0.3));
-						if (tr.phase === 'out') {
-							tr.f++;
-							x.fillStyle = OFF_BG;
-							for (let k = 0; k < n; k++) x.fillRect(ox + Math.floor(Math.random() * WALL_COLS) * cellPx, oy + Math.floor(Math.random() * WALL_ROWS) * cellPx, bulbPx, bulbPx);
-							if (tr.f >= 10) {
-								transRef.current = { phase: 'in', f: 0 };
-								const commit = pendingRef.current;
-								pendingRef.current = null;
-								if (commit !== null) commit();
-							}
-						} else {
-							tr.f++;
-							for (let k = 0; k < n; k++) {
-								const sx = LPX(Math.floor(Math.random() * WALL_COLS) * PITCH);
-								const sy = LPX(Math.floor(Math.random() * WALL_ROWS) * PITCH);
-								x.drawImage(scene, sx, sy, BULB, BULB, ox + Math.round(sx * sc), oy + Math.round(sy * sc), bulbPx, bulbPx);
-							}
-							if (tr.f >= 10) transRef.current = null;
-						}
-					}
 				};
 				raf = window.requestAnimationFrame(step);
 				return () => window.cancelAnimationFrame(raf);
@@ -2679,7 +2646,7 @@ window.__ModuleLoader__.load({
 						const i = hit(event);
 						if (i >= 0) {
 							setPaused(true);
-							if (transRef.current === null) setLit(i);
+							setLit(Math.min(i, nWin - 1));
 						} else setPaused(false);
 					},
 					onMouseLeave: () => setPaused(false),
