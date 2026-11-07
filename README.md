@@ -28,7 +28,7 @@ DSH 桌面版/Web 版也可直接在「插件管理」里按包名安装（bundl
 
 | 三列首页 · 暗色 | 证券大厅（灯阵总屏 · 紧凑档） | 三列首页 · 亮色 |
 |---|---|---|
-| <img src="docs/marketlens-20261107-1241-frontpage-dark.png" width="420"> | <img src="docs/marketlens-20261107-1241-led-compact.png" width="420"> | <img src="docs/marketlens-20261107-1242-frontpage-light.png" width="420"> |
+| <img src="docs/marketlens-20261107-1241-frontpage-dark.png" width="420"> | <img src="docs/marketlens-20261107-1725-led-webgl.png" width="420"> | <img src="docs/marketlens-20261107-1242-frontpage-light.png" width="420"> |
 
 首页 = 指数条 / 自选列表（代码主视觉 + 微型趋势线 + 涨跌胶囊 + 市场状态条）/ K 线（MA、量副图、框选放大）/ 详情卡 + 提醒 + 财报 + 资讯四段右栏。大厅 = UCDOS 血统点阵字库驱动的交易所总屏，**固定 800×450 灯格矩阵**（灯珠 3×3 像素、灯距 3.5 像素、0.5 像素灯缝，离屏原生渲染整墙 3584×2688 像素），成品画面**等比缩放居中显示**到容器（含黑边，永不裁切），任何窗口看到的是同一面屏
 

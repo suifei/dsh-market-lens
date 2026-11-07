@@ -39,5 +39,7 @@ pwsh -Command "node scripts\release.mjs <新版本号 x.y.z> --msg '<一句话�
 
 - **0.27.0 npm 版不可用**：peer 依赖在 link/精简 profile 下解析不到 → 宿主静默不挂载（无路由、无入口）。教训→0.27.1 起 schemastery/dsh-tools 为真实依赖；发布核验第 7 步专门验 meta 活体。
 - **提交错仓库**：dsh.so 检查器扫到改名前的空占位 `suifei/market-lens`（1.2kB / 1 文件 / 0 JS）报「repository 缺失」——渠道表的地址栏写死了正确仓库全名。
+- **「market-lens 幽灵仓库」勘误（2026-11-07 API 实证）**：`suifei` 名下 43 个仓库清单中**不存在** `market-lens`；检查器截图里的占位页是国内 GitHub 镜像的缓存幻影（页面自带「用 访问该站点」镜像提示）。该次扫描异常的真身是下条的 stage 版本。
+- **npm `0.0.0-stage` 幽灵版本**：首发新 scope 包时 npm 自动留下的建包占位（345B/2 文件、无 repository/MIT），按版本序抓取的工具会扫到它（dsh.so 报「1.2kB、1 文件、0 JS/TS、repository 缺失」即此）。已 `npm deprecate`；彻底删除需「允许 unpublish」权限的令牌或 npmjs.com 网页操作，属已知无害干扰。
 - **翻页卡死**（0.26→0.27）：每次轮询整墙重烘焙；教训→签名比对进流程第 3/4 道门。
 - **npm 令牌无 Bypass 2FA**：发布 403 两次；令牌属性写死在渠道表。
