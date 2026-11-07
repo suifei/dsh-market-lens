@@ -1,7 +1,9 @@
 {
   "name": "@suifei/dsh-market-lens",
   "version": "0.27.0",
-  "private": true,
+  "publishConfig": {
+    "access": "public"
+  },
   "description": "寰镜股票看板 MarketLens — read-only A股/港股/美股看盘盯盘 stock board for the DSH Web GUI (delayed public quotes, no trading)",
   "keywords": [
     "股票", "看盘", "盯盘", "摸鱼", "股市", "A股", "港股", "美股",
