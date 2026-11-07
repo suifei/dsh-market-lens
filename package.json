@@ -1,6 +1,6 @@
 {
   "name": "@suifei/dsh-market-lens",
-  "version": "0.29.2",
+  "version": "0.29.3",
   "publishConfig": {
     "access": "public"
   },
@@ -44,6 +44,14 @@
   "dependencies": {
     "@deepseek-ai/dsh-tools": "0.2.2-rc.1",
     "@deepseek-ai/schemastery": "~3.19.0"
+  },
+  "overrides": {
+    "zod": "^4.6.6"
+  },
+  "pnpm": {
+    "overrides": {
+      "zod": "^4.6.6"
+    }
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "~4.1.0"
