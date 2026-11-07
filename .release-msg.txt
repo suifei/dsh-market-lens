@@ -1,3 +1,0 @@
-v0.34.2: carry the host-side changes into git too - scrollVpx meta and the route.status log gate shipped to npm but were never committed because release.mjs staged a hardcoded whitelist; git add -A now stages everything the ignore rules allow
-
-release 0.34.2: version triple synced, tests green, bulb-wall self-check 0 collisions (docs/RELEASE.md §2).

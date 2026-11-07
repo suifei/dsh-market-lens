@@ -7,6 +7,7 @@ import { readFile, writeFile, rm } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -75,7 +76,7 @@ await step('4/8', 'led-shot 800x450 three frames + collision audit', () => {
 
 // 5) git commit + tag + push -----------------------------------------------------
 await step('5/8', 'git add/commit/tag/push', async () => {
-	const msgFile = join(root, '.release-msg.txt');
+	const msgFile = join(tmpdir(), 'marketlens-release-msg.txt');
 	await writeFile(msgFile, `${msg}\n\nrelease ${version}: version triple synced, tests green, bulb-wall self-check 0 collisions (docs/RELEASE.md §2).`);
 	// stage everything the ignore rules allow: a hardcoded whitelist silently
 	// dropped lib/ for two releases (0.34.0/0.34.1 shipped to npm but not to git)
