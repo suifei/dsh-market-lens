@@ -6,6 +6,14 @@ A 股 / 港股 / 美股的**只读**行情看板 DSH Web 插件。定位一句�
 - 市场：A 股（沪/深/北）、港股、美股；指数、个股（板块视图在后续版本）。
 - 不做：下单、撤单、持仓盈亏、量化执行、任何写操作（连配置写回都没有）。
 
+## 截图
+
+| 三列首页 · 暗色 | 证券大厅（灯阵总屏 · 紧凑档） | 三列首页 · 亮色 |
+|---|---|---|
+| <img src="docs/marketlens-20261107-1241-frontpage-dark.png" width="420"> | <img src="docs/marketlens-20261107-1241-led-compact.png" width="420"> | <img src="docs/marketlens-20261107-1242-frontpage-light.png" width="420"> |
+
+首页 = 指数条 / 自选列表（代码主视觉 + 微型趋势线 + 涨跌胶囊 + 市场状态条）/ K 线（MA、量副图、框选放大）/ 详情卡 + 提醒 + 财报 + 资讯四段右栏。大厅 = UCDOS 血统点阵字库驱动的交易所总屏，灯珠 1:1 铺满，版式随容器宽度在**完整五区 / 紧凑版式**两态间取档（现场图见 `docs/`，命名 `marketlens-<日期时间>-<场景>.png`）。
+
 ## 架构
 
 ```
@@ -134,9 +142,18 @@ A 股 / 港股 / 美股的**只读**行情看板 DSH Web 插件。定位一句�
 ## 开发
 
 ```bash
-node --test          # 离线单测（fetch 全桩）
-node scripts/live-probe.mjs   # 真网络冒烟（不在测试里跑，避免 CI 依赖外网）
+node --test                    # 离线单测（fetch 全桩）
+node scripts/live-probe.mjs    # 真网络冒烟（不在测试里跑，避免 CI 依赖外网）
 ```
+
+大厅版式改动必须先跑**离线自检链**（布局唯一事实源是 `client.js` 的纯函数 `ledPlan`，浏览器绘制器与本链共用）：
+
+```bash
+node scripts/led-shot.mjs      # 1440/1920/2400 三档 mock 行情 → shots/plan-*.json
+python scripts/led-shot.py     # lamp.bin 真点阵重绘 → shots/shot-*.png + 撞字审计
+```
+
+审计 0 碰撞才允许提交；`shots/` 为临时产物不入库。
 
 ## 发布自检（社区市场流程）
 
