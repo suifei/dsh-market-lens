@@ -75,7 +75,7 @@ const idxBars = Array.from({ length: 60 }, (_, k) => {
 	return { c: icur, ax: `11-${String(1 + (k % 28)).padStart(2, '0')}` };
 });
 
-const rows = MOCK.map((m) => {
+const rowsAll = MOCK.map((m) => {
 	const pct = m[8];
 	const dir = pct > 0 ? upC : pct < 0 ? dnC : '#8fb3d9';
 	return {
@@ -88,24 +88,29 @@ const rows = MOCK.map((m) => {
 });
 const side = MOCK.map((m) => ({ name: m[0].slice(0, 4), pct: m[8], pctF: m[6] })).sort((a, b) => b.pct - a.pct);
 
-for (const DW of [1440, 1920, 2400]) {
-	const PITCH = 2;
-	const G = 16 * PITCH;
-	const TH = G + 6;
-	const FH = G + 6;
-	const RTOP = TH + G + 8;
-	const CHART_H = 88;
-	const avail = 1080;
-	const pitch = Math.max(G + 12, Math.floor((avail - RTOP - CHART_H - FH) / rows.length));
-	const h = RTOP + pitch * rows.length + CHART_H + FH;
+// container widths (css px) to mock: the wall derives its geometry from them
+for (const CW of [1440, 1920, 2400, 3360]) {
+	const P = 3.5; // css px per bulb cell (3px bulb + 0.5px seam)
+	const cols = Math.max(80, Math.floor(CW / P));
+	const G = 16; // cells; tiny walls are mocked at std
+	const TH = G + 3;
+	const FH = G + 3;
+	const RTOP = TH + G + 4;
+	const CHART_C = 34;
+	const HROWS = Math.floor(1080 / P); // wall height budget in cells (mock container 1080 tall)
+	const pageSize = Math.max(2, Math.floor((HROWS - RTOP - CHART_C - FH) / (G + 6)));
+	const rows = rowsAll.slice(0, pageSize);
+	const pitchC = Math.max(G + 6, Math.floor((HROWS - RTOP - CHART_C - FH) / rows.length));
+	const hC = RTOP + pitchC * rows.length + CHART_C + FH;
 	const title = '寰镜证券行情总屏';
+	const wC = (s) => Array.from(String(s)).reduce((acc, ch2) => acc + (ch2.charCodeAt(0) > 255 ? 17 : 9), 0);
 	const plan = ledPlan({
-		PITCH, G, DW, BASE_W: 1920, tiny: false, pitch, CHART_H, h,
+		P, cols, hC, tiny: false, pitchC, chartC: CHART_C,
 		ledUp: upC, ledDown: dnC,
 		title,
 		clock: '12:02',
-		titlePx: (title.length * 17 + 4) * PITCH,
-		w: (s) => Array.from(String(s)).reduce((acc, ch2) => acc + (ch2.charCodeAt(0) > 255 ? 17 : 9), 0),
+		titleC: wC(title),
+		wC,
 		idx: {
 			name: '上证指数', price: 3649.18, priceF: '3649.18',
 			high: 3660.49, highF: '3660.49', low: 3610.2, lowF: '3610.20',
@@ -118,6 +123,6 @@ for (const DW of [1440, 1920, 2400]) {
 		footL: '支数:13  涨 6  跌 7  平 0',
 		footR: '总额 1339.5亿',
 	});
-	await writeFile(join(outDir, `plan-${String(DW)}.json`), JSON.stringify(plan));
-	console.log(`plan ${DW}: ${String(plan.prims.length)} prims, ${String(plan.h)}px tall`);
+	await writeFile(join(outDir, `plan-${String(CW)}.json`), JSON.stringify(plan));
+	console.log(`plan ${String(cols)}x${String(hC)} cells (container ${String(CW)}): ${String(plan.prims.length)} prims, ${String(plan.w)}x${String(plan.h)}px`);
 }

@@ -381,7 +381,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.22.3';
+		const CLIENT_REV = '0.23.0';
 		const diagQueue = [];
 		let diagTimer = 0;
 		// the host meta tells the real level; until then assume the shipped 'errors' default
@@ -1988,7 +1988,10 @@ window.__ModuleLoader__.load({
 		// adds the living parts: a scan band, random bulb chatter, and page wipes
 		// that kill and re-light bulbs cell by cell. No libraries, ~1 blit + a
 		// few hundred tiny fills per frame at 24fps.
-		const PITCH = 2;             // css px per bulb cell
+		const PITCH = 3.5;          // css px per bulb cell (3px bulb + 0.5px seam, per owner spec)
+		const BULB = 3;             // bulb footprint in css px (lit and off discs)
+		const PSZ = Math.ceil(PITCH); // sprite sheet size (integer canvas)
+		const LPX = (v) => Math.round(v); // cell px snap: paint and sampling share this lattice
 		const OFF_BG = '#05080f';
 		// UCDOS-style bitmap font (HZK16 + ASC16, 8178 glyphs) served by
 		// /market-lens/lampfont: one bitmap dot = exactly one bulb, no AA, razor
@@ -2039,7 +2042,7 @@ window.__ModuleLoader__.load({
 							bits |= LAMP.asc[o + row + 1];
 						}
 						if (bits === 0) continue;
-						for (let bx = 0; bx < 8; bx++) if (((bits >> (7 - bx)) & 1) === 1) cx.fillRect(px + bx * PITCH, y + (tiny === true ? row >> 1 : row) * PITCH, PITCH, PITCH);
+						for (let bx = 0; bx < 8; bx++) if (((bits >> (7 - bx)) & 1) === 1) cx.fillRect(LPX(px + bx * PITCH), LPX(y + (tiny === true ? row >> 1 : row) * PITCH), BULB, BULB);
 					}
 					px += 9 * PITCH;
 					continue;
@@ -2051,14 +2054,14 @@ window.__ModuleLoader__.load({
 						for (let row = 0; row < 16; row++) {
 							const bits = (LAMP.hz[off + row * 2] << 8) | LAMP.hz[off + row * 2 + 1];
 							if (bits === 0) continue;
-							for (let bx = 0; bx < 16; bx++) if (((bits >> (15 - bx)) & 1) === 1) cx.fillRect(px + bx * PITCH, y + row * PITCH, PITCH, PITCH);
+							for (let bx = 0; bx < 16; bx++) if (((bits >> (15 - bx)) & 1) === 1) cx.fillRect(LPX(px + bx * PITCH), LPX(y + row * PITCH), BULB, BULB);
 						}
 						px += 17 * PITCH;
 					} else {
 						for (let row = 0; row < 16; row += 2) {
 							const bits = ((LAMP.hz[off + row * 2] << 8) | LAMP.hz[off + row * 2 + 1])
 								| ((LAMP.hz[off + row * 2 + 2] << 8) | LAMP.hz[off + row * 2 + 3]);
-							for (let bx = 0; bx < 16; bx += 2) if ((((bits >> (15 - bx)) & 1) | ((bits >> (14 - bx)) & 1)) === 1) cx.fillRect(px + (bx >> 1) * PITCH, y + (row >> 1) * PITCH, PITCH, PITCH);
+							for (let bx = 0; bx < 16; bx += 2) if ((((bits >> (15 - bx)) & 1) | ((bits >> (14 - bx)) & 1)) === 1) cx.fillRect(LPX(px + (bx >> 1) * PITCH), LPX(y + (row >> 1) * PITCH), BULB, BULB);
 						}
 						px += 9 * PITCH;
 					}
@@ -2067,12 +2070,12 @@ window.__ModuleLoader__.load({
 		}
 		const offTile = (() => {
 			const c = document.createElement('canvas');
-			c.width = PITCH;
-			c.height = PITCH;
+			c.width = PSZ;
+			c.height = PSZ;
 			const x = c.getContext('2d');
 			x.fillStyle = 'rgba(24,48,74,0.9)';
 			x.beginPath();
-			x.arc(PITCH / 2, PITCH / 2, PITCH * 0.44, 0, 6.3);
+			x.arc(PITCH / 2, PITCH / 2, BULB / 2, 0, 6.3);
 			x.fill();
 			return c;
 		})();
@@ -2082,16 +2085,16 @@ window.__ModuleLoader__.load({
 			let s = spriteCache.get(color);
 			if (s !== void 0) return s;
 			s = document.createElement('canvas');
-			s.width = PITCH;
-			s.height = PITCH;
+			s.width = PSZ;
+			s.height = PSZ;
 			const x = s.getContext('2d');
-			// bulb with a dark seam around it: core to ~0.60 cell, then clear edge
-			const g = x.createRadialGradient(PITCH / 2, PITCH / 2, 0.05, PITCH / 2, PITCH / 2, PITCH * 0.6);
+			// bulb with a dark seam around it: solid core to 0.62 of the disc, then clear edge
+			const g = x.createRadialGradient(PITCH / 2, PITCH / 2, 0.05, PITCH / 2, PITCH / 2, BULB / 2 + 0.2);
 			g.addColorStop(0, color);
 			g.addColorStop(0.62, color);
 			g.addColorStop(1, 'rgba(0,0,0,0)');
 			x.fillStyle = g;
-			x.fillRect(0, 0, PITCH, PITCH);
+			x.fillRect(0, 0, PSZ, PSZ);
 			spriteCache.set(color, s);
 			return s;
 		}
@@ -2099,15 +2102,15 @@ window.__ModuleLoader__.load({
 			let s = haloCache.get(color);
 			if (s !== void 0) return s;
 			s = document.createElement('canvas');
-			s.width = PITCH * 3;
-			s.height = PITCH * 3;
+			s.width = PSZ * 3;
+			s.height = PSZ * 3;
 			const x = s.getContext('2d');
-			const g = x.createRadialGradient(PITCH * 1.5, PITCH * 1.5, 0.2, PITCH * 1.5, PITCH * 1.5, PITCH * 1.5);
+			const g = x.createRadialGradient(PSZ * 1.5, PSZ * 1.5, 0.2, PSZ * 1.5, PSZ * 1.5, PSZ * 1.5);
 			g.addColorStop(0, color);
 			g.addColorStop(0.4, color);
 			g.addColorStop(1, 'rgba(0,0,0,0)');
 			x.fillStyle = g;
-			x.fillRect(0, 0, PITCH * 3, PITCH * 3);
+			x.fillRect(0, 0, PSZ * 3, PSZ * 3);
 			haloCache.set(color, s);
 			return s;
 		}
@@ -2122,20 +2125,22 @@ window.__ModuleLoader__.load({
 			lx.fillRect(0, 0, led.width, led.height);
 			const d = content.getContext('2d').getImageData(0, 0, content.width, content.height).data;
 			const lit = [];
-			for (let gy = 0; gy + PITCH <= content.height; gy += PITCH) {
-				for (let gx = 0; gx + PITCH <= content.width; gx += PITCH) {
+			for (let cy = 0; LPX(cy * PITCH) + BULB <= content.height; cy++) {
+				const gy = LPX(cy * PITCH);
+				for (let cx = 0; LPX(cx * PITCH) + BULB <= content.width; cx++) {
+					const gx = LPX(cx * PITCH);
 					let r = 0;
 					let g = 0;
 					let b = 0;
-					for (let dy = 0; dy < PITCH; dy++) {
-						for (let dx = 0; dx < PITCH; dx++) {
+					for (let dy = 0; dy < BULB; dy++) {
+						for (let dx = 0; dx < BULB; dx++) {
 							const i = ((gy + dy) * content.width + gx + dx) * 4;
 							r += d[i];
 							g += d[i + 1];
 							b += d[i + 2];
 						}
 					}
-					const lum = Math.max(r, g, b) / (PITCH * PITCH * 255);
+					const lum = Math.max(r, g, b) / (BULB * BULB * 255);
 					if (lum < 0.3) continue;
 					let color = '#cfe6ff';
 					if (r >= g && r > g * 1.35 && r > b * 1.2) color = '#ff7d7d';
@@ -2149,7 +2154,7 @@ window.__ModuleLoader__.load({
 			lx.globalCompositeOperation = 'lighter';
 			for (let k = 0; k < lit.length; k += 4) {
 				lx.globalAlpha = Math.min(0.5, lit[k + 2] * 0.34);
-				lx.drawImage(haloSprite(lit[k + 3]), lit[k] - PITCH, lit[k + 1] - PITCH);
+				lx.drawImage(haloSprite(lit[k + 3]), lit[k] - PSZ, lit[k + 1] - PSZ);
 			}
 			lx.globalCompositeOperation = 'source-over';
 			for (let k = 0; k < lit.length; k += 4) {
@@ -2172,158 +2177,157 @@ window.__ModuleLoader__.load({
 		// prims: {t:'x',x,y,r,c,s} text (r = right-align rail or null)
 		//        {t:'f',x,y,w,h,c,a} filled rect
 		function ledPlan(env) {
-			const P = env.PITCH;
-			const G = env.G;
-			const DW = env.DW;
-			const pitch = env.pitch;
-			const CH = env.CHART_H;
-			const TH = G + 6;
-			const FH = G + 6;
-			const RTOP = TH + G + 8;
+			// THE BULB IS THE UNIT OF LAYOUT: everything inside counts bulb cells;
+			// resolution is a product (cells x pitch), never an input. The wall
+			// geometry is env.cols (bulb columns the container fits at P px each);
+			// column gutters sit on a 960-cell basis (= a 1920 board at the classic
+			// 2px lattice), so a wall only goes full five-zone at 960+ columns.
+			const P = env.P;
+			const C = env.cols;
+			const X = (c) => Math.round(c * P);
+			const G = env.tiny === true ? 8 : 16; // glyph height in cells
+			const TH = G + 3;
+			const FH = G + 3;
+			const RTOP = TH + G + 4;
 			const upC = env.ledUp;
 			const dnC = env.ledDown;
-			const wide = DW >= env.BASE_W;
-			const u = (v) => Math.round((v * DW) / env.BASE_W);
+			const wide = C >= 960;
+			const u = (v) => Math.round((v * C) / 960);
 			const prims = [];
-			const txt = (x, y, s, c, r) => { prims.push({ t: 'x', x, y, r: r === void 0 ? null : r, c, s }); };
-			const box = (x, y, w, h, c, a) => { prims.push({ t: 'f', x, y, w, h, c, a: a === void 0 ? 1 : a }); };
+			const txt = (x, y, s, c, r) => { prims.push({ t: 'x', x: X(x), y: X(y), r: r === void 0 ? null : X(r), c, s }); };
+			const box = (x, y, w, h, c, a) => { prims.push({ t: 'f', x: X(x), y: X(y), w: Math.max(1, X(w)), h: Math.max(1, X(h)), c, a: a === void 0 ? 1 : a }); };
 			const pctColor = (p) => (p === null ? '#cfe6ff' : p > 0 ? upC : p < 0 ? dnC : '#8fb3d9');
-			const rails = wide ? [916, 1056, 1196, 1336, 1466, 1606].map(u) : [DW - 340, DW - 190, DW - 8];
+			const pitchC = env.pitchC;
+			const CH = env.chartC;
+			// right rails: full 6 columns on wide walls; compact keeps
+			// last/pct/amount with gutters sized for the widest real values
+			const rails = wide ? [458, 528, 598, 668, 733, 803].map(u) : [C - 141, C - 81, C - 4];
 			const pick = wide ? [0, 1, 2, 3, 4, 5] : [3, 4, 5];
-			const MXU = wide ? u(470) : 0;
-			const nameX = MXU + 20;
-			const codeX = wide ? u(630) : 170;
-			const tableR = wide ? u(1630) : DW - 8;
-			// title bar + wall clock; on compact bands the index folds into a
+			const MXU = wide ? u(235) : 0;
+			const nameX = MXU + 10;
+			const codeX = wide ? u(315) : 85;
+			const tableR = wide ? u(815) : C - 4;
+			// title bar + wall clock; on compact walls the index folds into a
 			// one-liner right after the board name, clear of the clock rail
-			txt(8, 3, env.title, '#ffd75e');
-			txt(0, 3, env.clock, '#ffd75e', DW - 8);
+			txt(4, 1, env.title, '#ffd75e');
+			txt(0, 1, env.clock, '#ffd75e', C - 4);
 			if (env.idx !== null) {
 				const ix = env.idx;
 				if (!wide) {
-					txt(8 + env.titlePx + 24, 3, `${String(ix.name).slice(0, 4)} ${ix.priceF} ${ix.pctF}`, pctColor(ix.pct), DW - 140);
+					txt(4 + env.titleC + 12, 1, `${String(ix.name).slice(0, 4)} ${ix.priceF} ${ix.pctF}`, pctColor(ix.pct), C - 52);
 				} else {
-					txt(8, TH + 2, String(ix.name).slice(0, 8), '#ff6a5e');
+					txt(4, TH + 1, String(ix.name).slice(0, 8), '#ff6a5e');
 					[[env.L('panel.last'), ix.priceF, ix.price], [env.L('board.col.high'), ix.highF, ix.high], [env.L('board.col.low'), ix.lowF, ix.low], [env.L('board.col.chgPct'), ix.pctF, ix.pct]].forEach((cellv, k) => {
-						const lx0 = k % 2 === 0 ? 8 : u(236);
-						const ly = TH + 10 + G + Math.floor(k / 2) * (G + 6);
+						const lx0 = k % 2 === 0 ? 4 : u(118);
+						const ly = TH + 5 + G + Math.floor(k / 2) * (G + 3);
 						txt(lx0, ly, cellv[0], '#3f618a');
-						txt(lx0 + (env.w(cellv[0]) + 3) * P, ly, cellv[1] === null ? '—' : cellv[1], cellv[2] === null ? '#8fb3d9' : pctColor(cellv[2]));
+						txt(lx0 + env.wC(cellv[0]) + 2, ly, cellv[1] === null ? '—' : cellv[1], cellv[2] === null ? '#8fb3d9' : pctColor(cellv[2]));
 					});
-					const iTop = TH + 10 + 2 * (G + 6) + G;
-					const iBot = env.h - FH - CH - G - 8;
-					if (env.idxBars.length > 1 && iBot > iTop + 20) {
+					const iTop = TH + 5 + 2 * (G + 3) + G;
+					const iBot = env.hC - FH - CH - 4;
+					if (env.idxBars.length > 1 && iBot > iTop + 10) {
 						const pts = env.idxBars;
-						const lru = u(444) - 8;
+						const lru = u(222) - 4;
 						const lo = Math.min(...pts.map((b2) => b2.c));
 						const hi = Math.max(...pts.map((b2) => b2.c));
 						const span = hi - lo || 1;
-						const iRows = Math.max(4, Math.floor((iBot - iTop) / P) - 1);
+						const iRows = Math.max(4, iBot - iTop - 1);
 						let pY = null;
-						for (let col = 0; col * P < lru; col++) {
-							const idx = Math.min(pts.length - 1, Math.round((col / (lru / P)) * (pts.length - 1)));
+						for (let col = 0; col < lru; col++) {
+							const idx = Math.min(pts.length - 1, Math.round((col / lru) * (pts.length - 1)));
 							const lvl = Math.max(1, Math.round(((pts[idx].c - lo) / span) * iRows));
-							const yTop = iTop + (iRows - lvl) * P;
-							if (pY !== null && pY !== yTop) box(8 + col * P, Math.min(pY, yTop), P, Math.abs(pY - yTop) + P, '#ffd75e', 0.7);
-							box(8 + col * P, yTop, P, P, '#ffd75e');
+							const yTop = iTop + (iRows - lvl);
+							if (pY !== null && pY !== yTop) box(4 + col, Math.min(pY, yTop), 1, Math.abs(pY - yTop) + 1, '#ffd75e', 0.7);
+							box(4 + col, yTop, 1, 1, '#ffd75e');
 							pY = yTop;
 						}
-						txt(8, iBot + 4, pts[0].ax, '#3f618a');
-						txt(0, iBot + 4, pts[pts.length - 1].ax, '#3f618a', u(444) - 4);
+						txt(4, iBot + 1, pts[0].ax, '#3f618a');
+						txt(0, iBot + 1, pts[pts.length - 1].ax, '#3f618a', u(222) - 2);
 					}
 				}
 			}
 			// main table header
-			txt(nameX, TH + 2, env.L('board.col.instrument'), '#ff6a5e');
-			txt(codeX, TH + 2, env.L('board.col.code'), '#ff6a5e');
-			pick.forEach((ci, j) => txt(0, TH + 2, env.colLabels[ci], '#ff6a5e', rails[j] - 4));
+			txt(nameX, TH + 1, env.L('board.col.instrument'), '#ff6a5e');
+			txt(codeX, TH + 1, env.L('board.col.code'), '#ff6a5e');
+			pick.forEach((ci, j) => txt(0, TH + 1, env.colLabels[ci], '#ff6a5e', rails[j] - 2));
 			env.rows.forEach((row, i) => {
-				const top = RTOP + i * pitch;
-				const y = top + Math.floor((pitch - G) / 2);
+				const top = RTOP + i * pitchC;
+				const y = top + Math.floor((pitchC - G) / 2);
 				const color = pctColor(row.pct);
 				if (i === env.lit) {
-					box(MXU, top, tableR - MXU - 16, pitch - 3, '#0e2c4c');
+					box(MXU, top, tableR - MXU - 8, pitchC - 2, '#0e2c4c');
 					txt(MXU, y, '>', '#ffd75e');
 				}
 				txt(nameX, y, row.name, i === env.lit ? '#ffffff' : color);
 				txt(codeX, y, row.symbol, '#3f618a');
-				pick.forEach((ci, j) => txt(0, y, row.cells[ci], ci === 3 || ci === 4 ? (i === env.lit ? '#ffffff' : color) : i === env.lit && ci === 5 ? '#ffffff' : row.cellColors[ci], rails[j] - 4));
+				pick.forEach((ci, j) => txt(0, y, row.cells[ci], ci === 3 || ci === 4 ? (i === env.lit ? '#ffffff' : color) : i === env.lit && ci === 5 ? '#ffffff' : row.cellColors[ci], rails[j] - 2));
 			});
-			// twin ranking boards ride the wide bands only
+			// twin ranking boards ride wide walls only
 			if (wide && env.side.length > 0) {
-				const SXU = u(1630);
-				const nSide = Math.max(1, Math.min(6, Math.floor((pitch * env.rows.length - 2 * (G + 10)) / (2 * (G + 4)))));
-				txt(SXU, TH + 2, env.L('led.gainers'), '#ff6a5e');
+				const SXU = u(815);
+				const nSide = Math.max(1, Math.min(6, Math.floor((pitchC * env.rows.length - 2 * (G + 5)) / (2 * (G + 2)))));
+				txt(SXU, TH + 1, env.L('led.gainers'), '#ff6a5e');
 				env.side.slice(0, nSide).forEach((e, k) => {
-					const yy = TH + 10 + G + k * (G + 4);
-					txt(SXU + 8, yy, e.name, pctColor(e.pct));
-					txt(0, yy, e.pctF, e.pct > 0 ? upC : dnC, DW - 8);
+					const yy = TH + 5 + G + k * (G + 2);
+					txt(SXU + 4, yy, e.name, pctColor(e.pct));
+					txt(0, yy, e.pctF, e.pct > 0 ? upC : dnC, C - 4);
 				});
-				txt(SXU, TH + 14 + G + nSide * (G + 4), env.L('led.losers'), '#ff6a5e');
+				txt(SXU, TH + 7 + G + nSide * (G + 2), env.L('led.losers'), '#ff6a5e');
 				env.side.slice(-nSide).reverse().forEach((e, k) => {
-					const yy = TH + 22 + 2 * G + nSide * (G + 4) + k * (G + 4);
-					txt(SXU + 8, yy, e.name, pctColor(e.pct));
-					txt(0, yy, e.pctF, e.pct < 0 ? dnC : upC, DW - 8);
+					const yy = TH + 11 + 2 * G + nSide * (G + 2) + k * (G + 2);
+					txt(SXU + 4, yy, e.name, pctColor(e.pct));
+					txt(0, yy, e.pctF, e.pct < 0 ? dnC : upC, C - 4);
 				});
 			}
 			// lit-row chart strip; hi/lo tick the reserved gutter, top and bottom
-			const cy0 = RTOP + pitch * env.rows.length;
+			const cy0 = RTOP + pitchC * env.rows.length;
 			if (env.chart !== null) {
 				const ch = env.chart;
-				const nCols = Math.max(8, Math.floor((tableR - 240) / P));
-				const priceRows = Math.max(6, Math.floor((CH - 16) * 0.62 / P));
-				const volRows = Math.max(3, Math.floor((CH - 16) * 0.30 / P));
+				const nCols = Math.max(8, tableR - 120);
+				const priceRows = Math.max(6, Math.floor((CH - 8) * 0.62));
+				const volRows = Math.max(3, Math.floor((CH - 8) * 0.30));
 				let prevY = null;
 				for (let col = 0; col < nCols; col++) {
 					const idx = Math.min(ch.pts.length - 1, Math.round((col / nCols) * (ch.pts.length - 1)));
 					const b2 = ch.pts[idx];
 					const lvl = Math.max(1, Math.round(((b2.c - ch.lo) / ch.span) * priceRows));
-					const yTop = cy0 + 4 + (priceRows - lvl) * P;
-					if (prevY !== null && prevY !== yTop) box(8 + col * P, Math.min(prevY, yTop), P, Math.abs(prevY - yTop) + P, ch.color, 0.7);
-					box(8 + col * P, yTop, P, P, ch.color);
+					const yTop = cy0 + 2 + (priceRows - lvl);
+					if (prevY !== null && prevY !== yTop) box(4 + col, Math.min(prevY, yTop), 1, Math.abs(prevY - yTop) + 1, ch.color, 0.7);
+					box(4 + col, yTop, 1, 1, ch.color);
 					if (col === nCols - 1) {
-						box(8 + (col - 1) * P, yTop, P, P, ch.color);
-						box(8 + (col - 1) * P, yTop - P, P, P, ch.color);
-						box(8 + col * P, yTop - P, P, P, ch.color);
+						box(4 + col - 1, yTop, 1, 1, ch.color);
+						box(4 + col - 1, yTop - 1, 1, 1, ch.color);
+						box(4 + col, yTop - 1, 1, 1, ch.color);
 					}
 					const vh = Math.max(1, Math.round(((b2.v === null ? 0 : b2.v) / ch.volMax) * volRows));
-					for (let vk = 0; vk < vh; vk++) box(8 + col * P, cy0 + CH - 4 - (vk + 1) * P, P, P, b2.down === true ? dnC : upC, 0.72 - 0.45 * (vk / Math.max(1, vh - 1)));
+					for (let vk = 0; vk < vh; vk++) box(4 + col, cy0 + CH - 2 - (vk + 1), 1, 1, b2.down === true ? dnC : upC, 0.72 - 0.45 * (vk / Math.max(1, vh - 1)));
 					prevY = yTop;
 				}
-				txt(0, cy0 + 2, ch.hiF, '#4d7aa8', tableR - 64);
-				txt(0, cy0 + CH - G - 2, ch.loF, '#4d7aa8', tableR - 64);
+				txt(0, cy0, ch.hiF, '#4d7aa8', tableR - 32);
+				txt(0, cy0 + CH - G, ch.loF, '#4d7aa8', tableR - 32);
 			} else {
-				txt(12, cy0 + Math.floor((CH - G) / 2), 'LOADING', '#3f618a');
+				txt(6, cy0 + Math.floor((CH - G) / 2), 'LOADING', '#3f618a');
 			}
-			const fy = env.h - FH + 2;
-			txt(8, fy, env.footL, '#c8a24a');
-			txt(0, fy, env.footR, '#c8a24a', DW - 8);
-			return { w: DW, h: env.h, prims };
+			const fy = env.hC - FH + 1;
+			txt(4, fy, env.footL, '#c8a24a');
+			txt(0, fy, env.footR, '#c8a24a', C - 4);
+			return { w: X(C), h: X(env.hC), prims };
 		}
 
 		function LedBoard({ rows, quotes, seenQuote, meta, onPick, getKline, ledUp, ledDown, tiny, t }) {
-			// one 16x16 (std) or 8x8 (tiny) glyph line plus a gutter, in design px
-			const G = (tiny === true ? 8 : 16) * PITCH;
-			const TITLE_H = G + 6;
-			const FOOT_H = G + 6;
-			const ROWS_TOP = TITLE_H + G + 8;
-			const ROW_H = G + 12;
-			const CHART_H = tiny === true ? 56 : 88;
-			// the wall has a FIXED design raster modelled on a real exchange
-			// master board: title+clock bar, left index panel (value stack and
-			// trend ribbon), the dense quote table in the middle, a gainer/loser
-			// side board on the right and a turnover footer strip. The raster has
-			// QUANTIZED DESIGN WIDTHS (480 steps up to 8K): the scene picks the
-			// widest band that fits the container and then paints 1:1 - bulbs
-			// never resample and the wall never leaves a dead band wider than one
-			// step. Column gutters are laid on the 1920 basis and scaled per band;
-			// narrow bands drop to the core columns and fold the side board. A
-			// short page EQUALIZES its row pitch instead of leaving dead glass.
-			const BASE_W = 1920;
-			const MX = 470; // main table left edge, 1920 basis
-			const SXB = 1630; // side board left edge, 1920 basis
-			const LRB = 444; // left index panel right edge, 1920 basis
-			const TCOLB = [916, 1056, 1196, 1336, 1466, 1606]; // prev high low last pct amount, 1920 basis
+			// geometry counts BULB CELLS end to end; the wall is COLS x HROWS cells
+			// and its resolution is the product - a real board is specced by its
+			// lamp count, and 3px bulbs with a 0.5px seam do not care how many css
+			// pixels the container happens to have. Layout constants (ledPlan)
+			// sit on a 960-cell basis; below that the wall drops to the core
+			// columns and folds the side board, and a short page equalizes its
+			// row pitch instead of leaving dead glass.
+			const G_C = tiny === true ? 8 : 16;
+			const TITLE_HC = G_C + 3;
+			const FOOT_HC = G_C + 3;
+			const ROWS_TOP_C = TITLE_HC + G_C + 4;
+			const ROW_MIN_C = G_C + 6;
+			const CHART_C = tiny === true ? 20 : 34; // must seat two G-cell text rows (hi/lo ticks)
 			const wrapRef = React.useRef(null);
 			const canvasRef = React.useRef(null);
 			const contentRef = React.useRef(null);
@@ -2341,14 +2345,9 @@ window.__ModuleLoader__.load({
 			const [lit, setLit] = React.useState(0);
 			const [paused, setPaused] = React.useState(false);
 			const [feedTick, setFeedTick] = React.useState(0);
-			// quantized design raster: the widest 480-step band that fits the
-			// container, painted at scale 1 - 480, 960, ... 1920, ... 7680 (8K).
-			// Below one step (tiny panels) fall back to a floored 0.25 blit.
-			const DW = 480 * Math.max(1, Math.min(16, size.w === 0 ? 4 : Math.floor(size.w / 480)));
-			const sc = size.w >= DW ? 1 : Math.max(0.25, Math.floor((size.w / DW) * 4) / 4);
-			// 1920-basis -> band px
-			const u = (v) => Math.round((v * DW) / BASE_W);
-			const pageSize = Math.max(2, Math.floor((size.h / sc - ROWS_TOP - CHART_H - FOOT_H) / ROW_H));
+			const COLS = size.w === 0 ? 411 : Math.max(80, Math.floor(size.w / PITCH));
+			const HROWS = size.h === 0 ? 262 : Math.max(64, Math.floor(size.h / PITCH));
+			const pageSize = Math.max(2, Math.floor((HROWS - ROWS_TOP_C - CHART_C - FOOT_HC) / ROW_MIN_C));
 			const pages = Math.max(1, Math.ceil(rows.length / pageSize));
 			const start = Math.min(page * pageSize, Math.max(0, rows.length - pageSize));
 			const view = rows.slice(start, start + pageSize);
@@ -2416,11 +2415,11 @@ window.__ModuleLoader__.load({
 					void loadLamp().then(() => setFeedTick((current) => current + 1), () => void 0);
 					return;
 				}
-				// fit-mode height budget: rows share whatever the frame leaves them
-				const availH = Math.max(ROWS_TOP + view.length * ROW_H + CHART_H + FOOT_H, Math.floor(size.h / sc));
-				const pitch = Math.max(ROW_H, Math.floor((availH - ROWS_TOP - CHART_H - FOOT_H) / view.length));
-				pitchRef.current = pitch;
-				topRef.current = ROWS_TOP;
+				// fit-mode height budget: rows share whatever the frame leaves them, in cells
+				const pitchC = Math.max(ROW_MIN_C, Math.floor((HROWS - ROWS_TOP_C - CHART_C - FOOT_HC) / view.length));
+				const hC = ROWS_TOP_C + pitchC * view.length + CHART_C + FOOT_HC;
+				pitchRef.current = pitchC * PITCH;
+				topRef.current = ROWS_TOP_C * PITCH;
 				const fmtv = (v) => (v === null || v === void 0 ? '—' : fmtNum(v));
 				let upN = 0;
 				let dnN = 0;
@@ -2476,13 +2475,12 @@ window.__ModuleLoader__.load({
 				const nowD = new Date();
 				const title = t('led.master');
 				const plan = ledPlan({
-					PITCH, G, DW, BASE_W, tiny, pitch, CHART_H,
-					h: ROWS_TOP + pitch * view.length + CHART_H + FOOT_H,
+					P: PITCH, cols: COLS, hC, tiny, pitchC, chartC: CHART_C,
 					ledUp, ledDown,
 					title,
 					clock: `${String(nowD.getHours()).padStart(2, '0')}:${String(nowD.getMinutes()).padStart(2, '0')}`,
-					titlePx: ledTextW(title, tiny),
-					w: (s) => ledTextW(String(s), tiny),
+					titleC: ledTextW(title, tiny),
+					wC: (s) => ledTextW(String(s), tiny),
 					idx, idxBars,
 					L: (k) => t(k),
 					colLabels: [t('board.col.prevClose'), t('board.col.high'), t('board.col.low'), t('board.col.last'), t('board.col.chgPct'), t('board.col.amount')],
@@ -2542,24 +2540,22 @@ window.__ModuleLoader__.load({
 				cv.height = size.h;
 				const x = cv.getContext('2d');
 				x.imageSmoothingEnabled = false;
-				const cell = PITCH * sc;
+				const gcols = Math.floor(size.w / PITCH);
+				const grows2 = Math.floor(size.h / PITCH);
 				const bg = document.createElement('canvas');
 				bg.width = size.w;
 				bg.height = size.h;
-				const bx = bg.getContext('2d');
-				bx.fillStyle = OFF_BG;
-				bx.fillRect(0, 0, size.w, size.h);
-				const base = bx.createPattern(offTile, 'repeat');
-				if (base !== null && typeof DOMMatrix !== 'undefined') {
-					base.setTransform(new DOMMatrix([sc, 0, 0, sc, 0, 0]));
-					bx.fillStyle = base;
-					bx.fillRect(0, 0, size.w, size.h);
+				const bxg = bg.getContext('2d');
+				bxg.fillStyle = OFF_BG;
+				bxg.fillRect(0, 0, size.w, size.h);
+				// off-bulb field on the very lattice the painter uses: one dark
+				// 3px disc per cell, the 0.5px seam is what is left between them
+				bxg.fillStyle = 'rgba(24,48,74,0.9)';
+				for (let r = 0; r < grows2; r++) {
+					for (let c = 0; c < gcols; c++) bxg.fillRect(LPX(c * PITCH), LPX(r * PITCH), BULB, BULB);
 				}
-				const sceneW = Math.round(DW * sc);
-				// center the raster in the container; leftover glass stays off bulbs
-				const offX = Math.max(0, Math.floor((size.w - sceneW) / 2));
-				const gw = Math.floor(sceneW / cell);
-				const gh = Math.ceil(size.h / cell);
+				const gw = Math.max(1, Math.min(gcols, Math.floor(size.w / PITCH)));
+				const gh = Math.max(1, grows2);
 				const total = Math.max(1, gw * gh);
 				let raf = 0;
 				let last = 0;
@@ -2571,15 +2567,15 @@ window.__ModuleLoader__.load({
 					x.drawImage(bg, 0, 0);
 					const scene = sceneRef.current;
 					if (scene === null) return;
-					x.drawImage(scene, offX, 0, Math.round(scene.width * sc), Math.round(scene.height * sc));
+					x.drawImage(scene, 0, 0);
 					scanY = (scanY + 1) % gh;
 					x.fillStyle = 'rgba(130,200,255,0.05)';
-					x.fillRect(0, Math.round(scanY * cell), size.w, Math.max(1, Math.round(cell)));
+					x.fillRect(0, LPX(scanY * PITCH), size.w, BULB);
 					for (let k = 0; k < 150; k++) {
-						const bx = offX + Math.floor(Math.random() * gw) * cell;
-						const by = Math.floor(Math.random() * gh) * cell;
+						const bxp = LPX(Math.floor(Math.random() * gw) * PITCH);
+						const byp = LPX(Math.floor(Math.random() * gh) * PITCH);
 						x.fillStyle = k % 4 === 0 ? 'rgba(150,210,255,0.12)' : 'rgba(5,8,15,0.45)';
-						x.fillRect(Math.round(bx) + 1, Math.round(by) + 1, 1, 1);
+						x.fillRect(bxp + 1, byp + 1, 1, 1);
 					}
 					const tr = transRef.current;
 					if (tr !== null) {
@@ -2587,7 +2583,7 @@ window.__ModuleLoader__.load({
 						const n = Math.floor((total / 10) * 1.2);
 						if (tr.phase === 'out') {
 							x.fillStyle = OFF_BG;
-							for (let k = 0; k < n; k++) x.fillRect(offX + Math.round(Math.floor(Math.random() * gw) * cell), Math.round(Math.floor(Math.random() * gh) * cell), Math.max(1, Math.round(cell)), Math.max(1, Math.round(cell)));
+							for (let k = 0; k < n; k++) x.fillRect(LPX(Math.floor(Math.random() * gw) * PITCH), LPX(Math.floor(Math.random() * gh) * PITCH), BULB, BULB);
 							if (tr.f >= 10) {
 								transRef.current = { phase: 'in', f: 9 };
 								const commit = pendingRef.current;
@@ -2595,11 +2591,10 @@ window.__ModuleLoader__.load({
 								if (commit !== null) commit();
 							}
 						} else {
-							const ps = Math.max(1, Math.round(cell));
 							for (let k = 0; k < n; k++) {
-								const sx = Math.floor(Math.random() * (scene.width / PITCH)) * PITCH;
-								const sy = Math.floor(Math.random() * (scene.height / PITCH)) * PITCH;
-								x.drawImage(scene, sx, sy, PITCH, PITCH, Math.round(sx * sc) + offX, Math.round(sy * sc), ps, ps);
+								const sx = LPX(Math.floor(Math.random() * (scene.width / PITCH)) * PITCH);
+								const sy = LPX(Math.floor(Math.random() * (scene.height / PITCH)) * PITCH);
+								x.drawImage(scene, sx, sy, BULB, BULB, sx, sy, BULB, BULB);
 							}
 							if (tr.f <= 0) transRef.current = null;
 						}
@@ -2610,7 +2605,7 @@ window.__ModuleLoader__.load({
 			}, [size]);
 			const hit = (event) => {
 				const rect = canvasRef.current.getBoundingClientRect();
-				const i = Math.floor((((event.clientY - rect.top) / sc) - topRef.current) / (pitchRef.current === 0 ? ROW_H : pitchRef.current));
+				const i = Math.floor(((event.clientY - rect.top) - topRef.current) / (pitchRef.current === 0 ? ROW_MIN_C * PITCH : pitchRef.current));
 				return i >= 0 && i < view.length ? i : -1;
 			};
 			return h('div', { className: 'ml-led' },
