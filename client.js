@@ -60,7 +60,7 @@ window.__ModuleLoader__.load({
 			'advice.surge': '强势拉升', 'advice.rise': '稳步走高', 'advice.flat': '窄幅盘整', 'advice.drop': '正快速下降', 'advice.slump': '加速下挫',
 			'feed.notice': '公告', 'feed.posts': '评论', 'feed.pick': '选中一只股票后显示', 'feed.badge': '未读新公告',
 			'day.hi20': '20日新高', 'day.lo20': '20日新低', 'day.volUp': '放量',
-			'board.title': '证券大厅 · 自动轮播大屏', 'board.short': '证券大厅', 'board.tip': '自动轮播 · 悬停接管 · 点击选中不离场', 'toolbar.density': '点阵密度', 'toolbar.zoom': '灯珠倍率', 'news.src.sina': '新浪快讯', 'news.src.em': '东方财富', 'news.src.guba': '股吧', 'density.std': '标准 16×16', 'density.tiny': '紧凑 8×8', 'board.split': '拖动调整列宽', 'board.pickHint': '点击查看该股全景',
+			'board.title': '证券大厅 · 自动轮播大屏', 'board.short': '证券大厅', 'board.tip': '自动轮播 · 悬停接管 · 点击选中不离场', 'toolbar.density': '点阵密度', 'news.src.sina': '新浪快讯', 'news.src.em': '东方财富', 'news.src.guba': '股吧', 'density.std': '标准 16×16', 'density.tiny': '紧凑 8×8', 'board.split': '拖动调整列宽', 'board.pickHint': '点击查看该股全景',
 			'board.col.instrument': '名称', 'board.col.last': '现价', 'board.col.chg': '涨跌', 'board.col.chgPct': '涨幅', 'board.col.amount': '成交额', 'board.col.code': '代码', 'board.col.prevClose': '前收', 'board.col.high': '最高', 'board.col.low': '最低', 'panel.last': '最新', 'led.master': '寰镜证券行情总屏', 'led.min': '寰镜', 'led.gainers': '涨幅榜', 'led.losers': '跌幅榜', 'led.count': '支数', 'led.upN': '涨', 'led.downN': '跌', 'led.flatN': '平', 'led.turnover': '总额',
 			'mkt.on': '交易中', 'mkt.pre': '集合竞价', 'mkt.lunch': '午间休市', 'mkt.closed': '已收盘', 'rel.now': '刚刚', 'rel.h': '{n}小时前', 'rel.d': '{n}天前', 'rel.w': '{n}周前', 'rel.mo': '{n}个月前', 'rel.y': '{n}年前',
 			'import.title': '批量导入自选', 'import.placeholder': '每行一个代码或名称，最多 50 条',
@@ -108,7 +108,7 @@ window.__ModuleLoader__.load({
 			'advice.surge': 'surging', 'advice.rise': 'trending up', 'advice.flat': 'consolidating', 'advice.drop': 'falling fast', 'advice.slump': 'breaking down',
 			'feed.notice': 'Filings', 'feed.posts': 'Comments', 'feed.pick': 'Select a stock to load its feeds', 'feed.badge': 'unread filings',
 			'day.hi20': '20-bar high', 'day.lo20': '20-bar low', 'day.volUp': 'Volume',
-			'board.title': 'Exchange Hall — auto-rotating board', 'board.short': 'Exchange Hall', 'board.tip': 'Auto-rotation · hover takes over · click selects, stays on the wall', 'toolbar.density': 'Dot pitch', 'toolbar.zoom': 'Bulb zoom', 'news.src.sina': 'Sina flash', 'news.src.em': 'Eastmoney', 'news.src.guba': 'Guba', 'density.std': 'Standard 16x16', 'density.tiny': 'Compact 8x8', 'board.split': 'Drag to resize columns', 'board.pickHint': 'Click to open the full view',
+			'board.title': 'Exchange Hall — auto-rotating board', 'board.short': 'Exchange Hall', 'board.tip': 'Auto-rotation · hover takes over · click selects, stays on the wall', 'toolbar.density': 'Dot pitch', 'news.src.sina': 'Sina flash', 'news.src.em': 'Eastmoney', 'news.src.guba': 'Guba', 'density.std': 'Standard 16x16', 'density.tiny': 'Compact 8x8', 'board.split': 'Drag to resize columns', 'board.pickHint': 'Click to open the full view',
 			'board.col.instrument': 'Instrument', 'board.col.last': 'Last', 'board.col.chg': 'Chg', 'board.col.chgPct': 'Chg %', 'board.col.amount': 'Turnover', 'board.col.code': 'Code', 'board.col.prevClose': 'Prev', 'board.col.high': 'High', 'board.col.low': 'Low', 'panel.last': 'Last', 'led.master': 'MarketLens Exchange Master Board', 'led.min': 'HJ', 'led.gainers': 'Gainers', 'led.losers': 'Losers', 'led.count': 'Rows', 'led.upN': 'Up', 'led.downN': 'Down', 'led.flatN': 'Flat', 'led.turnover': 'Turnover',
 			'mkt.on': 'Open', 'mkt.pre': 'Call auction', 'mkt.lunch': 'Lunch break', 'mkt.closed': 'Market closed', 'rel.now': 'just now', 'rel.h': '{n}h ago', 'rel.d': '{n}d ago', 'rel.w': '{n}w ago', 'rel.mo': '{n}mo ago', 'rel.y': '{n}y ago',
 			'import.title': 'Bulk import watchlist', 'import.placeholder': 'One code or name per line, up to 50',
@@ -382,7 +382,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.25.3';
+		const CLIENT_REV = '0.26.0';
 		const diagQueue = [];
 		let diagTimer = 0;
 		// the host meta tells the real level; until then assume the shipped 'errors' default
@@ -1368,7 +1368,7 @@ window.__ModuleLoader__.load({
 				const [wide, setWide] = React.useState(() => (typeof document === 'undefined' ? true : document.documentElement.clientWidth >= 900));
 				const [meta, setMeta] = React.useState(null);
 				const [watchlist, setWatchlist] = React.useState(() => loadLs(LS_WATCH, null));
-				const [prefs, setPrefs] = React.useState(() => ({ pinned: [], ...loadLs(LS_PREFS, { palette: 'redup', filter: 'all', sort: 'default', showMa: true, density: 'std', zoom: 'x1' }) }));
+				const [prefs, setPrefs] = React.useState(() => ({ pinned: [], ...loadLs(LS_PREFS, { palette: 'redup', filter: 'all', sort: 'default', showMa: true, density: 'std' }) }));
 				const seenRef = React.useRef(loadLs(LS_SEEN, {}));
 				const seenQuote = (symbol) => {
 					const row = seenRef.current[symbol];
@@ -1442,7 +1442,6 @@ window.__ModuleLoader__.load({
 				};
 				const [alertsList, setAlertsList] = React.useState([]);
 				const [palOpen, setPalOpen] = React.useState(false);
-				const [zOpen, setZOpen] = React.useState(false);
 				React.useEffect(() => {
 					if (palOpen === false) return void 0;
 					const onDoc = (event) => {
@@ -1904,27 +1903,6 @@ window.__ModuleLoader__.load({
 								const side = prefs.density === 'tiny' ? 4 : 8;
 								return h('rect', { key: i, x: (i % (16 / side)) * side + 0.5, y: Math.floor(i / (16 / side)) * side + 0.5, width: side - 1, height: side - 1, fill: '#8fb3d9' });
 							}))),
-						h('span', { className: 'ml-palwrap', style: { position: 'relative' } },
-							h('button', {
-								type: 'button', className: 'ml-btn ml-palbtn ml-zoombtn', 'aria-expanded': zOpen,
-								'aria-label': `${t('toolbar.zoom')} · ${(ZOOMS.find(([k]) => zoomKey(prefs.zoom) === k) ?? ZOOMS[3])[2]}`,
-								title: `${t('toolbar.zoom')} · ${(ZOOMS.find(([k]) => zoomKey(prefs.zoom) === k) ?? ZOOMS[3])[2]}`,
-								onClick: () => setZOpen((current) => !current),
-							}, h('svg', { width: 16, height: 16, viewBox: '0 0 16 16', 'aria-hidden': true },
-								(() => {
-									const z = ZOOM_VAL[zoomKey(prefs.zoom)] ?? 1;
-									const n = z >= 1 ? z : Math.min(4, Math.max(2, Math.round(1 / z)));
-									const cell = 16 / n;
-									return Array.from({ length: n * n }, (_cell, i) => h('rect', { key: i, x: (i % n) * cell + cell * 0.18, y: Math.floor(i / n) * cell + cell * 0.18, width: cell * 0.64, height: cell * 0.64, rx: cell * 0.32, fill: '#ffd75e' }));
-								})())),
-							zOpen ? h('div', { className: 'ml-palmenu' },
-								ZOOMS.map(([k, _v, label]) => h('button', {
-									key: k, type: 'button', 'aria-pressed': zoomKey(prefs.zoom) === k,
-									onClick: () => {
-										setPrefs((current) => ({ ...current, zoom: k }));
-										setZOpen(false);
-									},
-								}, label))) : null),
 						h('button', { type: 'button', className: 'ml-btn', onClick: () => setImporting(true) }, t('toolbar.import')),
 						h('span', { className: 'ml-status', 'data-err': refresh.state === 'error' ? '1' : '0' },
 							refresh.state === 'busy' ? t('toolbar.refreshing') : refresh.state === 'error' ? t('toolbar.error') : refresh.at === 0 ? '' : new Date(refresh.at).toLocaleTimeString()),
@@ -1938,7 +1916,6 @@ window.__ModuleLoader__.load({
 					led === true ? h(LedBoard, {
 						rows: sorted, quotes, seenQuote, meta, t,
 						tiny: prefs.density === 'tiny',
-						zoom: prefs.zoom ?? 1,
 						ledUp: PALETTES[prefs.palette]?.up ?? PALETTES.redup.up,
 						ledDown: PALETTES[prefs.palette]?.down ?? PALETTES.redup.down,
 						getKline: (symbol) => api('kline', { symbol, period: 'day', count: 160 }),
@@ -2018,19 +1995,17 @@ window.__ModuleLoader__.load({
 		// adds the living parts: a scan band, random bulb chatter, and page wipes
 		// that kill and re-light bulbs cell by cell. No libraries, ~1 blit + a
 		// few hundred tiny fills per frame at 24fps.
-		let PITCH = 3.5;          // css px per bulb cell at 1x (3px bulb + 0.5px seam)
-		const PITCH0 = 3.5;       // 1x reference, for zoom capacity maths
-		let BULB = 3;             // bulb footprint in css px (lit and off discs)
-		let PSZ = 4;              // sprite sheet size (integer canvas)
+		const PITCH = 3.5;        // css px per bulb cell inside the off-screen wall (3px bulb + 0.5px seam)
+		const BULB = 3;           // bulb footprint in wall px
+		const PSZ = 4;            // sprite sheet size (integer canvas)
 		const LPX = (v) => Math.round(v); // cell px snap: paint and sampling share this lattice
-		// zoom tiers rescale the whole lattice: >1 photographs the 1x wall closer
-		// (bulb 3z x 3z px), <1 sits further back (bulbs never drop under 1 css
-		// px and the pitch under 1, so shrink tops out at ~1/3 in practice).
-		// prefs store the tier key, not the float.
-		const ZOOMS = [['q4', 0.25, '1/4×'], ['t3', 1 / 3, '1/3×'], ['half', 0.5, '1/2×'], ['x1', 1, '1×'], ['x2', 2, '2×'], ['x3', 3, '3×'], ['x4', 4, '4×']];
-		const ZOOM_VAL = Object.fromEntries(ZOOMS.map(([k, v]) => [k, v]));
-		const zoomKey = (stored) => (typeof stored === 'number' ? `x${String(Math.min(4, Math.max(1, Math.round(stored))))}` : (typeof stored === 'string' && stored in ZOOM_VAL ? stored : 'x1'));
-		const setLattice = (z) => { PITCH = Math.max(1, PITCH0 * z); BULB = Math.max(1, Math.floor(3 * z)); PSZ = Math.max(2, Math.ceil(PITCH)); spriteCache.clear(); haloCache.clear(); };
+		// the master board is specced like a real one: a fixed 1024 x 768 bulb
+		// matrix, rendered and baked off-screen at 1x, then the whole picture
+		// is scaled proportionally into the container (letterboxed, never cropped)
+		const WALL_COLS = 1024;
+		const WALL_ROWS = 768;
+		const WALL_W_PX = Math.round(WALL_COLS * PITCH); // 3584
+		const WALL_H_PX = Math.round(WALL_ROWS * PITCH); // 2688
 		const OFF_BG = '#05080f';
 		// UCDOS-style bitmap font (HZK16 + ASC16, 8178 glyphs) served by
 		// /market-lens/lampfont: one bitmap dot = exactly one bulb, no AA, razor
@@ -2171,21 +2146,12 @@ window.__ModuleLoader__.load({
 					let r = 0;
 					let g = 0;
 					let b = 0;
-					if (BULB === 1) {
-						// shrink tiers: a one-pixel bulb, sampling more than its
-						// footprint would only bleed neighbours into it anyway
-						const i = (gy * content.width + gx) * 4;
-						r = d[i];
-						g = d[i + 1];
-						b = d[i + 2];
-					} else {
-						for (let dy = 0; dy < BULB; dy++) {
-							for (let dx = 0; dx < BULB; dx++) {
-								const i = ((gy + dy) * content.width + gx + dx) * 4;
-								r += d[i];
-								g += d[i + 1];
-								b += d[i + 2];
-							}
+					for (let dy = 0; dy < BULB; dy++) {
+						for (let dx = 0; dx < BULB; dx++) {
+							const i = ((gy + dy) * content.width + gx + dx) * 4;
+							r += d[i];
+							g += d[i + 1];
+							b += d[i + 2];
 						}
 					}
 					const lum = Math.max(r, g, b) / (BULB * BULB * 255);
@@ -2366,20 +2332,18 @@ window.__ModuleLoader__.load({
 			return { w: X(C), h: X(env.hC), prims };
 		}
 
-		function LedBoard({ rows, quotes, seenQuote, meta, onPick, getKline, ledUp, ledDown, tiny, t, zoom }) {
-			// geometry counts BULB CELLS end to end; the wall is COLS x HROWS cells
-			// and its resolution is the product - a real board is specced by its
-			// lamp count, and 3px bulbs with a 0.5px seam do not care how many css
-			// pixels the container happens to have. Layout constants (ledPlan)
-			// sit on a 960-cell basis; below that the wall drops to the core
-			// columns and folds the side board, and a short page equalizes its
-			// row pitch instead of leaving dead glass.
+		function LedBoard({ rows, quotes, seenQuote, meta, onPick, getKline, ledUp, ledDown, tiny, t }) {
+			// fixed-spec wall: 1024 x 768 bulb cells live off-screen; layout
+			// constants (ledPlan) sit on a 960-cell basis so this matrix shows
+			// the full five-zone master board, and the baked picture is scaled
+			// to fit whatever glass the host hands us.
 			const G_C = tiny === true ? 8 : 16;
 			const TITLE_HC = G_C + 3;
 			const FOOT_HC = G_C + 3;
 			const ROWS_TOP_C = TITLE_HC + G_C + 4;
 			const ROW_MIN_C = G_C + 6;
 			const CHART_C = tiny === true ? 20 : 34; // must seat two G-cell text rows (hi/lo ticks)
+			const COLS = WALL_COLS;
 			const wrapRef = React.useRef(null);
 			const canvasRef = React.useRef(null);
 			const contentRef = React.useRef(null);
@@ -2388,24 +2352,17 @@ window.__ModuleLoader__.load({
 			const pendingRef = React.useRef(null);
 			const pitchRef = React.useRef(0);
 			const topRef = React.useRef(0);
+			const geoRef = React.useRef({ ox: 0, oy: 0, sc: 1 });
 			const idxKRef = React.useRef(null);
 			const feedsRef = React.useRef(new Map());
 			const scenePairRef = React.useRef(null);
 			const pairIdxRef = React.useRef(0);
 			const [size, setSize] = React.useState({ w: 0, h: 0 });
-			// zoom tier key -> factor; an upscale whose minimum legible wall
-			// (220 columns) would not fit the container steps down a tier, so 4x
-			// is a big-screen option; shrink tiers only ever fit (more cells)
-			const zReq = ZOOM_VAL[zoomKey(zoom)] ?? 1;
-			const zMax = Math.max(1, Math.floor(size.w / (PITCH0 * 220)));
-			const Z = zReq > 1 ? Math.min(zReq, zMax) : zReq;
-			setLattice(Z);
 			const [page, setPage] = React.useState(0);
 			const [lit, setLit] = React.useState(0);
 			const [paused, setPaused] = React.useState(false);
 			const [feedTick, setFeedTick] = React.useState(0);
-			const COLS = size.w === 0 ? 411 : Math.max(80, Math.floor(size.w / PITCH));
-			const HROWS = size.h === 0 ? 262 : Math.max(64, Math.floor(size.h / PITCH));
+			const HROWS = WALL_ROWS;
 			const pageSize = Math.max(2, Math.floor((HROWS - ROWS_TOP_C - CHART_C - FOOT_HC) / ROW_MIN_C));
 			const pages = Math.max(1, Math.ceil(rows.length / pageSize));
 			const start = Math.min(page * pageSize, Math.max(0, rows.length - pageSize));
@@ -2439,11 +2396,11 @@ window.__ModuleLoader__.load({
 					window.clearInterval(timer);
 				};
 			}, [rowsKey]);
-			// report the wall geometry once per distinct lattice, so live row/col
-			// counts can be read straight out of the diag log
+			// report the wall geometry, so live row/col counts and the display
+			// scale can be read straight out of the diag log
 			React.useEffect(() => {
-				diag('panel.led.geo', { z: Z, pitch: PITCH, cols: COLS, rows: HROWS, pageSize });
-			}, [Z, COLS, HROWS, pageSize]);
+				diag('panel.led.geo', { wall: `${String(WALL_COLS)}x${String(WALL_ROWS)}`, pitch: PITCH, pageSize, disp: size.w === 0 ? 'pending' : `${String(size.w)}x${String(size.h)} @${(Math.min(size.w / WALL_W_PX, size.h / WALL_H_PX)).toFixed(3)}x` });
+			}, [pageSize, size]);
 			// one canvas pixel per css pixel, no devicePixelRatio games: the
 			// browser never resamples the wall, so bulbs cannot shimmer or spill
 			React.useEffect(() => {
@@ -2479,9 +2436,10 @@ window.__ModuleLoader__.load({
 					void loadLamp().then(() => setFeedTick((current) => current + 1), () => void 0);
 					return;
 				}
-				// fit-mode height budget: rows share whatever the frame leaves them, in cells
+				// the frame budget is the fixed matrix; rows share what the frame
+				// leaves them, and the footer always sits on the last wall row
 				const pitchC = Math.max(ROW_MIN_C, Math.floor((HROWS - ROWS_TOP_C - CHART_C - FOOT_HC) / view.length));
-				const hC = ROWS_TOP_C + pitchC * view.length + CHART_C + FOOT_HC;
+				const hC = HROWS;
 				pitchRef.current = pitchC * PITCH;
 				topRef.current = ROWS_TOP_C * PITCH;
 				const fmtv = (v) => (v === null || v === void 0 ? '—' : fmtNum(v));
@@ -2576,7 +2534,7 @@ window.__ModuleLoader__.load({
 				bakeLamps(c, pair[pairIdxRef.current ^= 1]);
 				// atomic publish: the loop never sees a half-baked screen
 				sceneRef.current = pair[pairIdxRef.current];
-			}, [size, view.length, page, lit, feedTick, tiny, quotes, Z]);
+			}, [size, view.length, page, lit, feedTick, tiny, quotes]);
 						// rotation: one row every four seconds; a finished page queues a wipe
 			const rotRef = React.useRef(() => void 0);
 			rotRef.current = () => {
@@ -2595,33 +2553,39 @@ window.__ModuleLoader__.load({
 				const timer = window.setInterval(() => rotRef.current(), 4000);
 				return () => window.clearInterval(timer);
 			}, []);
-			// the living screen: the frame background (off-bulb field) is baked
-			// once per size, every tick is two drawImage blits + cheap detail -
-			// no per-frame full-surface fills, no pattern cost in the loop
+			// the living screen: the 1024x768 wall lives off-screen at its native
+			// lattice (background, scene, wipe all in wall px); every frame blits
+			// the two fixed-size layers proportionally scaled onto the container,
+			// then cheap living detail on top, in display px
 			React.useEffect(() => {
 				const cv = canvasRef.current;
 				if (cv === null || size.w === 0) return void 0;
 				cv.width = size.w;
 				cv.height = size.h;
 				const x = cv.getContext('2d');
-				x.imageSmoothingEnabled = false;
-				const gcols = Math.floor(size.w / PITCH);
-				const grows2 = Math.floor(size.h / PITCH);
+				const sc = Math.min(size.w / WALL_W_PX, size.h / WALL_H_PX);
+				const dw = Math.round(WALL_W_PX * sc);
+				const dh = Math.round(WALL_H_PX * sc);
+				const ox = Math.round((size.w - dw) / 2);
+				const oy = Math.round((size.h - dh) / 2);
+				geoRef.current = { ox, oy, sc };
+				x.imageSmoothingEnabled = true;
+				x.imageSmoothingQuality = 'high';
+				// frame background: the off-bulb field at the wall's own lattice,
+				// built once, then scaled exactly like every scene
 				const bg = document.createElement('canvas');
-				bg.width = size.w;
-				bg.height = size.h;
+				bg.width = WALL_W_PX;
+				bg.height = WALL_H_PX;
 				const bxg = bg.getContext('2d');
 				bxg.fillStyle = OFF_BG;
-				bxg.fillRect(0, 0, size.w, size.h);
-				// off-bulb field on the very lattice the painter uses: one dark
-				// 3px disc per cell, the 0.5px seam is what is left between them
+				bxg.fillRect(0, 0, WALL_W_PX, WALL_H_PX);
 				bxg.fillStyle = 'rgba(24,48,74,0.9)';
-				for (let r = 0; r < grows2; r++) {
-					for (let c = 0; c < gcols; c++) bxg.fillRect(LPX(c * PITCH), LPX(r * PITCH), BULB, BULB);
+				for (let r = 0; r < WALL_ROWS; r++) {
+					for (let c = 0; c < WALL_COLS; c++) bxg.fillRect(LPX(c * PITCH), LPX(r * PITCH), BULB, BULB);
 				}
-				const gw = Math.max(1, Math.min(gcols, Math.floor(size.w / PITCH)));
-				const gh = Math.max(1, grows2);
-				const total = Math.max(1, gw * gh);
+				const total = WALL_COLS * WALL_ROWS;
+				const bulbPx = Math.max(1, Math.round(BULB * sc));
+				const cellPx = Math.max(1, Math.round(PITCH * sc));
 				let raf = 0;
 				let last = 0;
 				let scanY = 0;
@@ -2629,26 +2593,30 @@ window.__ModuleLoader__.load({
 					raf = window.requestAnimationFrame(step);
 					if (ts - last < 110) return; // ~9fps: a bulb wall idles gracefully, it is not a cartoon
 					last = ts;
-					x.drawImage(bg, 0, 0);
+					x.fillStyle = '#04070d';
+					x.fillRect(0, 0, size.w, size.h);
+					x.drawImage(bg, ox, oy, dw, dh);
 					const scene = sceneRef.current;
 					if (scene === null) return;
-					x.drawImage(scene, 0, 0);
-					scanY = (scanY + 1) % gh;
+					x.drawImage(scene, ox, oy, dw, dh);
+					scanY = (scanY + 1) % WALL_ROWS;
 					x.fillStyle = 'rgba(130,200,255,0.05)';
-					x.fillRect(0, LPX(scanY * PITCH), size.w, BULB);
+					x.fillRect(ox, oy + Math.round(scanY * PITCH * sc), dw, bulbPx);
 					for (let k = 0; k < 150; k++) {
-						const bxp = LPX(Math.floor(Math.random() * gw) * PITCH);
-						const byp = LPX(Math.floor(Math.random() * gh) * PITCH);
+						const bxp = ox + Math.floor(Math.random() * WALL_COLS) * cellPx;
+						const byp = oy + Math.floor(Math.random() * WALL_ROWS) * cellPx;
 						x.fillStyle = k % 4 === 0 ? 'rgba(150,210,255,0.12)' : 'rgba(5,8,15,0.45)';
 						x.fillRect(bxp + 1, byp + 1, 1, 1);
 					}
 					const tr = transRef.current;
 					if (tr !== null) {
-						const n = Math.floor((total / 10) * 1.2);
+						// a wipe flips a tenth of the wall's lamps per frame, capped
+						// so the 786k-cell matrix stays a few ms of fillRects
+						const n = Math.min(24000, Math.floor((total / 10) * 0.3));
 						if (tr.phase === 'out') {
 							tr.f++;
 							x.fillStyle = OFF_BG;
-							for (let k = 0; k < n; k++) x.fillRect(LPX(Math.floor(Math.random() * gw) * PITCH), LPX(Math.floor(Math.random() * gh) * PITCH), BULB, BULB);
+							for (let k = 0; k < n; k++) x.fillRect(ox + Math.floor(Math.random() * WALL_COLS) * cellPx, oy + Math.floor(Math.random() * WALL_ROWS) * cellPx, bulbPx, bulbPx);
 							if (tr.f >= 10) {
 								transRef.current = { phase: 'in', f: 0 };
 								const commit = pendingRef.current;
@@ -2658,9 +2626,9 @@ window.__ModuleLoader__.load({
 						} else {
 							tr.f++;
 							for (let k = 0; k < n; k++) {
-								const sx = LPX(Math.floor(Math.random() * (scene.width / PITCH)) * PITCH);
-								const sy = LPX(Math.floor(Math.random() * (scene.height / PITCH)) * PITCH);
-								x.drawImage(scene, sx, sy, BULB, BULB, sx, sy, BULB, BULB);
+								const sx = LPX(Math.floor(Math.random() * WALL_COLS) * PITCH);
+								const sy = LPX(Math.floor(Math.random() * WALL_ROWS) * PITCH);
+								x.drawImage(scene, sx, sy, BULB, BULB, ox + Math.round(sx * sc), oy + Math.round(sy * sc), bulbPx, bulbPx);
 							}
 							if (tr.f >= 10) transRef.current = null;
 						}
@@ -2668,10 +2636,12 @@ window.__ModuleLoader__.load({
 				};
 				raf = window.requestAnimationFrame(step);
 				return () => window.cancelAnimationFrame(raf);
-			}, [size, Z]);
+			}, [size]);
 			const hit = (event) => {
 				const rect = canvasRef.current.getBoundingClientRect();
-				const i = Math.floor(((event.clientY - rect.top) - topRef.current) / (pitchRef.current === 0 ? ROW_MIN_C * PITCH : pitchRef.current));
+				const { ox, oy, sc } = geoRef.current;
+				const wy = (event.clientY - rect.top - oy) / sc; // back into wall px
+				const i = Math.floor((wy - topRef.current) / (pitchRef.current === 0 ? ROW_MIN_C * PITCH : pitchRef.current));
 				return i >= 0 && i < view.length ? i : -1;
 			};
 			return h('div', { className: 'ml-led' },

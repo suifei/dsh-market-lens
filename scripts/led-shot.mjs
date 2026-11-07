@@ -88,21 +88,23 @@ const rowsAll = MOCK.map((m) => {
 });
 const side = MOCK.map((m) => ({ name: m[0].slice(0, 4), pct: m[8], pctF: m[6] })).sort((a, b) => b.pct - a.pct);
 
-// [container width, bulb zoom] mocks: the wall derives its geometry from them
-for (const [CW, Z] of [[1440, 1], [1640, 1], [1920, 1], [2400, 1], [3360, 1], [1640, 2], [2400, 2], [3360, 2], [3360, 4], [1640, 0.5], [1920, 0.5], [1640, 1 / 3], [1640, 0.25]]) {
-	const P = Math.max(1, 3.5 * Z); // css px per bulb cell (>=1px floor on shrink tiers)
-	const cols = Math.max(80, Math.floor(CW / P));
+// fixed wall spec: the same 1024x768 bulb matrix the browser renders off-screen
+{
+	const CW = 1024;
+	const CH = 768;
+	const P = 3.5; // css px per bulb cell inside the wall (3px bulb + 0.5px seam)
+	const cols = CW;
 	const G = 16; // cells; tiny walls are mocked at std
 	const TH = G + 3;
 	const FH = G + 3;
 	const RTOP = TH + G + 4;
 	const CHART_C = 34;
-	const HROWS = Math.floor(1080 / P); // wall height budget in cells (mock container 1080 tall)
+	const HROWS = CH; // the matrix itself is the budget
 	const pageSize = Math.max(2, Math.floor((HROWS - RTOP - CHART_C - FH) / (G + 6)));
-	const rows = rowsAll.slice(0, pageSize);
+	const rows = rowsAll.slice(0, Math.min(pageSize, rowsAll.length));
 	const pitchC = Math.max(G + 6, Math.floor((HROWS - RTOP - CHART_C - FH) / rows.length));
-	const hC = RTOP + pitchC * rows.length + CHART_C + FH;
-	const title = cols >= 200 ? '寰镜证券行情总屏' : '寰镜';
+	const hC = HROWS;
+	const title = '寰镜证券行情总屏';
 	const wC = (s) => Array.from(String(s)).reduce((acc, ch2) => acc + (ch2.charCodeAt(0) > 255 ? 17 : 9), 0);
 	const plan = ledPlan({
 		P, cols, hC, tiny: false, pitchC, chartC: CHART_C,
@@ -120,10 +122,9 @@ for (const [CW, Z] of [[1440, 1], [1640, 1], [1920, 1], [2400, 1], [3360, 1], [1
 		L: (k) => L[k] ?? k,
 		colLabels: [L['board.col.prevClose'], L['board.col.high'], L['board.col.low'], L['board.col.last'], L['board.col.chgPct'], L['board.col.amount']],
 		rows, side, lit: 1, chart,
-		footL: cols < 340 ? '涨 6  跌 7' : '支数:13  涨 6  跌 7  平 0',
+		footL: '支数:13  涨 6  跌 7  平 0',
 		footR: '总额 1339.5亿',
 	});
-	plan.lattice = { P, bulb: Math.max(1, Math.floor(3 * Z)) };
-	await writeFile(join(outDir, `plan-${String(CW)}x${Z === 1 / 3 ? 't3' : String(Z)}.json`), JSON.stringify(plan));
-	console.log(`plan ${String(cols)}x${String(hC)} cells @${Z === 1 / 3 ? '1/3' : String(Z)}x (container ${String(CW)}): ${String(plan.prims.length)} prims, ${String(plan.w)}x${String(plan.h)}px`);
+	await writeFile(join(outDir, 'plan-1024x768.json'), JSON.stringify(plan));
+	console.log(`plan ${String(cols)}x${String(hC)} cells (wall px ${String(plan.w)}x${String(plan.h)})`);
 }
