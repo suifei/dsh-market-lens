@@ -61,7 +61,7 @@ window.__ModuleLoader__.load({
 			'feed.notice': '公告', 'feed.posts': '评论', 'feed.pick': '选中一只股票后显示', 'feed.badge': '未读新公告',
 			'day.hi20': '20日新高', 'day.lo20': '20日新低', 'day.volUp': '放量',
 			'board.title': '证券大厅 · 自动轮播大屏', 'board.short': '证券大厅', 'board.tip': '自动轮播 · 悬停接管 · 点击选中不离场', 'toolbar.density': '点阵密度', 'density.std': '标准 16×16', 'density.tiny': '紧凑 8×8', 'board.split': '拖动调整列宽', 'board.pickHint': '点击查看该股全景',
-			'board.col.instrument': '名称', 'board.col.last': '现价', 'board.col.chg': '涨跌', 'board.col.chgPct': '涨幅', 'board.col.amount': '成交额',
+			'board.col.instrument': '名称', 'board.col.last': '现价', 'board.col.chg': '涨跌', 'board.col.chgPct': '涨幅', 'board.col.amount': '成交额', 'board.col.code': '代码', 'board.col.prevClose': '前收', 'board.col.high': '最高', 'board.col.low': '最低', 'panel.last': '最新', 'led.master': '寰镜证券行情总屏', 'led.gainers': '涨幅榜', 'led.losers': '跌幅榜', 'led.count': '支数', 'led.upN': '涨', 'led.downN': '跌', 'led.flatN': '平', 'led.turnover': '总额',
 			'import.title': '批量导入自选', 'import.placeholder': '每行一个代码或名称，最多 50 条',
 			'import.confirm': '导入', 'import.cancel': '取消', 'import.toomany': '超出 50 条的部分已忽略',
 			'notice': '延迟公开行情 · 非 Level-2 · 只读无交易',
@@ -108,7 +108,7 @@ window.__ModuleLoader__.load({
 			'feed.notice': 'Filings', 'feed.posts': 'Comments', 'feed.pick': 'Select a stock to load its feeds', 'feed.badge': 'unread filings',
 			'day.hi20': '20-bar high', 'day.lo20': '20-bar low', 'day.volUp': 'Volume',
 			'board.title': 'Exchange Hall — auto-rotating board', 'board.short': 'Exchange Hall', 'board.tip': 'Auto-rotation · hover takes over · click selects, stays on the wall', 'toolbar.density': 'Dot pitch', 'density.std': 'Standard 16x16', 'density.tiny': 'Compact 8x8', 'board.split': 'Drag to resize columns', 'board.pickHint': 'Click to open the full view',
-			'board.col.instrument': 'Instrument', 'board.col.last': 'Last', 'board.col.chg': 'Chg', 'board.col.chgPct': 'Chg %', 'board.col.amount': 'Turnover',
+			'board.col.instrument': 'Instrument', 'board.col.last': 'Last', 'board.col.chg': 'Chg', 'board.col.chgPct': 'Chg %', 'board.col.amount': 'Turnover', 'board.col.code': 'Code', 'board.col.prevClose': 'Prev', 'board.col.high': 'High', 'board.col.low': 'Low', 'panel.last': 'Last', 'led.master': 'MarketLens Exchange Master Board', 'led.gainers': 'Gainers', 'led.losers': 'Losers', 'led.count': 'Rows', 'led.upN': 'Up', 'led.downN': 'Down', 'led.flatN': 'Flat', 'led.turnover': 'Turnover',
 			'import.title': 'Bulk import watchlist', 'import.placeholder': 'One code or name per line, up to 50',
 			'import.confirm': 'Import', 'import.cancel': 'Cancel', 'import.toomany': 'Lines beyond 50 ignored',
 			'notice': 'Delayed public data · not Level-2 · read-only, no trading',
@@ -369,7 +369,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.18.0';
+		const CLIENT_REV = '0.19.0';
 		const diagQueue = [];
 		let diagTimer = 0;
 		// the host meta tells the real level; until then assume the shipped 'errors' default
@@ -2129,16 +2129,24 @@ window.__ModuleLoader__.load({
 		function LedBoard({ rows, quotes, seenQuote, meta, onPick, getKline, ledUp, ledDown, tiny, t }) {
 			// one 16x16 (std) or 8x8 (tiny) glyph line plus a gutter, in design px
 			const G = (tiny === true ? 8 : 16) * PITCH;
-			const HEAD_H = G + 8;
+			const TITLE_H = G + 6;
+			const FOOT_H = G + 6;
+			const ROWS_TOP = TITLE_H + G + 8;
 			const ROW_H = G + 12;
 			const CHART_H = tiny === true ? 56 : 88;
-			// the wall has a FIXED design raster: columns are laid once at 1920
-			// (1080p) design px with guaranteed gutters for 8x16 halfwidth runs;
-			// the scene then scales uniformly into the container like a game in
-			// fit mode - and when a page holds few rows the row pitch EQUALIZES to
-			// fill the screen instead of leaving a dead band under the last line
+			// the wall has a FIXED design raster modelled on a real exchange
+			// master board: title+clock bar, left index panel (value stack and
+			// trend ribbon), the dense quote table in the middle, a gainer/loser
+			// side board on the right and a turnover footer strip. Columns are
+			// laid once at 1920 design px with guaranteed gutters; the scene
+			// scales uniformly into the container like a game in fit mode, and
+			// a short page EQUALIZES its row pitch instead of leaving dead glass
 			const DESIGN_W = 1920;
-			const COL_X = [1000, 1280, 1600, 1916];
+			const MX = 464; // main table left edge
+			const SX = 1540; // side board left edge
+			const LR = 444; // left index panel right edge
+			const LRW = LR - 8; // usable ribbon width
+			const TCOL = [880, 1000, 1120, 1252, 1372, 1512]; // prev high low last pct amount
 			const wrapRef = React.useRef(null);
 			const canvasRef = React.useRef(null);
 			const contentRef = React.useRef(null);
@@ -2146,6 +2154,8 @@ window.__ModuleLoader__.load({
 			const transRef = React.useRef(null);
 			const pendingRef = React.useRef(null);
 			const pitchRef = React.useRef(0);
+			const topRef = React.useRef(0);
+			const idxKRef = React.useRef(null);
 			const feedsRef = React.useRef(new Map());
 			const scenePairRef = React.useRef(null);
 			const pairIdxRef = React.useRef(0);
@@ -2164,7 +2174,7 @@ window.__ModuleLoader__.load({
 				const raw = size.w === 0 ? 1 : size.w / DESIGN_W;
 				return Math.max(0.25, Math.min(4, Math.floor(raw * 4) / 4));
 			})();
-			const pageSize = Math.max(2, Math.floor((size.h / sc - HEAD_H - CHART_H) / ROW_H));
+			const pageSize = Math.max(2, Math.floor((size.h / sc - ROWS_TOP - CHART_H - FOOT_H) / ROW_H));
 			const pages = Math.max(1, Math.ceil(rows.length / pageSize));
 			const start = Math.min(page * pageSize, Math.max(0, rows.length - pageSize));
 			const view = rows.slice(start, start + pageSize);
@@ -2213,7 +2223,17 @@ window.__ModuleLoader__.load({
 					window.removeEventListener('resize', fit);
 				};
 			}, []);
-			// paint the visible page to the content canvas and bake the bulb screen
+			// one kline pull for the left index panel; the host cache makes this cheap
+			React.useEffect(() => {
+				const s = meta?.indexBar?.[0];
+				if (s === void 0 || idxKRef.current?.sym === s) return void 0;
+				void Promise.resolve(getKline(s)).then((body) => {
+					idxKRef.current = { sym: s, bars: body?.bars ?? [] };
+					setFeedTick((current) => current + 1);
+				}, () => void 0);
+				return void 0;
+			}, [meta]);
+			// paint the exchange master board and bake it to the bulb screen
 			React.useEffect(() => {
 				if (size.w === 0 || view.length === 0) return;
 				if (!LAMP.ready) {
@@ -2224,56 +2244,125 @@ window.__ModuleLoader__.load({
 				if (c === null) {
 					c = contentRef.current = document.createElement('canvas');
 				}
-				c.width = DESIGN_W;
-				// game-fit: with a short page the row pitch stretches to push the
-				// chart strip to the very bottom of the frame - no dead band
-				const availH = Math.max(HEAD_H + view.length * ROW_H + CHART_H, Math.floor(size.h / sc));
-				const pitch = Math.max(ROW_H, Math.floor((availH - HEAD_H - CHART_H) / view.length));
+				// fit-mode height budget: rows share whatever the frame leaves them
+				const availH = Math.max(ROWS_TOP + view.length * ROW_H + CHART_H + FOOT_H, Math.floor(size.h / sc));
+				const pitch = Math.max(ROW_H, Math.floor((availH - ROWS_TOP - CHART_H - FOOT_H) / view.length));
 				pitchRef.current = pitch;
-				c.height = HEAD_H + pitch * view.length + CHART_H;
+				topRef.current = ROWS_TOP;
+				c.width = DESIGN_W;
+				c.height = ROWS_TOP + pitch * view.length + CHART_H + FOOT_H;
 				const x = c.getContext('2d');
 				x.fillStyle = '#000';
 				x.fillRect(0, 0, c.width, c.height);
-				ledText(x, 8, 4, t('board.col.instrument'), '#3f618a', void 0, tiny);
-				[t('board.col.last'), t('board.col.chg'), t('board.col.chgPct'), t('board.col.amount')].forEach((label, i) => {
-					ledText(x, 0, 4, label, '#3f618a', COL_X[i] - 4, tiny);
+				// ---- title bar: board name left, wall clock right, amber like the hall
+				ledText(x, 8, 3, t('led.master'), '#ffd75e', void 0, tiny);
+				const nowD = new Date();
+				ledText(x, 0, 3, `${String(nowD.getHours()).padStart(2, '0')}:${String(nowD.getMinutes()).padStart(2, '0')}`, '#ffd75e', DESIGN_W - 8, tiny);
+				// ---- left index panel: name, 2x2 value grid, trend ribbon, date axis
+				const idxSym = meta?.indexBar?.[0];
+				const idxQ = idxSym === void 0 ? void 0 : quotes.get(idxSym) ?? seenQuote(idxSym);
+				ledText(x, 8, TITLE_H + 2, (idxQ?.name ?? 'INDEX').slice(0, 8), '#ff6a5e', void 0, tiny);
+				[[t('panel.last'), idxQ?.price, false], [t('board.col.high'), idxQ?.high, false], [t('board.col.low'), idxQ?.low, false], [t('board.col.chgPct'), idxQ?.changePct, true]].forEach((cellv, k) => {
+					const lx0 = k % 2 === 0 ? 8 : 236;
+					const ly = TITLE_H + 10 + G + Math.floor(k / 2) * (G + 6);
+					ledText(x, lx0, ly, cellv[0], '#3f618a', void 0, tiny);
+					const vs = cellv[1] === null || cellv[1] === void 0 ? '—' : cellv[2] === true ? `${fmtSigned(cellv[1])}%` : fmtNum(cellv[1]);
+					ledText(x, lx0 + (ledTextW(cellv[0], tiny) + 3) * PITCH, ly, vs, cellv[1] === null || cellv[1] === void 0 ? '#8fb3d9' : cellv[1] > 0 ? ledUp : cellv[1] < 0 ? ledDown : '#cfe6ff', void 0, tiny);
 				});
+				const idxTop = TITLE_H + 10 + 2 * (G + 6) + G;
+				const idxBot = c.height - FOOT_H - CHART_H - G - 8;
+				const idxPts = idxKRef.current?.sym === idxSym ? idxKRef.current.bars.filter((b2) => b2.c !== null).slice(-60) : [];
+				if (idxPts.length > 1 && idxBot > idxTop + 20) {
+					const iLo = Math.min(...idxPts.map((b2) => b2.c));
+					const iHi = Math.max(...idxPts.map((b2) => b2.c));
+					const iSpan = iHi - iLo || 1;
+					const iRows = Math.max(4, Math.floor((idxBot - idxTop) / PITCH) - 1);
+					let pY = null;
+					for (let col = 0; col * PITCH < LRW; col++) {
+						const idx = Math.min(idxPts.length - 1, Math.round((col / (LRW / PITCH)) * (idxPts.length - 1)));
+						const lvl = Math.max(1, Math.round(((idxPts[idx].c - iLo) / iSpan) * iRows));
+						const yTop = idxTop + (iRows - lvl) * PITCH;
+						x.fillStyle = '#ffd75e';
+						if (pY !== null && pY !== yTop) {
+							x.globalAlpha = 0.7;
+							x.fillRect(8 + col * PITCH, Math.min(pY, yTop), PITCH, Math.abs(pY - yTop) + PITCH);
+							x.globalAlpha = 1;
+						}
+						x.fillRect(8 + col * PITCH, yTop, PITCH, PITCH);
+						pY = yTop;
+					}
+					const ax = (dStr) => String(dStr ?? '').slice(5, 10);
+					ledText(x, 8, idxBot + 4, ax(idxPts[0].d), '#3f618a', void 0, tiny);
+					ledText(x, 0, idxBot + 4, ax(idxPts[idxPts.length - 1].d), '#3f618a', LR - 4, tiny);
+				}
+				// ---- main table header: red column names like the real screens
+				ledText(x, MX + 14, TITLE_H + 2, t('board.col.instrument'), '#ff6a5e', void 0, tiny);
+				ledText(x, 622, TITLE_H + 2, t('board.col.code'), '#ff6a5e', void 0, tiny);
+				[t('board.col.prevClose'), t('board.col.high'), t('board.col.low'), t('board.col.last'), t('board.col.chgPct'), t('board.col.amount')].forEach((label, i) => {
+					ledText(x, 0, TITLE_H + 2, label, '#ff6a5e', TCOL[i] - 4, tiny);
+				});
+				// ---- quote rows
+				let upN = 0;
+				let dnN = 0;
+				let flatN = 0;
+				let turn = 0;
+				const side = [];
 				view.forEach((row, i) => {
-					const top = HEAD_H + i * pitch;
+					const top = ROWS_TOP + i * pitch;
 					const y = top + (pitch - G) / 2;
 					const q = quotes.get(row.symbol) ?? seenQuote(row.symbol);
 					const pct = q?.changePct ?? null;
 					const color = pct === null ? '#cfe6ff' : pct > 0 ? ledUp : pct < 0 ? ledDown : '#8fb3d9';
+					if (pct > 0) upN++;
+					else if (pct < 0) dnN++;
+					else flatN++;
+					if (q?.amount != null) turn += q.amount;
+					if (pct !== null) side.push({ name: (q?.name ?? row.name ?? '').slice(0, 4), pct });
 					const isLit = i === lit;
 					if (isLit) {
 						x.fillStyle = '#0e2c4c';
-						x.fillRect(0, top, c.width, pitch - 3);
-						ledText(x, 8, y, '>', '#ffd75e', void 0, tiny);
+						x.fillRect(MX, top, SX - MX - 12, pitch - 3);
+						ledText(x, MX, y, '>', '#ffd75e', void 0, tiny);
 					}
 					const name = (q?.name ?? row.name ?? '').slice(0, 4);
-					const nameX = isLit ? 8 + 9 * PITCH + 8 : 20;
-					ledText(x, nameX, y, name, isLit ? '#ffffff' : color, void 0, tiny);
-					// code sits after the name in half width, same glyph line
-					ledText(x, nameX + (ledTextW(name, tiny) + 4) * PITCH, y, row.symbol, '#3f618a', void 0, tiny);
+					ledText(x, MX + 14, y, name, isLit ? '#ffffff' : color, void 0, tiny);
+					ledText(x, 622, y, row.symbol, '#3f618a', void 0, tiny);
 					const cells = [
+						q?.prevClose === null || q?.prevClose === void 0 ? '—' : fmtNum(q.prevClose),
+						q?.high === null || q?.high === void 0 ? '—' : fmtNum(q.high),
+						q?.low === null || q?.low === void 0 ? '—' : fmtNum(q.low),
 						q?.price === null || q?.price === void 0 ? '—' : fmtNum(q.price),
-						q?.change === null || q?.change === void 0 ? '—' : fmtSigned(q.change),
 						pct === null || pct === void 0 ? '—' : `${fmtSigned(pct)}%`,
 						q?.amount === null || q?.amount === void 0 ? '—' : fmtBig(q.amount, 1),
 					];
+					const cellColor = ['#9fc4e8', ledUp, ledDown, color, color, '#9fc4e8'];
 					cells.forEach((text, i2) => {
-						ledText(x, 0, y, text, i2 === 3 ? '#9fc4e8' : i2 === 2 ? color : isLit ? '#ffffff' : color, COL_X[i2] - 4, tiny);
+						ledText(x, 0, y, text, i2 === 3 || i2 === 4 ? color : isLit && i2 > 3 ? '#ffffff' : cellColor[i2], TCOL[i2] - 4, tiny);
 					});
 				});
-				// chart strip pinned to the bottom of the scene: a stepped price
-				// ribbon with connected runs, a fat glowing endpoint, gradient
-				// volume and hi/lo ticks in the right gutter
-				const cy0 = c.height - CHART_H;
+				// ---- side board: gainers over losers, the classic twin ranking
+				side.sort((a, b2) => b2.pct - a.pct);
+				const nSide = Math.max(1, Math.min(6, Math.floor((pitch * view.length - 2 * (G + 10)) / (2 * (G + 4)))));
+				ledText(x, SX, TITLE_H + 2, t('led.gainers'), '#ff6a5e', void 0, tiny);
+				side.slice(0, nSide).forEach((e, k) => {
+					const yy = TITLE_H + 10 + G + k * (G + 4);
+					ledText(x, SX + 8, yy, e.name, e.pct > 0 ? ledUp : e.pct < 0 ? ledDown : '#8fb3d9', void 0, tiny);
+					ledText(x, 0, yy, `${fmtSigned(e.pct)}%`, e.pct > 0 ? ledUp : ledDown, SX + 372, tiny);
+				});
+				ledText(x, SX, TITLE_H + 14 + G + nSide * (G + 4), t('led.losers'), '#ff6a5e', void 0, tiny);
+				side.slice(-nSide).reverse().forEach((e, k) => {
+					const yy = TITLE_H + 22 + 2 * G + nSide * (G + 4) + k * (G + 4);
+					ledText(x, SX + 8, yy, e.name, e.pct > 0 ? ledUp : e.pct < 0 ? ledDown : '#8fb3d9', void 0, tiny);
+					ledText(x, 0, yy, `${fmtSigned(e.pct)}%`, e.pct < 0 ? ledDown : ledUp, SX + 372, tiny);
+				});
+				// ---- lit-row chart strip: stepped price ribbon + volume, between
+				// the table and the footer, pinned to the scene bottom
+				const cy0 = ROWS_TOP + pitch * view.length;
 				const litSymbol = view[lit]?.symbol;
 				const bars = (litSymbol === void 0 ? void 0 : feedsRef.current.get(litSymbol)?.bars) ?? [];
 				const pts = bars.filter((b2) => b2.c !== null);
 				if (pts.length > 1) {
-					const nCols = Math.floor((c.width - 150) / PITCH);
+					const nCols = Math.floor((SX - 150) / PITCH);
 					const priceRows = Math.max(6, Math.floor((CHART_H - 16) * 0.62 / PITCH));
 					const volRows = Math.max(3, Math.floor((CHART_H - 16) * 0.30 / PITCH));
 					const lo = Math.min(...pts.map((b2) => b2.c));
@@ -2290,15 +2379,12 @@ window.__ModuleLoader__.load({
 						const yTop = cy0 + 4 + (priceRows - lvl) * PITCH;
 						x.fillStyle = lineColor;
 						if (prevY !== null && prevY !== yTop) {
-							// run between the levels: the ribbon stays solid even
-							// on fast moves instead of throwing single dots
 							x.globalAlpha = 0.7;
 							x.fillRect(8 + col * PITCH, Math.min(prevY, yTop), PITCH, Math.abs(prevY - yTop) + PITCH);
 							x.globalAlpha = 1;
 						}
 						x.fillRect(8 + col * PITCH, yTop, PITCH, PITCH);
 						if (col === nCols - 1) {
-							// fat endpoint: the latest close burns two bulbs wide
 							x.fillRect(8 + (col - 1) * PITCH, yTop, PITCH, PITCH);
 							x.fillRect(8 + (col - 1) * PITCH, yTop - PITCH, PITCH, PITCH);
 							x.fillRect(8 + col * PITCH, yTop - PITCH, PITCH, PITCH);
@@ -2312,11 +2398,15 @@ window.__ModuleLoader__.load({
 						x.globalAlpha = 1;
 						prevY = yTop;
 					}
-					ledText(x, 0, cy0 + 2, fmtNum(hi), '#4d7aa8', DESIGN_W - 8, tiny);
-					ledText(x, 0, cy0 + 4 + priceRows * PITCH - G, fmtNum(lo), '#4d7aa8', DESIGN_W - 8, tiny);
+					ledText(x, 0, cy0 + 2, fmtNum(hi), '#4d7aa8', TCOL[2], tiny);
+					ledText(x, 0, cy0 + 4 + priceRows * PITCH - G, fmtNum(lo), '#4d7aa8', TCOL[2], tiny);
 				} else {
 					ledText(x, 12, cy0 + (CHART_H - G) / 2, 'LOADING', '#3f618a', void 0, tiny);
 				}
+				// ---- footer: the market breadth line, like 支数/成交数量/成交金額
+				const fy = c.height - FOOT_H + 2;
+				ledText(x, 8, fy, `${t('led.count')}:${view.length}  ${t('led.upN')} ${upN}  ${t('led.downN')} ${dnN}  ${t('led.flatN')} ${flatN}`, '#c8a24a', void 0, tiny);
+				ledText(x, 0, fy, `${t('led.turnover')} ${fmtBig(turn, 1)}`, '#c8a24a', DESIGN_W - 8, tiny);
 				const pair = scenePairRef.current ?? (scenePairRef.current = [document.createElement('canvas'), document.createElement('canvas')]);
 				bakeLamps(c, pair[pairIdxRef.current ^= 1]);
 				// atomic publish: the loop never sees a half-baked screen
@@ -2415,7 +2505,7 @@ window.__ModuleLoader__.load({
 			}, [size]);
 			const hit = (event) => {
 				const rect = canvasRef.current.getBoundingClientRect();
-				const i = Math.floor(((event.clientY - rect.top) / sc - HEAD_H) / (pitchRef.current === 0 ? ROW_H : pitchRef.current));
+				const i = Math.floor((((event.clientY - rect.top) / sc) - topRef.current) / (pitchRef.current === 0 ? ROW_H : pitchRef.current));
 				return i >= 0 && i < view.length ? i : -1;
 			};
 			return h('div', { className: 'ml-led' },
