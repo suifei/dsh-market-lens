@@ -204,6 +204,10 @@ node scripts/release.mjs <x.y.z> --msg "..." --token <npm granular token> [--hos
 - Yahoo 在部分区域返回 403：美股自动落到腾讯，K 线历史长度可能缩短。
 - 分时图未进首版；详情页暂以 K 线为主视图。
 
+## 安全
+
+本包只读公开行情、无交易无用户数据出口；npm 扫描器告警的逐条处置与证据见 **`SECURITY.md`**（zod 内存 DoS 已在 0.29.3 修复，其余 eval/URL 等为误报或职责所需）。
+
 ## License
 
 MIT · 图标为本仓库原创绘制。

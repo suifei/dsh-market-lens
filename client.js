@@ -382,7 +382,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.29.3';
+		const CLIENT_REV = '0.30.0';
 		const diagQueue = [];
 		let diagTimer = 0;
 		// the host meta tells the real level; until then assume the shipped 'errors' default
@@ -2086,49 +2086,63 @@ window.__ModuleLoader__.load({
 		const SCROLL_VPX = 28; // wall px/s (~8 lamp rows/s): uniform scroll, smooth and cheap
 		const VERT_SRC = 'attribute vec2 aPos; void main() { gl_Position = vec4(aPos, 0.0, 1.0); }';
 		const FRAG_SRC = [
-			'precision highp float;',
-			'uniform vec2 iRes; uniform vec4 uGeo; uniform vec4 uBand; uniform vec4 uPx; uniform vec2 uSzT;',
-			'uniform float uScroll; uniform float uTime;',
-			'uniform sampler2D uStatic; uniform sampler2D uTape;',
-			'vec3 tap5(sampler2D s, vec2 sz, vec2 wp) {',
-			'  vec2 uv = wp / sz; vec2 pu = 1.0 / sz; vec3 c = texture2D(s, uv).rgb;',
-			'  c = max(c, texture2D(s, uv + vec2(pu.x, 0.0)).rgb);',
-			'  c = max(c, texture2D(s, uv - vec2(pu.x, 0.0)).rgb);',
-			'  c = max(c, texture2D(s, uv + vec2(0.0, pu.y)).rgb);',
-			'  c = max(c, texture2D(s, uv - vec2(0.0, pu.y)).rgb);',
-			'  return c;',
-			'}',
-			'void main() {',
-			'  vec2 f = vec2(gl_FragCoord.x, iRes.y - gl_FragCoord.y);',
-			'  vec2 w = (f - uGeo.xy) / uGeo.z;',
-			'  if (w.x < 0.0 || w.y < 0.0 || w.x >= uPx.z || w.y >= uPx.w) { gl_FragColor = vec4(0.016, 0.027, 0.051, 1.0); return; }',
-			'  vec2 cell = floor(w / uPx.x);',
-			'  vec2 ctr = (cell + 0.5) * uPx.x;',
-			'  float half_ = max(0.5 * uPx.y * uGeo.z, 0.5) - 0.3;',
-			'  vec2 rr = f - uGeo.xy - cell * uPx.x * uGeo.z;',
-			'  vec2 qq = abs(rr - 0.5 * uPx.x * uGeo.z) - max(half_, 0.12);',
-			'  float d = length(max(qq, 0.0)) + min(max(qq.x, qq.y), 0.0);',
-			'  float mask = smoothstep(0.45, -0.05, d);',
-			'  float inBand = step(uBand.x, ctr.y) * step(ctr.y, uBand.x + uBand.y);',
-			'  vec2 tp = vec2(ctr.x, mod(ctr.y - uBand.x + uScroll, uBand.z));',
-			'  vec3 lit = mix(tap5(uStatic, uPx.zw, ctr), tap5(uTape, uSzT, tp), inBand);',
-			'  vec2 bwn = vec2(w.x, mod(w.y - uBand.x + uScroll, uBand.z)) / uSzT;',
-			'  vec3 bleed = mix(texture2D(uStatic, w / uPx.zw).rgb, texture2D(uTape, bwn).rgb, inBand);',
-			'  float lum = max(lit.r, max(lit.g, lit.b));',
-			'  vec3 base = mix(vec3(0.016, 0.024, 0.043), vec3(0.05, 0.1, 0.17), mask);',
-			'  vec3 col = mix(base, lit, mask * smoothstep(0.1, 0.3, lum));',
-			'  col += bleed * 0.14;',
-			'  float hh = fract(sin(dot(cell + vec2(floor(uTime * 3.0) * 17.0, floor(uTime * 2.0) * 31.0), vec2(127.1, 311.7))) * 43758.545);',
-			'  col *= mix(0.93, 1.05, hh);',
-			'  col *= mix(1.0, 0.15, step(hh, 0.002));',
-			'  col *= mix(1.0, 1.5, step(0.9978, hh));',
-			'  float sy = fract(uTime * 0.07) * (uPx.w + 240.0) - 120.0;',
-			'  col += vec3(0.05, 0.085, 0.12) * exp(-pow((w.y - sy) * 0.018, 2.0)) * (0.4 + 0.6 * mask);',
-			'  vec2 vq = w / uPx.zw - 0.5;',
-			'  col *= 1.0 - dot(vq, vq) * 0.6;',
-			'  gl_FragColor = vec4(min(col, vec3(1.0)), 1.0);',
-			'}',
-		].join('\n');
+		'precision highp float;',
+		'uniform vec2 iRes; uniform vec4 uGeo; uniform vec4 uBand; uniform vec4 uPx; uniform vec2 uSzT;',
+		'uniform float uScroll; uniform float uTime;',
+		'uniform sampler2D uStatic; uniform sampler2D uTape;',
+		'vec3 tap5(sampler2D s, vec2 sz, vec2 wp) {',
+		'  vec2 uv = wp / sz; vec2 pu = 1.0 / sz; vec3 c = texture2D(s, uv).rgb;',
+		'  c = max(c, texture2D(s, uv + vec2(pu.x, 0.0)).rgb);',
+		'  c = max(c, texture2D(s, uv - vec2(pu.x, 0.0)).rgb);',
+		'  c = max(c, texture2D(s, uv + vec2(0.0, pu.y)).rgb);',
+		'  c = max(c, texture2D(s, uv - vec2(0.0, pu.y)).rgb);',
+		'  return c;',
+		'}',
+		'void main() {',
+		'  vec2 f = vec2(gl_FragCoord.x, iRes.y - gl_FragCoord.y);',
+		'  vec2 w = (f - uGeo.xy) / uGeo.z;',
+		'  if (w.x < 0.0 || w.y < 0.0 || w.x >= uPx.z || w.y >= uPx.w) { gl_FragColor = vec4(0.016, 0.027, 0.051, 1.0); return; }',
+		'  vec2 qn = w / uPx.zw - 0.5;',
+		'  float r2 = dot(qn, qn);',
+		'  vec2 wd = clamp((qn * (1.0 + 0.045 * r2) + 0.5) * uPx.zw, vec2(0.0), uPx.zw - vec2(0.01));',
+		'  vec2 cell = floor(wd / uPx.x);',
+		'  vec2 ctr = (cell + 0.5) * uPx.x;',
+		'  float half_ = max(0.5 * uPx.y * uGeo.z, 0.5) - 0.3;',
+		'  vec2 rr = f - uGeo.xy - cell * uPx.x * uGeo.z;',
+		'  vec2 qq = abs(rr - 0.5 * uPx.x * uGeo.z) - max(half_, 0.12);',
+		'  float d = length(max(qq, 0.0)) + min(max(qq.x, qq.y), 0.0);',
+		'  float mask = smoothstep(0.45, -0.05, d);',
+		'  float inBand = step(uBand.x, ctr.y) * step(ctr.y, uBand.x + uBand.y);',
+		'  vec2 tp = vec2(ctr.x, mod(ctr.y - uBand.x + uScroll, uBand.z));',
+		'  vec3 lit = mix(tap5(uStatic, uPx.zw, ctr), tap5(uTape, uSzT, tp), inBand);',
+		'  float lum = max(lit.r, max(lit.g, lit.b));',
+		'  float breath = 0.94 + 0.06 * sin(uTime * 1.1);',
+		'  vec3 base = mix(vec3(0.016, 0.024, 0.043), vec3(0.05, 0.1, 0.17), mask);',
+		'  vec3 col = mix(base, lit * breath, mask * smoothstep(0.1, 0.3, lum));',
+		'  vec2 bwn = vec2(wd.x, mod(wd.y - uBand.x + uScroll, uBand.z)) / uSzT;',
+		'  vec3 bleed = mix(texture2D(uStatic, wd / uPx.zw).rgb, texture2D(uTape, bwn).rgb, inBand);',
+		'  col += bleed * 0.16;',
+		'  float ca = 0.002 + 0.010 * r2;',
+		'  vec2 wR = wd + (wd - uPx.zw * 0.5) * ca;',
+		'  float inBR = step(uBand.x, wR.y) * step(wR.y, uBand.x + uBand.y);',
+		'  vec2 tpR = vec2(wR.x, mod(wR.y - uBand.x + uScroll, uBand.z));',
+		'  float red = mix(texture2D(uStatic, wR / uPx.zw).r, texture2D(uTape, tpR / uSzT).r, inBR);',
+		'  col.r = mix(col.r, red, 0.55);',
+		'  float hh = fract(sin(dot(cell + vec2(floor(uTime * 3.0) * 17.0, floor(uTime * 2.0) * 31.0), vec2(127.1, 311.7))) * 43758.545);',
+		'  col *= mix(0.93, 1.05, hh);',
+		'  col *= mix(1.0, 0.15, step(hh, 0.002));',
+		'  col *= mix(1.0, 1.5, step(0.9978, hh));',
+		'  float wave = 0.5 + 0.5 * sin(cell.y * 0.35 - uTime * 1.7);',
+		'  col *= 0.985 + 0.015 * wave;',
+		'  float sy = fract(uTime * 0.07) * (uPx.w + 240.0) - 120.0;',
+		'  col += vec3(0.05, 0.085, 0.12) * exp(-pow((w.y - sy) * 0.018, 2.0)) * (0.4 + 0.6 * mask);',
+		'  float refl = 0.5 + 0.5 * sin(dot(wd, vec2(0.9, 1.4)) - uTime * 0.31);',
+		'  col += vec3(0.10, 0.14, 0.20) * smoothstep(0.98, 1.0, refl) * 0.35;',
+		'  vec2 vq = w / uPx.zw - 0.5;',
+		'  col *= 1.0 - dot(vq, vq) * 0.62;',
+		'  gl_FragColor = vec4(min(col, vec3(1.0)), 1.0);',
+		'}',
+	].join('\n');
 		function wallGL(gl) {
 			const sh = (type, s) => { const o = gl.createShader(type); gl.shaderSource(o, s); gl.compileShader(o); return o; };
 			const prog = gl.createProgram();
@@ -2147,7 +2161,7 @@ window.__ModuleLoader__.load({
 			['iRes', 'uGeo', 'uBand', 'uPx', 'uSzT', 'uScroll', 'uTime', 'uStatic', 'uTape'].forEach((n) => { U[n] = gl.getUniformLocation(prog, n); });
 			gl.uniform1i(U.uStatic, 0);
 			gl.uniform1i(U.uTape, 1);
-			return { prog, U };
+			return { prog, U, buf };
 		}
 
 		/**
@@ -2326,6 +2340,7 @@ window.__ModuleLoader__.load({
 			const staticRef = React.useRef(null);
 			const tapeCvRef = React.useRef(null);
 			const dirtyRef = React.useRef(false);
+			const glResRef = React.useRef(null);
 			const geoPlanRef = React.useRef(null);
 			const pitchRef = React.useRef(0);
 			const topRef = React.useRef(0);
@@ -2554,18 +2569,27 @@ window.__ModuleLoader__.load({
 				cv.height = size.h;
 				const gl = typeof WebGL2RenderingContext === 'undefined' ? null : cv.getContext('webgl2', { alpha: false, antialias: false });
 				const x2d = gl === null ? cv.getContext('2d') : null;
-				const W = gl === null ? null : wallGL(gl);
-				let tex = null;
-				if (gl !== null && W !== null) {
-					tex = { s: gl.createTexture(), t: gl.createTexture() };
-					[tex.s, tex.t].forEach((tt) => {
-						gl.bindTexture(gl.TEXTURE_2D, tt);
-						gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-						gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-						gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-						gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-					});
+				// GL program + textures are created once per context and reused across
+				// resizes; the old effect recompiled the shader and leaked two textures,
+				// a program and a buffer on every [size] change
+				let res = glResRef.current;
+				if (gl !== null && (res === null || res.gl !== gl)) {
+					const W = wallGL(gl);
+					if (W === null) { res = null; } else {
+						const tex = { s: gl.createTexture(), t: gl.createTexture() };
+						[tex.s, tex.t].forEach((tt) => {
+							gl.bindTexture(gl.TEXTURE_2D, tt);
+							gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+							gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+							gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+							gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+						});
+						res = { gl, W, tex };
+					}
+					glResRef.current = res;
 				}
+				const W = res === null ? null : res.W;
+				const tex = res === null ? null : res.tex;
 				const sc = Math.min(size.w / WALL_W_PX, size.h / WALL_H_PX);
 				const dw = Math.round(WALL_W_PX * sc);
 				const dh = Math.round(WALL_H_PX * sc);
@@ -2584,6 +2608,7 @@ window.__ModuleLoader__.load({
 					const tC = tapeCvRef.current;
 					if (gp === null || sC === null || tC === null) return;
 					if (W === null) {
+						if (x2d === null) return; // webgl2 present but shader failed: no 2d context is available on the same canvas
 						x2d.fillStyle = '#04070d';
 						x2d.fillRect(0, 0, size.w, size.h);
 						x2d.drawImage(sC, ox, oy, dw, dh);
@@ -2621,6 +2646,19 @@ window.__ModuleLoader__.load({
 				raf = window.requestAnimationFrame(step);
 				return () => window.cancelAnimationFrame(raf);
 			}, [size]);
+			// release GPU objects once when the board unmounts (resizes reuse them)
+			React.useEffect(() => () => {
+				const r = glResRef.current;
+				if (r !== null && r.gl !== null) {
+					try {
+						r.gl.deleteTexture(r.tex.s);
+						r.gl.deleteTexture(r.tex.t);
+						r.gl.deleteProgram(r.W.prog);
+						r.gl.deleteBuffer(r.W.buf);
+					} catch (e) { /* context already lost */ }
+					glResRef.current = null;
+				}
+			}, []);
 			const hit = (event) => {
 				const rect = canvasRef.current.getBoundingClientRect();
 				const { ox, oy, sc } = geoRef.current;
