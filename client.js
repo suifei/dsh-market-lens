@@ -173,7 +173,7 @@ window.__ModuleLoader__.load({
 .ml-split{cursor:col-resize;background:var(--dsw-alias-border-l1);border-radius:3px;transition:background .15s;touch-action:none;margin:2px -7px}
 .ml-split:hover,.ml-split:active{background:var(--dsw-alias-brand-primary)}
 @font-face{font-family:'MLPixel';src:url('/market-lens/font?v=0.9.0') format('woff2');font-display:swap}
-.ml-led{grid-column:1/-1;position:relative;background:#05080f;border:1px solid #12283f;border-radius:12px;display:flex;flex-direction:column;height:calc(100vh - 200px);min-height:360px;overflow:hidden;color:#d7e9ff;font-family:'MLPixel',ui-monospace,'Cascadia Mono',Consolas,monospace}
+.ml-led{grid-column:1/-1;position:relative;background:#05080f;border:1px solid #12283f;border-radius:12px;display:flex;flex-direction:column;height:calc(100vh - 104px);min-height:360px;overflow:hidden;color:#d7e9ff;font-family:'MLPixel',ui-monospace,'Cascadia Mono',Consolas,monospace}
 .ml-led .num,.ml-led .nm b,.ml-ticker span{letter-spacing:1px}
 .ml-ticker{display:flex;gap:40px;padding:9px 12px;white-space:nowrap;overflow:hidden;border-bottom:1px solid #12283f;background:#03060b;flex:none;animation:mltape 45s linear infinite;width:max-content}
 .ml-ticker:hover{animation-play-state:paused}
@@ -381,7 +381,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.23.0';
+		const CLIENT_REV = '0.23.1';
 		const diagQueue = [];
 		let diagTimer = 0;
 		// the host meta tells the real level; until then assume the shipped 'errors' default
@@ -2200,9 +2200,12 @@ window.__ModuleLoader__.load({
 			const pitchC = env.pitchC;
 			const CH = env.chartC;
 			// right rails: full 6 columns on wide walls; compact keeps
-			// last/pct/amount with gutters sized for the widest real values
-			const rails = wide ? [458, 528, 598, 668, 733, 803].map(u) : [C - 141, C - 81, C - 4];
-			const pick = wide ? [0, 1, 2, 3, 4, 5] : [3, 4, 5];
+			// last/pct/amount, and walls that can seat one more value column
+			// bring back the prev-close. Gutters are sized for the widest real
+			// values (8-digit price 72c, turnover 71c) plus breathing room.
+			const four = C >= 440;
+			const rails = wide ? [458, 528, 598, 668, 733, 803].map(u) : four ? [C - 215, C - 141, C - 81, C - 4] : [C - 141, C - 81, C - 4];
+			const pick = wide ? [0, 1, 2, 3, 4, 5] : four ? [0, 3, 4, 5] : [3, 4, 5];
 			const MXU = wide ? u(235) : 0;
 			const nameX = MXU + 10;
 			const codeX = wide ? u(315) : 85;
@@ -2515,7 +2518,7 @@ window.__ModuleLoader__.load({
 						// rotation: one row every four seconds; a finished page queues a wipe
 			const rotRef = React.useRef(() => void 0);
 			rotRef.current = () => {
-				if (paused === true || transRef.current !== null || view.length < 2) return;
+				if (paused === true || transRef.current !== null || view.length === 0) return;
 				if (lit + 1 < view.length) {
 					setLit(lit + 1);
 					return;
@@ -2579,24 +2582,25 @@ window.__ModuleLoader__.load({
 					}
 					const tr = transRef.current;
 					if (tr !== null) {
-						tr.f++;
 						const n = Math.floor((total / 10) * 1.2);
 						if (tr.phase === 'out') {
+							tr.f++;
 							x.fillStyle = OFF_BG;
 							for (let k = 0; k < n; k++) x.fillRect(LPX(Math.floor(Math.random() * gw) * PITCH), LPX(Math.floor(Math.random() * gh) * PITCH), BULB, BULB);
 							if (tr.f >= 10) {
-								transRef.current = { phase: 'in', f: 9 };
+								transRef.current = { phase: 'in', f: 0 };
 								const commit = pendingRef.current;
 								pendingRef.current = null;
 								if (commit !== null) commit();
 							}
 						} else {
+							tr.f++;
 							for (let k = 0; k < n; k++) {
 								const sx = LPX(Math.floor(Math.random() * (scene.width / PITCH)) * PITCH);
 								const sy = LPX(Math.floor(Math.random() * (scene.height / PITCH)) * PITCH);
 								x.drawImage(scene, sx, sy, BULB, BULB, sx, sy, BULB, BULB);
 							}
-							if (tr.f <= 0) transRef.current = null;
+							if (tr.f >= 10) transRef.current = null;
 						}
 					}
 				};

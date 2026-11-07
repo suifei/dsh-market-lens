@@ -89,7 +89,7 @@ const rowsAll = MOCK.map((m) => {
 const side = MOCK.map((m) => ({ name: m[0].slice(0, 4), pct: m[8], pctF: m[6] })).sort((a, b) => b.pct - a.pct);
 
 // container widths (css px) to mock: the wall derives its geometry from them
-for (const CW of [1440, 1920, 2400, 3360]) {
+for (const CW of [1440, 1640, 1920, 2400, 3360]) {
 	const P = 3.5; // css px per bulb cell (3px bulb + 0.5px seam)
 	const cols = Math.max(80, Math.floor(CW / P));
 	const G = 16; // cells; tiny walls are mocked at std
