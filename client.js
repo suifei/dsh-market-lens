@@ -382,7 +382,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.25.2';
+		const CLIENT_REV = '0.25.3';
 		const diagQueue = [];
 		let diagTimer = 0;
 		// the host meta tells the real level; until then assume the shipped 'errors' default
@@ -2439,6 +2439,11 @@ window.__ModuleLoader__.load({
 					window.clearInterval(timer);
 				};
 			}, [rowsKey]);
+			// report the wall geometry once per distinct lattice, so live row/col
+			// counts can be read straight out of the diag log
+			React.useEffect(() => {
+				diag('panel.led.geo', { z: Z, pitch: PITCH, cols: COLS, rows: HROWS, pageSize });
+			}, [Z, COLS, HROWS, pageSize]);
 			// one canvas pixel per css pixel, no devicePixelRatio games: the
 			// browser never resamples the wall, so bulbs cannot shimmer or spill
 			React.useEffect(() => {
