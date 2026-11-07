@@ -382,7 +382,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.25.0';
+		const CLIENT_REV = '0.25.1';
 		const diagQueue = [];
 		let diagTimer = 0;
 		// the host meta tells the real level; until then assume the shipped 'errors' default
@@ -2361,13 +2361,6 @@ window.__ModuleLoader__.load({
 		}
 
 		function LedBoard({ rows, quotes, seenQuote, meta, onPick, getKline, ledUp, ledDown, tiny, t, zoom }) {
-			// zoom tier key -> factor; an upscale whose minimum legible wall
-			// (220 columns) would not fit the container steps down a tier, so 4x
-			// is a big-screen option; shrink tiers only ever fit (more cells)
-			const zReq = ZOOM_VAL[zoomKey(zoom)] ?? 1;
-			const zMax = Math.max(1, Math.floor(size.w / (PITCH0 * 220)));
-			const Z = zReq > 1 ? Math.min(zReq, zMax) : zReq;
-			setLattice(Z);
 			// geometry counts BULB CELLS end to end; the wall is COLS x HROWS cells
 			// and its resolution is the product - a real board is specced by its
 			// lamp count, and 3px bulbs with a 0.5px seam do not care how many css
@@ -2394,6 +2387,13 @@ window.__ModuleLoader__.load({
 			const scenePairRef = React.useRef(null);
 			const pairIdxRef = React.useRef(0);
 			const [size, setSize] = React.useState({ w: 0, h: 0 });
+			// zoom tier key -> factor; an upscale whose minimum legible wall
+			// (220 columns) would not fit the container steps down a tier, so 4x
+			// is a big-screen option; shrink tiers only ever fit (more cells)
+			const zReq = ZOOM_VAL[zoomKey(zoom)] ?? 1;
+			const zMax = Math.max(1, Math.floor(size.w / (PITCH0 * 220)));
+			const Z = zReq > 1 ? Math.min(zReq, zMax) : zReq;
+			setLattice(Z);
 			const [page, setPage] = React.useState(0);
 			const [lit, setLit] = React.useState(0);
 			const [paused, setPaused] = React.useState(false);
