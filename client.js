@@ -381,7 +381,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.21.0';
+		const CLIENT_REV = '0.22.0';
 		const diagQueue = [];
 		let diagTimer = 0;
 		// the host meta tells the real level; until then assume the shipped 'errors' default
@@ -2166,6 +2166,141 @@ window.__ModuleLoader__.load({
 		 * clears the screen and the next page lights up. The lit row expands the
 		 * chart strip; hover pauses and grabs, click returns to the desk.
 		 */
+		// layout planner for the bulb wall: pure coordinates, shared by the
+		// browser painter and by the offline self-check renderer
+		// (scripts/led-shot.mjs) - one source of truth for both.
+		// prims: {t:'x',x,y,r,c,s} text (r = right-align rail or null)
+		//        {t:'f',x,y,w,h,c,a} filled rect
+		function ledPlan(env) {
+			const P = env.PITCH;
+			const G = env.G;
+			const DW = env.DW;
+			const pitch = env.pitch;
+			const CH = env.CHART_H;
+			const TH = G + 6;
+			const FH = G + 6;
+			const RTOP = TH + G + 8;
+			const upC = env.ledUp;
+			const dnC = env.ledDown;
+			const wide = DW >= env.BASE_W;
+			const u = (v) => Math.round((v * DW) / env.BASE_W);
+			const prims = [];
+			const txt = (x, y, s, c, r) => { prims.push({ t: 'x', x, y, r: r === void 0 ? null : r, c, s }); };
+			const box = (x, y, w, h, c, a) => { prims.push({ t: 'f', x, y, w, h, c, a: a === void 0 ? 1 : a }); };
+			const pctColor = (p) => (p === null ? '#cfe6ff' : p > 0 ? upC : p < 0 ? dnC : '#8fb3d9');
+			const rails = wide ? [916, 1056, 1196, 1336, 1466, 1606].map(u) : [DW - 340, DW - 190, DW - 8];
+			const pick = wide ? [0, 1, 2, 3, 4, 5] : [3, 4, 5];
+			const MXU = wide ? u(470) : 0;
+			const nameX = MXU + 20;
+			const codeX = wide ? u(630) : 170;
+			const tableR = wide ? u(1630) : DW - 8;
+			// title bar + wall clock; on compact bands the index folds into a
+			// one-liner right after the board name, clear of the clock rail
+			txt(8, 3, env.title, '#ffd75e');
+			txt(0, 3, env.clock, '#ffd75e', DW - 8);
+			if (env.idx !== null) {
+				const ix = env.idx;
+				if (!wide) {
+					txt(8 + env.titlePx + 24, 3, `${String(ix.name).slice(0, 4)} ${ix.priceF} ${ix.pctF}`, pctColor(ix.pct), DW - 140);
+				} else {
+					txt(8, TH + 2, String(ix.name).slice(0, 8), '#ff6a5e');
+					[[env.L('panel.last'), ix.priceF, ix.price], [env.L('board.col.high'), ix.highF, ix.high], [env.L('board.col.low'), ix.lowF, ix.low], [env.L('board.col.chgPct'), ix.pctF, ix.pct]].forEach((cellv, k) => {
+						const lx0 = k % 2 === 0 ? 8 : u(236);
+						const ly = TH + 10 + G + Math.floor(k / 2) * (G + 6);
+						txt(lx0, ly, cellv[0], '#3f618a');
+						txt(lx0 + (env.w(cellv[0]) + 3) * P, ly, cellv[1] === null ? '—' : cellv[1], cellv[2] === null ? '#8fb3d9' : pctColor(cellv[2]));
+					});
+					const iTop = TH + 10 + 2 * (G + 6) + G;
+					const iBot = env.h - FH - CH - G - 8;
+					if (env.idxBars.length > 1 && iBot > iTop + 20) {
+						const pts = env.idxBars;
+						const lru = u(444) - 8;
+						const lo = Math.min(...pts.map((b2) => b2.c));
+						const hi = Math.max(...pts.map((b2) => b2.c));
+						const span = hi - lo || 1;
+						const iRows = Math.max(4, Math.floor((iBot - iTop) / P) - 1);
+						let pY = null;
+						for (let col = 0; col * P < lru; col++) {
+							const idx = Math.min(pts.length - 1, Math.round((col / (lru / P)) * (pts.length - 1)));
+							const lvl = Math.max(1, Math.round(((pts[idx].c - lo) / span) * iRows));
+							const yTop = iTop + (iRows - lvl) * P;
+							if (pY !== null && pY !== yTop) box(8 + col * P, Math.min(pY, yTop), P, Math.abs(pY - yTop) + P, '#ffd75e', 0.7);
+							box(8 + col * P, yTop, P, P, '#ffd75e');
+							pY = yTop;
+						}
+						txt(8, iBot + 4, pts[0].ax, '#3f618a');
+						txt(0, iBot + 4, pts[pts.length - 1].ax, '#3f618a', u(444) - 4);
+					}
+				}
+			}
+			// main table header
+			txt(nameX, TH + 2, env.L('board.col.instrument'), '#ff6a5e');
+			txt(codeX, TH + 2, env.L('board.col.code'), '#ff6a5e');
+			pick.forEach((ci, j) => txt(0, TH + 2, env.colLabels[ci], '#ff6a5e', rails[j] - 4));
+			env.rows.forEach((row, i) => {
+				const top = RTOP + i * pitch;
+				const y = top + Math.floor((pitch - G) / 2);
+				const color = pctColor(row.pct);
+				if (i === env.lit) {
+					box(MXU, top, tableR - MXU - 16, pitch - 3, '#0e2c4c');
+					txt(MXU, y, '>', '#ffd75e');
+				}
+				txt(nameX, y, row.name, i === env.lit ? '#ffffff' : color);
+				txt(codeX, y, row.symbol, '#3f618a');
+				pick.forEach((ci, j) => txt(0, y, row.cells[ci], ci === 3 || ci === 4 ? (i === env.lit ? '#ffffff' : color) : i === env.lit && ci === 5 ? '#ffffff' : row.cellColors[ci], rails[j] - 4));
+			});
+			// twin ranking boards ride the wide bands only
+			if (wide && env.side.length > 0) {
+				const SXU = u(1630);
+				const nSide = Math.max(1, Math.min(6, Math.floor((pitch * env.rows.length - 2 * (G + 10)) / (2 * (G + 4)))));
+				txt(SXU, TH + 2, env.L('led.gainers'), '#ff6a5e');
+				env.side.slice(0, nSide).forEach((e, k) => {
+					const yy = TH + 10 + G + k * (G + 4);
+					txt(SXU + 8, yy, e.name, pctColor(e.pct));
+					txt(0, yy, e.pctF, e.pct > 0 ? upC : dnC, DW - 8);
+				});
+				txt(SXU, TH + 14 + G + nSide * (G + 4), env.L('led.losers'), '#ff6a5e');
+				env.side.slice(-nSide).reverse().forEach((e, k) => {
+					const yy = TH + 22 + 2 * G + nSide * (G + 4) + k * (G + 4);
+					txt(SXU + 8, yy, e.name, pctColor(e.pct));
+					txt(0, yy, e.pctF, e.pct < 0 ? dnC : upC, DW - 8);
+				});
+			}
+			// lit-row chart strip; hi/lo tick the reserved gutter, top and bottom
+			const cy0 = RTOP + pitch * env.rows.length;
+			if (env.chart !== null) {
+				const ch = env.chart;
+				const nCols = Math.max(8, Math.floor((tableR - 240) / P));
+				const priceRows = Math.max(6, Math.floor((CH - 16) * 0.62 / P));
+				const volRows = Math.max(3, Math.floor((CH - 16) * 0.30 / P));
+				let prevY = null;
+				for (let col = 0; col < nCols; col++) {
+					const idx = Math.min(ch.pts.length - 1, Math.round((col / nCols) * (ch.pts.length - 1)));
+					const b2 = ch.pts[idx];
+					const lvl = Math.max(1, Math.round(((b2.c - ch.lo) / ch.span) * priceRows));
+					const yTop = cy0 + 4 + (priceRows - lvl) * P;
+					if (prevY !== null && prevY !== yTop) box(8 + col * P, Math.min(prevY, yTop), P, Math.abs(prevY - yTop) + P, ch.color, 0.7);
+					box(8 + col * P, yTop, P, P, ch.color);
+					if (col === nCols - 1) {
+						box(8 + (col - 1) * P, yTop, P, P, ch.color);
+						box(8 + (col - 1) * P, yTop - P, P, P, ch.color);
+						box(8 + col * P, yTop - P, P, P, ch.color);
+					}
+					const vh = Math.max(1, Math.round(((b2.v === null ? 0 : b2.v) / ch.volMax) * volRows));
+					for (let vk = 0; vk < vh; vk++) box(8 + col * P, cy0 + CH - 4 - (vk + 1) * P, P, P, b2.down === true ? dnC : upC, 0.72 - 0.45 * (vk / Math.max(1, vh - 1)));
+					prevY = yTop;
+				}
+				txt(0, cy0 + 2, ch.hiF, '#4d7aa8', tableR - 64);
+				txt(0, cy0 + CH - G - 2, ch.loF, '#4d7aa8', tableR - 64);
+			} else {
+				txt(12, cy0 + Math.floor((CH - G) / 2), 'LOADING', '#3f618a');
+			}
+			const fy = env.h - FH + 2;
+			txt(8, fy, env.footL, '#c8a24a');
+			txt(0, fy, env.footR, '#c8a24a', DW - 8);
+			return { w: DW, h: env.h, prims };
+		}
+
 		function LedBoard({ rows, quotes, seenQuote, meta, onPick, getKline, ledUp, ledDown, tiny, t }) {
 			// one 16x16 (std) or 8x8 (tiny) glyph line plus a gutter, in design px
 			const G = (tiny === true ? 8 : 16) * PITCH;
@@ -2272,209 +2407,114 @@ window.__ModuleLoader__.load({
 				}, () => void 0);
 				return void 0;
 			}, [meta]);
-			// paint the exchange master board and bake it to the bulb screen
+			// paint the exchange master board: the planner returns the prim
+			// list, this painter only executes it - the offline self-check
+			// renderer feeds the same planner with mock quotes
 			React.useEffect(() => {
 				if (size.w === 0 || view.length === 0) return;
 				if (!LAMP.ready) {
 					void loadLamp().then(() => setFeedTick((current) => current + 1), () => void 0);
 					return;
 				}
-				let c = contentRef.current;
-				if (c === null) {
-					c = contentRef.current = document.createElement('canvas');
-				}
 				// fit-mode height budget: rows share whatever the frame leaves them
 				const availH = Math.max(ROWS_TOP + view.length * ROW_H + CHART_H + FOOT_H, Math.floor(size.h / sc));
 				const pitch = Math.max(ROW_H, Math.floor((availH - ROWS_TOP - CHART_H - FOOT_H) / view.length));
 				pitchRef.current = pitch;
 				topRef.current = ROWS_TOP;
-				c.width = DW;
-				c.height = ROWS_TOP + pitch * view.length + CHART_H + FOOT_H;
-				const x = c.getContext('2d');
-				x.fillStyle = '#000';
-				x.fillRect(0, 0, c.width, c.height);
-				// band layout: full five-zone master board at 1920+; every narrower
-				// band drops to the compact form (fixed bulb glyphs do not shrink,
-				// so scaled gutters would collide) - core columns on right-anchored
-				// positions, index folded into the title line, no left panel
-				const wide = DW >= BASE_W;
-				const CIDX = wide ? [0, 1, 2, 3, 4, 5] : [3, 4, 5];
-				const TCOL = wide ? TCOLB.map(u) : [DW - 330, DW - 190, DW - 10];
-				const MXU = wide ? u(MX) : 8;
-				const SXU = u(SXB);
-				const LRU = u(LRB);
-				const tableR = wide ? SXU : DW - 8;
-				const nameX = wide ? MXU + 14 : 8;
-				const codeX = wide ? u(630) : 170;
-				// ---- title bar: board name left, index one-liner and clock right
-				ledText(x, 8, 3, t('led.master'), '#ffd75e', void 0, tiny);
-				const nowD = new Date();
-				ledText(x, 0, 3, `${String(nowD.getHours()).padStart(2, '0')}:${String(nowD.getMinutes()).padStart(2, '0')}`, '#ffd75e', DW - 8, tiny);
-				// ---- index: full panel on wide bands, a folded one-liner otherwise
-				const idxSym = meta?.indexBar?.[0];
-				const idxQ = idxSym === void 0 ? void 0 : quotes.get(idxSym) ?? seenQuote(idxSym);
-				const idxOn = wide;
-				if (!idxOn) {
-					const fold = idxQ === void 0 ? '' : `${String(idxQ.name ?? '').slice(0, 4)} ${idxQ.price == null ? '—' : fmtNum(idxQ.price)} ${idxQ.changePct == null ? '—' : `${fmtSigned(idxQ.changePct)}%`}`;
-					ledText(x, 0, 3, fold, (idxQ?.changePct ?? 0) > 0 ? ledUp : (idxQ?.changePct ?? 0) < 0 ? ledDown : '#ffd75e', DW - 96, tiny);
-				}
-				if (idxOn) {
-					ledText(x, 8, TITLE_H + 2, (idxQ?.name ?? 'INDEX').slice(0, 8), '#ff6a5e', void 0, tiny);
-					[[t('panel.last'), idxQ?.price, false], [t('board.col.high'), idxQ?.high, false], [t('board.col.low'), idxQ?.low, false], [t('board.col.chgPct'), idxQ?.changePct, true]].forEach((cellv, kk) => {
-						const lx0 = kk % 2 === 0 ? 8 : u(236);
-						const ly = TITLE_H + 10 + G + Math.floor(kk / 2) * (G + 6);
-						ledText(x, lx0, ly, cellv[0], '#3f618a', void 0, tiny);
-						const vs = cellv[1] === null || cellv[1] === void 0 ? '—' : cellv[2] === true ? `${fmtSigned(cellv[1])}%` : fmtNum(cellv[1]);
-						ledText(x, lx0 + (ledTextW(cellv[0], tiny) + 3) * PITCH, ly, vs, cellv[1] === null || cellv[1] === void 0 ? '#8fb3d9' : cellv[1] > 0 ? ledUp : cellv[1] < 0 ? ledDown : '#cfe6ff', void 0, tiny);
-					});
-				}
-				const idxTop = TITLE_H + (idxOn ? 10 + 2 * (G + 6) + G : G + 6);
-				const idxBot = c.height - FOOT_H - CHART_H - G - 8;
-				const idxPts = idxKRef.current?.sym === idxSym ? idxKRef.current.bars.filter((b2) => b2.c !== null).slice(-60) : [];
-				if (idxPts.length > 1 && idxBot > idxTop + 20) {
-					const iLo = Math.min(...idxPts.map((b2) => b2.c));
-					const iHi = Math.max(...idxPts.map((b2) => b2.c));
-					const iSpan = iHi - iLo || 1;
-					const iRows = Math.max(4, Math.floor((idxBot - idxTop) / PITCH) - 1);
-					let pY = null;
-					for (let col = 0; col * PITCH < LRU - 8; col++) {
-						const idx = Math.min(idxPts.length - 1, Math.round((col / ((LRU - 8) / PITCH)) * (idxPts.length - 1)));
-						const lvl = Math.max(1, Math.round(((idxPts[idx].c - iLo) / iSpan) * iRows));
-						const yTop = idxTop + (iRows - lvl) * PITCH;
-						x.fillStyle = '#ffd75e';
-						if (pY !== null && pY !== yTop) {
-							x.globalAlpha = 0.7;
-							x.fillRect(8 + col * PITCH, Math.min(pY, yTop), PITCH, Math.abs(pY - yTop) + PITCH);
-							x.globalAlpha = 1;
-						}
-						x.fillRect(8 + col * PITCH, yTop, PITCH, PITCH);
-						pY = yTop;
-					}
-					const ax = (dStr) => String(dStr ?? '').slice(5, 10);
-					ledText(x, 8, idxBot + 4, ax(idxPts[0].d), '#3f618a', void 0, tiny);
-					ledText(x, 0, idxBot + 4, ax(idxPts[idxPts.length - 1].d), '#3f618a', LRU - 4, tiny);
-				}
-				// ---- main table header: red column names like the real screens
-				const COL_LABELS = [t('board.col.prevClose'), t('board.col.high'), t('board.col.low'), t('board.col.last'), t('board.col.chgPct'), t('board.col.amount')];
-				ledText(x, nameX, TITLE_H + 2, t('board.col.instrument'), '#ff6a5e', void 0, tiny);
-				ledText(x, codeX, TITLE_H + 2, t('board.col.code'), '#ff6a5e', void 0, tiny);
-				CIDX.forEach((ci, j) => {
-					ledText(x, 0, TITLE_H + 2, COL_LABELS[ci], '#ff6a5e', TCOL[j] - 4, tiny);
-				});
-				// ---- quote rows
+				const fmtv = (v) => (v === null || v === void 0 ? '—' : fmtNum(v));
 				let upN = 0;
 				let dnN = 0;
 				let flatN = 0;
 				let turn = 0;
 				const side = [];
-				view.forEach((row, i) => {
-					const top = ROWS_TOP + i * pitch;
-					const y = top + (pitch - G) / 2;
+				const rowsP = view.map((row) => {
 					const q = quotes.get(row.symbol) ?? seenQuote(row.symbol);
 					const pct = q?.changePct ?? null;
-					const color = pct === null ? '#cfe6ff' : pct > 0 ? ledUp : pct < 0 ? ledDown : '#8fb3d9';
 					if (pct > 0) upN++;
 					else if (pct < 0) dnN++;
 					else flatN++;
 					if (q?.amount != null) turn += q.amount;
-					if (pct !== null) side.push({ name: (q?.name ?? row.name ?? '').slice(0, 4), pct });
-					const isLit = i === lit;
-					if (isLit) {
-						x.fillStyle = '#0e2c4c';
-						x.fillRect(MXU, top, tableR - MXU - 16, pitch - 3);
-						ledText(x, MXU, y, '>', '#ffd75e', void 0, tiny);
-					}
-					const name = (q?.name ?? row.name ?? '').slice(0, wide ? 4 : 3);
-					ledText(x, nameX, y, name, isLit ? '#ffffff' : color, void 0, tiny);
-					ledText(x, codeX, y, row.symbol, '#3f618a', void 0, tiny);
-					const cells = [
-						q?.prevClose === null || q?.prevClose === void 0 ? '—' : fmtNum(q.prevClose),
-						q?.high === null || q?.high === void 0 ? '—' : fmtNum(q.high),
-						q?.low === null || q?.low === void 0 ? '—' : fmtNum(q.low),
-						q?.price === null || q?.price === void 0 ? '—' : fmtNum(q.price),
-						pct === null || pct === void 0 ? '—' : `${fmtSigned(pct)}%`,
-						q?.amount === null || q?.amount === void 0 ? '—' : fmtBig(q.amount, 1),
-					];
-					const cellColor = ['#9fc4e8', ledUp, ledDown, color, color, '#9fc4e8'];
-					CIDX.forEach((ci, j) => {
-						ledText(x, 0, y, cells[ci], ci === 3 || ci === 4 ? color : isLit && ci > 3 ? '#ffffff' : cellColor[ci], TCOL[j] - 4, tiny);
-					});
+					if (pct !== null) side.push({ name: (q?.name ?? row.name ?? '').slice(0, 4), pct, pctF: `${fmtSigned(pct)}%` });
+					const dir = pct === null ? '#cfe6ff' : pct > 0 ? ledUp : pct < 0 ? ledDown : '#8fb3d9';
+					return {
+						symbol: row.symbol,
+						name: (q?.name ?? row.name ?? '').slice(0, 4),
+						pct,
+						cells: [fmtv(q?.prevClose), fmtv(q?.high), fmtv(q?.low), fmtv(q?.price), pct === null ? '—' : `${fmtSigned(pct)}%`, q?.amount === null || q?.amount === void 0 ? '—' : fmtBig(q.amount, 1)],
+						cellColors: ['#9fc4e8', ledUp, ledDown, dir, dir, '#9fc4e8'],
+					};
 				});
-				// ---- side board: gainers over losers, the classic twin ranking
-				if (wide) {
 				side.sort((a, b2) => b2.pct - a.pct);
-				const nSide = Math.max(1, Math.min(6, Math.floor((pitch * view.length - 2 * (G + 10)) / (2 * (G + 4)))));
-				ledText(x, SXU, TITLE_H + 2, t('led.gainers'), '#ff6a5e', void 0, tiny);
-				side.slice(0, nSide).forEach((e, k) => {
-					const yy = TITLE_H + 10 + G + k * (G + 4);
-					ledText(x, SXU + 8, yy, e.name, e.pct > 0 ? ledUp : e.pct < 0 ? ledDown : '#8fb3d9', void 0, tiny);
-					ledText(x, 0, yy, `${fmtSigned(e.pct)}%`, e.pct > 0 ? ledUp : ledDown, DW - 8, tiny);
-				});
-				ledText(x, SXU, TITLE_H + 14 + G + nSide * (G + 4), t('led.losers'), '#ff6a5e', void 0, tiny);
-				side.slice(-nSide).reverse().forEach((e, k) => {
-					const yy = TITLE_H + 22 + 2 * G + nSide * (G + 4) + k * (G + 4);
-					ledText(x, SXU + 8, yy, e.name, e.pct > 0 ? ledUp : e.pct < 0 ? ledDown : '#8fb3d9', void 0, tiny);
-					ledText(x, 0, yy, `${fmtSigned(e.pct)}%`, e.pct < 0 ? ledDown : ledUp, DW - 8, tiny);
-				});
-				}
-				// ---- lit-row chart strip: stepped price ribbon + volume, between
-				// the table and the footer, pinned to the scene bottom
-				const cy0 = ROWS_TOP + pitch * view.length;
+				const idxSym = meta?.indexBar?.[0];
+				const idxQ = idxSym === void 0 ? void 0 : quotes.get(idxSym) ?? seenQuote(idxSym);
+				const idx = idxQ === void 0 ? null : {
+					name: idxQ.name ?? 'INDEX',
+					price: idxQ.price ?? null, priceF: fmtv(idxQ.price),
+					high: idxQ.high ?? null, highF: fmtv(idxQ.high),
+					low: idxQ.low ?? null, lowF: fmtv(idxQ.low),
+					pct: idxQ.changePct ?? null, pctF: idxQ.changePct == null ? '—' : `${fmtSigned(idxQ.changePct)}%`,
+				};
+				const idxBars = idxKRef.current?.sym === idxSym
+					? idxKRef.current.bars.filter((b2) => b2.c !== null).slice(-60).map((b2) => ({ c: b2.c, ax: String(b2.d ?? '').slice(5, 10) }))
+					: [];
 				const litSymbol = view[lit]?.symbol;
 				const bars = (litSymbol === void 0 ? void 0 : feedsRef.current.get(litSymbol)?.bars) ?? [];
 				const pts = bars.filter((b2) => b2.c !== null);
-				if (pts.length > 1) {
-					const nCols = Math.floor((tableR - 60) / PITCH);
-					const priceRows = Math.max(6, Math.floor((CHART_H - 16) * 0.62 / PITCH));
-					const volRows = Math.max(3, Math.floor((CHART_H - 16) * 0.30 / PITCH));
-					const lo = Math.min(...pts.map((b2) => b2.c));
-					const hi = Math.max(...pts.map((b2) => b2.c));
-					const span = hi - lo || 1;
-					const volMax = Math.max(...pts.map((b2) => b2.v ?? 0), 1);
-					const litQ = quotes.get(litSymbol) ?? seenQuote(litSymbol);
-					const lineColor = (litQ?.changePct ?? 0) >= 0 ? ledUp : ledDown;
-					let prevY = null;
-					for (let col = 0; col < nCols; col++) {
-						const idx = Math.min(pts.length - 1, Math.round((col / nCols) * (pts.length - 1)));
-						const b2 = pts[idx];
-						const lvl = Math.max(1, Math.round(((b2.c - lo) / span) * priceRows));
-						const yTop = cy0 + 4 + (priceRows - lvl) * PITCH;
-						x.fillStyle = lineColor;
-						if (prevY !== null && prevY !== yTop) {
-							x.globalAlpha = 0.7;
-							x.fillRect(8 + col * PITCH, Math.min(prevY, yTop), PITCH, Math.abs(prevY - yTop) + PITCH);
-							x.globalAlpha = 1;
-						}
-						x.fillRect(8 + col * PITCH, yTop, PITCH, PITCH);
-						if (col === nCols - 1) {
-							x.fillRect(8 + (col - 1) * PITCH, yTop, PITCH, PITCH);
-							x.fillRect(8 + (col - 1) * PITCH, yTop - PITCH, PITCH, PITCH);
-							x.fillRect(8 + col * PITCH, yTop - PITCH, PITCH, PITCH);
-						}
-						const vh = Math.max(1, Math.round(((b2.v ?? 0) / volMax) * volRows));
-						x.fillStyle = idx > 0 && b2.c < pts[idx - 1].c ? ledDown : ledUp;
-						for (let vk = 0; vk < vh; vk++) {
-							x.globalAlpha = 0.72 - 0.45 * (vk / Math.max(1, vh - 1));
-							x.fillRect(8 + col * PITCH, cy0 + CHART_H - 4 - (vk + 1) * PITCH, PITCH, PITCH);
-						}
-						x.globalAlpha = 1;
-						prevY = yTop;
-					}
-					ledText(x, 0, cy0 + 2, fmtNum(hi), '#4d7aa8', TCOL[TCOL.length - 2], tiny);
-					ledText(x, 0, cy0 + 4 + priceRows * PITCH - G, fmtNum(lo), '#4d7aa8', TCOL[TCOL.length - 2], tiny);
-				} else {
-					ledText(x, 12, cy0 + (CHART_H - G) / 2, 'LOADING', '#3f618a', void 0, tiny);
+				const litQ = litSymbol === void 0 ? void 0 : quotes.get(litSymbol) ?? seenQuote(litSymbol);
+				const hiAll = pts.length > 1 ? Math.max(...pts.map((b2) => b2.c)) : 0;
+				const loAll = pts.length > 1 ? Math.min(...pts.map((b2) => b2.c)) : 0;
+				const chart = pts.length > 1 ? {
+					pts: pts.map((b2, k) => ({ c: b2.c, v: b2.v ?? null, down: k > 0 && b2.c < pts[k - 1].c })),
+					lo: loAll,
+					hi: hiAll,
+					span: Math.max(1, hiAll - loAll),
+					volMax: Math.max(...pts.map((b2) => b2.v ?? 0), 1),
+					color: (litQ?.changePct ?? 0) >= 0 ? ledUp : ledDown,
+					hiF: fmtNum(hiAll),
+					loF: fmtNum(loAll),
+				} : null;
+				const nowD = new Date();
+				const title = t('led.master');
+				const plan = ledPlan({
+					PITCH, G, DW, BASE_W, tiny, pitch, CHART_H,
+					h: ROWS_TOP + pitch * view.length + CHART_H + FOOT_H,
+					ledUp, ledDown,
+					title,
+					clock: `${String(nowD.getHours()).padStart(2, '0')}:${String(nowD.getMinutes()).padStart(2, '0')}`,
+					titlePx: ledTextW(title, tiny),
+					w: (s) => ledTextW(String(s), tiny),
+					idx, idxBars,
+					L: (k) => t(k),
+					colLabels: [t('board.col.prevClose'), t('board.col.high'), t('board.col.low'), t('board.col.last'), t('board.col.chgPct'), t('board.col.amount')],
+					rows: rowsP, side, lit, chart,
+					footL: `${t('led.count')}:${view.length}  ${t('led.upN')} ${upN}  ${t('led.downN')} ${dnN}  ${t('led.flatN')} ${flatN}`,
+					footR: `${t('led.turnover')} ${fmtBig(turn, 1)}`,
+				});
+				let c = contentRef.current;
+				if (c === null) {
+					c = contentRef.current = document.createElement('canvas');
 				}
-				// ---- footer: the market breadth line, like 支数/成交数量/成交金額
-				const fy = c.height - FOOT_H + 2;
-				ledText(x, 8, fy, `${t('led.count')}:${view.length}  ${t('led.upN')} ${upN}  ${t('led.downN')} ${dnN}  ${t('led.flatN')} ${flatN}`, '#c8a24a', void 0, tiny);
-				ledText(x, 0, fy, `${t('led.turnover')} ${fmtBig(turn, 1)}`, '#c8a24a', DW - 8, tiny);
+				c.width = plan.w;
+				c.height = plan.h;
+				const x = c.getContext('2d');
+				x.fillStyle = '#000';
+				x.fillRect(0, 0, c.width, c.height);
+				plan.prims.forEach((p) => {
+					if (p.t === 'f') {
+						x.globalAlpha = p.a;
+						x.fillStyle = p.c;
+						x.fillRect(p.x, p.y, p.w, p.h);
+						x.globalAlpha = 1;
+					} else {
+						ledText(x, p.x, p.y, p.s, p.c, p.r === null ? void 0 : p.r, tiny);
+					}
+				});
 				const pair = scenePairRef.current ?? (scenePairRef.current = [document.createElement('canvas'), document.createElement('canvas')]);
 				bakeLamps(c, pair[pairIdxRef.current ^= 1]);
 				// atomic publish: the loop never sees a half-baked screen
 				sceneRef.current = pair[pairIdxRef.current];
 			}, [size, view.length, page, lit, feedTick, tiny, quotes]);
-			// rotation: one row every four seconds; a finished page queues a wipe
+						// rotation: one row every four seconds; a finished page queues a wipe
 			const rotRef = React.useRef(() => void 0);
 			rotRef.current = () => {
 				if (paused === true || transRef.current !== null || view.length < 2) return;
