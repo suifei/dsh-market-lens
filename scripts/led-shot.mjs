@@ -90,8 +90,8 @@ const side = MOCK.map((m) => ({ name: m[0].slice(0, 4), pct: m[8], pctF: m[6] })
 
 // fixed wall spec: the same 1024x768 bulb matrix the browser renders off-screen
 {
-	const CW = 1024;
-	const CH = 768;
+	const CW = 800;
+	const CH = 450;
 	const P = 3.5; // css px per bulb cell inside the wall (3px bulb + 0.5px seam)
 	const cols = CW;
 	const G = 16; // cells; tiny walls are mocked at std
@@ -125,6 +125,6 @@ const side = MOCK.map((m) => ({ name: m[0].slice(0, 4), pct: m[8], pctF: m[6] })
 		footL: '支数:13  涨 6  跌 7  平 0',
 		footR: '总额 1339.5亿',
 	});
-	await writeFile(join(outDir, 'plan-1024x768.json'), JSON.stringify(plan));
+	await writeFile(join(outDir, 'plan-800x450.json'), JSON.stringify(plan));
 	console.log(`plan ${String(cols)}x${String(hC)} cells (wall px ${String(plan.w)}x${String(plan.h)})`);
 }

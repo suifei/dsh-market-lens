@@ -382,7 +382,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.26.0';
+		const CLIENT_REV = '0.27.0';
 		const diagQueue = [];
 		let diagTimer = 0;
 		// the host meta tells the real level; until then assume the shipped 'errors' default
@@ -1999,11 +1999,11 @@ window.__ModuleLoader__.load({
 		const BULB = 3;           // bulb footprint in wall px
 		const PSZ = 4;            // sprite sheet size (integer canvas)
 		const LPX = (v) => Math.round(v); // cell px snap: paint and sampling share this lattice
-		// the master board is specced like a real one: a fixed 1024 x 768 bulb
+		// the master board is specced like a real one: a fixed 800 x 450 bulb
 		// matrix, rendered and baked off-screen at 1x, then the whole picture
 		// is scaled proportionally into the container (letterboxed, never cropped)
-		const WALL_COLS = 1024;
-		const WALL_ROWS = 768;
+		const WALL_COLS = 800;
+		const WALL_ROWS = 450;
 		const WALL_W_PX = Math.round(WALL_COLS * PITCH); // 3584
 		const WALL_H_PX = Math.round(WALL_ROWS * PITCH); // 2688
 		const OFF_BG = '#05080f';
@@ -2092,6 +2092,22 @@ window.__ModuleLoader__.load({
 			x.arc(PITCH / 2, PITCH / 2, BULB / 2, 0, 6.3);
 			x.fill();
 			return c;
+		};
+		let wallBgCanvas = null;
+		// the whole off-bulb field is one seamless tile pattern fill - 360k
+		// per-cell fillRects used to stall the first frame for seconds
+		const getWallBg = () => {
+			if (wallBgCanvas === null) {
+				wallBgCanvas = document.createElement("canvas");
+				wallBgCanvas.width = WALL_W_PX;
+				wallBgCanvas.height = WALL_H_PX;
+				const bxg = wallBgCanvas.getContext("2d");
+				bxg.fillStyle = OFF_BG;
+				bxg.fillRect(0, 0, WALL_W_PX, WALL_H_PX);
+				bxg.fillStyle = bxg.createPattern(offTile(), "repeat");
+				bxg.fillRect(0, 0, WALL_W_PX, WALL_H_PX);
+			}
+			return wallBgCanvas;
 		};
 		const spriteCache = new Map();
 		const haloCache = new Map();
@@ -2219,7 +2235,7 @@ window.__ModuleLoader__.load({
 			// sized for the widest real values plus breathing room.
 			const two = C < 353;
 			const four = C >= 440;
-			const rails = wide ? [458, 528, 598, 668, 733, 803].map(u) : two ? [C - 70, C - 4] : four ? [C - 215, C - 141, C - 81, C - 4] : [C - 141, C - 81, C - 4];
+			const rails = wide ? [458, 528, 598, 668, 733, 803].map(u) : two ? [C - 70, C - 4] : four ? [C - 383, C - 262, C - 140, C - 4] : [C - 141, C - 81, C - 4];
 			const pick = wide ? [0, 1, 2, 3, 4, 5] : two ? [3, 4] : four ? [0, 3, 4, 5] : [3, 4, 5];
 			const MXU = wide ? u(235) : 0;
 			const nameX = MXU + 10;
@@ -2357,6 +2373,7 @@ window.__ModuleLoader__.load({
 			const feedsRef = React.useRef(new Map());
 			const scenePairRef = React.useRef(null);
 			const pairIdxRef = React.useRef(0);
+			const sceneSigRef = React.useRef('');
 			const [size, setSize] = React.useState({ w: 0, h: 0 });
 			const [page, setPage] = React.useState(0);
 			const [lit, setLit] = React.useState(0);
@@ -2495,6 +2512,21 @@ window.__ModuleLoader__.load({
 					loF: fmtNum(loAll),
 				} : null;
 				const nowD = new Date();
+				// skip the whole re-bake unless something the wall can show has
+				// actually moved: page, lit row, lattice mode, every number on
+				// screen, and the minute the clock prints
+				const sig = [
+					String(page), String(lit), tiny === true ? "T" : "S",
+					view.map((r) => {
+						const q = quotes.get(r.symbol) ?? seenQuote(r.symbol);
+						return `${String(q?.price)}:${String(q?.changePct)}:${String(q?.high)}:${String(q?.low)}:${String(q?.prevClose)}:${String(q?.amount)}`;
+					}).join(";"),
+					`${String(idx?.priceF)}${String(idx?.pctF)}`,
+					`${String(chart?.pts.length)}:${String(chart?.pts.at(-1)?.c)}`,
+					String(nowD.getHours() * 60 + nowD.getMinutes()),
+				].join("|");
+				if (sceneSigRef.current === sig) return;
+				sceneSigRef.current = sig;
 				const fullTitle = t('led.master');
 				const title = COLS >= 200 ? fullTitle : t('led.min');
 				const plan = ledPlan({
@@ -2517,7 +2549,7 @@ window.__ModuleLoader__.load({
 				}
 				c.width = plan.w;
 				c.height = plan.h;
-				const x = c.getContext('2d');
+				const x = c.getContext('2d', { willReadFrequently: true }); // bake reads pixels on every publish: keep the canvas on the CPU
 				x.fillStyle = '#000';
 				x.fillRect(0, 0, c.width, c.height);
 				plan.prims.forEach((p) => {
@@ -2531,7 +2563,9 @@ window.__ModuleLoader__.load({
 					}
 				});
 				const pair = scenePairRef.current ?? (scenePairRef.current = [document.createElement('canvas'), document.createElement('canvas')]);
+				const t0 = performance.now();
 				bakeLamps(c, pair[pairIdxRef.current ^= 1]);
+				diag("panel.led.bake", { ms: Math.round(performance.now() - t0), cells: WALL_COLS * WALL_ROWS });
 				// atomic publish: the loop never sees a half-baked screen
 				sceneRef.current = pair[pairIdxRef.current];
 			}, [size, view.length, page, lit, feedTick, tiny, quotes]);
@@ -2571,18 +2605,8 @@ window.__ModuleLoader__.load({
 				geoRef.current = { ox, oy, sc };
 				x.imageSmoothingEnabled = true;
 				x.imageSmoothingQuality = 'high';
-				// frame background: the off-bulb field at the wall's own lattice,
-				// built once, then scaled exactly like every scene
-				const bg = document.createElement('canvas');
-				bg.width = WALL_W_PX;
-				bg.height = WALL_H_PX;
-				const bxg = bg.getContext('2d');
-				bxg.fillStyle = OFF_BG;
-				bxg.fillRect(0, 0, WALL_W_PX, WALL_H_PX);
-				bxg.fillStyle = 'rgba(24,48,74,0.9)';
-				for (let r = 0; r < WALL_ROWS; r++) {
-					for (let c = 0; c < WALL_COLS; c++) bxg.fillRect(LPX(c * PITCH), LPX(r * PITCH), BULB, BULB);
-				}
+				// frame background: the off-bulb field, pattern-built once per page
+				const bg = getWallBg();
 				const total = WALL_COLS * WALL_ROWS;
 				const bulbPx = Math.max(1, Math.round(BULB * sc));
 				const cellPx = Math.max(1, Math.round(PITCH * sc));
