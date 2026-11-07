@@ -1,5 +1,5 @@
 /**
- * 寰镜 MarketLens — Client half (browser bundle, plain JS, no JSX/build).
+ * 寰镜股票看板 MarketLens — Client half (browser bundle, plain JS, no JSX/build).
  * Renders the sidebar panel icon (`sidebar.panellist`) and the board itself
  * (`main` keyed panel). The UI never talks to upstream market APIs: every
  * read goes through the same-origin routes served by this package's Host
@@ -20,7 +20,7 @@ window.__ModuleLoader__.load({
 		const LS_NEWS = 'ml.seenews.v1';
 
 		const zh = {
-			'panel.title': '寰镜行情',
+			'panel.title': '寰镜股票看板',
 			'news.title': '快讯', 'news.loading': '快讯加载中…', 'news.empty': '暂无快讯',
 			'fin.title': '财报 · 主要指标', 'fin.unsupported': '财报暂支持 A 股', 'fin.error': '财报获取失败',
 			'fin.col.report': '报告期', 'fin.col.revenue': '营收', 'fin.col.revYoY': '营收同比',
@@ -68,7 +68,7 @@ window.__ModuleLoader__.load({
 			'notice': '延迟公开行情 · 非 Level-2 · 只读无交易',
 		};
 		const en = {
-			'panel.title': 'MarketLens',
+			'panel.title': 'HuanJing Stock Board',
 			'news.title': 'News flash', 'news.loading': 'Loading news…', 'news.empty': 'No news',
 			'fin.title': 'Reports · key metrics', 'fin.unsupported': 'Financial reports cover A-shares only for now', 'fin.error': 'Reports unavailable',
 			'fin.col.report': 'Period', 'fin.col.revenue': 'Revenue', 'fin.col.revYoY': 'Rev YoY',
@@ -381,7 +381,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.22.2';
+		const CLIENT_REV = '0.22.3';
 		const diagQueue = [];
 		let diagTimer = 0;
 		// the host meta tells the real level; until then assume the shipped 'errors' default

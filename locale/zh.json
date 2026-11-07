@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "寰镜 MarketLens 行情看板",
-    "description": "A 股 / 港股 / 美股的只读延迟行情看板：预制明星自选、指数条、K 线、搜索、7×24 快讯与 A 股财报指标，附带 market_search / market_quotes / market_kline 三个只读模型工具。不含任何交易能力，非 Level-2。"
+    "title": "寰镜股票看板 MarketLens",
+    "description": "A股 / 港股 / 美股的只读看盘盯盘股票看板：预制明星自选、指数条、K 线、点阵灯阵证券大厅、搜索、7×24 股市快讯与 A 股财报指标、价格提醒，摸鱼必备，附带 market_search / market_quotes / market_kline 三个只读模型工具。不含任何交易能力，非 Level-2。"
   }
 }

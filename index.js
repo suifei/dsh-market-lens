@@ -1,5 +1,5 @@
 /**
- * 寰镜 MarketLens — Host half.
+ * 寰镜股票看板 MarketLens — Host half.
  * Owns every upstream fetch (symbol normalization, short-TTL cache, in-flight
  * dedup, multi-source degradation) and republishes the same service to two
  * callers: the Web panel over same-origin HTTP routes, and the DSH session
@@ -167,7 +167,7 @@ export function apply(ctx, config) {
 		service,
 		diag,
 		alerts,
-		config: { ...config, version: '0.22.2' },
+		config: { ...config, version: '0.22.3' },
 	});
 
 	ctx.effect(() => {

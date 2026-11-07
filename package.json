@@ -1,8 +1,12 @@
 {
   "name": "@suifei/dsh-market-lens",
-  "version": "0.22.2",
+  "version": "0.22.3",
   "private": true,
-  "description": "寰镜 MarketLens — read-only A-share / HK / US market board for the DSH Web GUI (delayed public quotes, no trading)",
+  "description": "寰镜股票看板 MarketLens — read-only A股/港股/美股看盘盯盘 stock board for the DSH Web GUI (delayed public quotes, no trading)",
+  "keywords": [
+    "股票", "看盘", "盯盘", "摸鱼", "股市", "A股", "港股", "美股",
+    "stock", "stocks", "market", "quote", "dashboard", "huanjing", "marketlens"
+  ],
   "type": "module",
   "license": "MIT",
   "repository": {
