@@ -8,15 +8,42 @@ A股 / 港股 / 美股的**只读**看盘·盯盘股票看板 DSH Web 插件—�
 - 市场：A 股（沪/深/北）、港股、美股；指数、个股（板块视图在后续版本）。
 - 不做：下单、撤单、持仓盈亏、量化执行、任何写操作（连配置写回都没有）。
 
-> npm 安装请认准 **0.31.x**：≤0.27.0 的宿主模块依赖在 link/精简 profile 下解析不到（loader 静默不挂载，无路由无入口），0.27.1 起 schemastery/dsh-tools 为真实依赖；0.29.0 起大厅为 WebGL2 灯墙管线（平面 LED、点阵锐利、光散射灯珠、无缝滚动）。
+> 安装走 **`dsh plugin`**（见下文），包本体发布在 npm 上：当前 **0.34.x**。≤0.27.0 的宿主模块依赖在精简 profile 下解析不到（loader 静默不挂载）；0.27.1 起 schemastery/dsh-tools 为真实依赖；0.29.0 起大厅为 WebGL2 灯墙管线（平面 LED、圆灯珠、光散射、无缝滚动）。
 
 ## 安装
 
+用 DSH 自带的 `dsh plugin` 一条命令装进对应 profile——它会把包加进依赖、**同时把 bundle 写进 `dsh.profile.bundles`**，不需要你手改 patch 文件。
+
+### 桌面版（DSH Desktop）
+
 ```bash
-npm install @suifei/dsh-market-lens
+dsh plugin --profile desktop add @suifei/dsh-market-lens
 ```
 
-在你的 `cordis.patch.yml` 里挂载宿主半（客户端半由包内 `dsh.client` 声明自动发现）：
+装完**重启 DSH Desktop**：左侧栏出现「寰镜股票看板」，顶部工具栏点「证券大厅」进入 800×450 灯墙大屏。
+
+### Web 版（dsh web）
+
+```bash
+dsh plugin --profile web add @suifei/dsh-market-lens
+dsh web                 # 启动 Web 版；换端口用 dsh web --port 8080
+```
+
+浏览器打开后同样从左侧栏进入；改完/升级后刷新页面即生效。
+
+### 指定版本 / 源码快照 / 卸载
+
+```bash
+dsh plugin --profile desktop add @suifei/dsh-market-lens@0.34.3              # 钉版本
+dsh plugin --profile desktop add github:suifei/dsh-market-lens#<40 位 commit>  # 从仓库快照装
+dsh plugin --profile desktop remove @suifei/dsh-market-lens                  # 卸载
+```
+
+> 也可以不用命令行：在 DSH 的「插件管理」界面按包名安装，效果等价。
+
+### 手动挂载（不使用 `dsh plugin` 时）
+
+在 profile 的 `cordis.patch.yml` 里挂载宿主半（客户端半由包内 `dsh.client` 声明自动发现）：
 
 ```yaml
 - insert:
@@ -24,7 +51,7 @@ npm install @suifei/dsh-market-lens
       name: '@suifei/dsh-market-lens'
 ```
 
-DSH 桌面版/Web 版也可直接在「插件管理」里按包名安装（bundle 一键装载含上面的 patch 行）。装好后重启宿主，左侧栏出现「寰镜股票看板」，顶部工具栏「证券大厅」进入 800×450 灯墙大屏。可选 `config`（`diagLevel`、`pollIntervalMs` 等）见下节。
+可选 `config`（`diagLevel`、`pollIntervalMs`、`scrollVpx` 等）见下文配置节。
 
 ## 截图
 
