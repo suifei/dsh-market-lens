@@ -62,6 +62,7 @@ window.__ModuleLoader__.load({
 			'day.hi20': '20日新高', 'day.lo20': '20日新低', 'day.volUp': '放量',
 			'board.title': '证券大厅 · 自动轮播大屏', 'board.short': '证券大厅', 'board.tip': '自动轮播 · 悬停接管 · 点击选中不离场', 'toolbar.density': '点阵密度', 'density.std': '标准 16×16', 'density.tiny': '紧凑 8×8', 'board.split': '拖动调整列宽', 'board.pickHint': '点击查看该股全景',
 			'board.col.instrument': '名称', 'board.col.last': '现价', 'board.col.chg': '涨跌', 'board.col.chgPct': '涨幅', 'board.col.amount': '成交额', 'board.col.code': '代码', 'board.col.prevClose': '前收', 'board.col.high': '最高', 'board.col.low': '最低', 'panel.last': '最新', 'led.master': '寰镜证券行情总屏', 'led.gainers': '涨幅榜', 'led.losers': '跌幅榜', 'led.count': '支数', 'led.upN': '涨', 'led.downN': '跌', 'led.flatN': '平', 'led.turnover': '总额',
+			'mkt.on': '交易中', 'mkt.pre': '集合竞价', 'mkt.lunch': '午间休市', 'mkt.closed': '已收盘', 'rel.now': '刚刚', 'rel.h': '{n}小时前', 'rel.d': '{n}天前', 'rel.w': '{n}周前', 'rel.mo': '{n}个月前', 'rel.y': '{n}年前',
 			'import.title': '批量导入自选', 'import.placeholder': '每行一个代码或名称，最多 50 条',
 			'import.confirm': '导入', 'import.cancel': '取消', 'import.toomany': '超出 50 条的部分已忽略',
 			'notice': '延迟公开行情 · 非 Level-2 · 只读无交易',
@@ -109,6 +110,7 @@ window.__ModuleLoader__.load({
 			'day.hi20': '20-bar high', 'day.lo20': '20-bar low', 'day.volUp': 'Volume',
 			'board.title': 'Exchange Hall — auto-rotating board', 'board.short': 'Exchange Hall', 'board.tip': 'Auto-rotation · hover takes over · click selects, stays on the wall', 'toolbar.density': 'Dot pitch', 'density.std': 'Standard 16x16', 'density.tiny': 'Compact 8x8', 'board.split': 'Drag to resize columns', 'board.pickHint': 'Click to open the full view',
 			'board.col.instrument': 'Instrument', 'board.col.last': 'Last', 'board.col.chg': 'Chg', 'board.col.chgPct': 'Chg %', 'board.col.amount': 'Turnover', 'board.col.code': 'Code', 'board.col.prevClose': 'Prev', 'board.col.high': 'High', 'board.col.low': 'Low', 'panel.last': 'Last', 'led.master': 'MarketLens Exchange Master Board', 'led.gainers': 'Gainers', 'led.losers': 'Losers', 'led.count': 'Rows', 'led.upN': 'Up', 'led.downN': 'Down', 'led.flatN': 'Flat', 'led.turnover': 'Turnover',
+			'mkt.on': 'Open', 'mkt.pre': 'Call auction', 'mkt.lunch': 'Lunch break', 'mkt.closed': 'Market closed', 'rel.now': 'just now', 'rel.h': '{n}h ago', 'rel.d': '{n}d ago', 'rel.w': '{n}w ago', 'rel.mo': '{n}mo ago', 'rel.y': '{n}y ago',
 			'import.title': 'Bulk import watchlist', 'import.placeholder': 'One code or name per line, up to 50',
 			'import.confirm': 'Import', 'import.cancel': 'Cancel', 'import.toomany': 'Lines beyond 50 ignored',
 			'notice': 'Delayed public data · not Level-2 · read-only, no trading',
@@ -208,15 +210,24 @@ window.__ModuleLoader__.load({
 .ml-panel>header{display:flex;gap:6px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--dsw-alias-border-l1);flex-wrap:wrap;font-size:12px;color:var(--dsw-alias-label-secondary)}
 .ml-panel>header .ml-title{font-weight:600;color:var(--dsw-alias-label-primary);margin-right:auto}
 .ml-rows{overflow-y:auto;flex:1;min-height:0}
-.ml-row{display:flex;align-items:center;gap:10px;position:relative;padding:8px 10px;border-bottom:1px solid var(--dsw-alias-border-l1);cursor:pointer;background:none;border-left:0;border-right:0;border-top:0;color:inherit;font:inherit;text-align:left;width:100%}
+.ml-row{display:flex;align-items:center;gap:10px;position:relative;padding:9px 12px;margin:1px 5px;border-radius:11px;border-bottom:0;cursor:pointer;background:none;border-left:0;border-right:0;border-top:0;color:inherit;font:inherit;text-align:left;width:100%}
 .ml-row .nm{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
-.ml-row .nm b{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ml-row .nm b{font-weight:650;letter-spacing:.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ml-row .nm code{font-size:11px;color:var(--dsw-alias-label-secondary)}
 .ml-row .nm .ad{font-size:11px;line-height:1.3}
-.ml-row:hover,.ml-row[aria-current="true"]{background:var(--dsw-alias-bg-layer-2)}
-.ml-row .qt{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:1px;min-width:88px}
-.ml-row .qt b{font-size:15px;font-weight:600}
-.ml-row .qt .rm{font-size:11px;white-space:nowrap}
+.ml-row:hover{background:var(--dsw-alias-bg-layer-2)}
+.ml-row[aria-current="true"]{background:var(--dsw-alias-bg-layer-2);box-shadow:inset 0 0 0 2px var(--dsw-alias-border-l2)}
+.ml-row .qt{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:96px}
+.ml-row .qt b{font-size:15.5px;font-weight:650}
+.ml-row .qt .chips{display:flex;gap:5px;align-items:center}
+.ml-row .qt .rm{font-size:10.5px;white-space:nowrap;color:var(--dsw-alias-label-secondary)}
+.ml-badge{display:inline-block;padding:2px 8px;border-radius:7px;font-size:11.5px;font-weight:650;color:#fff;background:var(--dsw-alias-label-secondary);white-space:nowrap}
+.ml-badge.up{background:var(--ml-up)}
+.ml-badge.down{background:var(--ml-down)}
+.ml-mktstat{flex:none;display:flex;align-items:center;gap:7px;padding:8px 14px;font-size:11px;color:var(--dsw-alias-label-secondary);border-top:1px solid var(--dsw-alias-border-l1)}
+.ml-mktstat .dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex:none}
+.ml-mktstat.on{color:#1f9d55}
+.ml-mktstat.lunch{color:#c98a00}
 .ml-row .rm-x{position:absolute;top:6px;right:8px;visibility:hidden;z-index:2}
 .ml-row:hover .rm-x{visibility:visible}
 .ml-row .ml-pin{position:absolute;top:3px;left:4px;z-index:3;font-size:11px;line-height:1;padding:4px;border:0;background:none;cursor:pointer;opacity:0;transition:opacity .12s}
@@ -269,8 +280,8 @@ window.__ModuleLoader__.load({
 .ml-metric{flex:none;min-width:86px;border:1px solid var(--dsw-alias-border-l1);border-radius:10px;padding:6px 9px;background:var(--dsw-alias-bg-layer-2)}
 .ml-metric b{display:block;font-size:11px;font-weight:400;color:var(--dsw-alias-label-secondary)}
 .ml-metric span{font-size:14px;font-weight:600}
-.ml-chip{font-size:11px;padding:3px 8px;border-radius:999px;border:1px solid var(--dsw-alias-border-l1);background:none;color:var(--dsw-alias-label-secondary);cursor:pointer}
-.ml-chip[aria-pressed="true"]{border-color:var(--dsw-alias-brand-primary);color:var(--dsw-alias-brand-primary)}
+.ml-chip{font-size:11px;padding:3px 9px;border-radius:999px;border:1px solid transparent;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary);cursor:pointer}
+.ml-chip[aria-pressed="true"]{background:color-mix(in srgb,var(--dsw-alias-bg-layer-2),var(--dsw-alias-label-primary) 18%);color:var(--dsw-alias-label-primary);font-weight:600}
 .ml-note{padding:4px 14px 8px;font-size:11px;color:var(--dsw-alias-label-secondary)}
 .ml-back{display:none}
 .ml-root:not([data-wide="1"]) .ml-panelcol[data-col="chart"].ml-hidden-narrow,.ml-root:not([data-wide="1"]) .ml-panelcol[data-col="detail"].ml-hidden-narrow{display:none}
@@ -293,9 +304,9 @@ window.__ModuleLoader__.load({
 .ml-fintable td{padding:6px 8px;border-bottom:1px solid var(--dsw-alias-border-l1);white-space:nowrap}
 .ml-fintable tr:last-child td{border-bottom:0}
 .ml-news{overflow-y:auto;flex:1;min-height:0}
-.ml-news-item{display:flex;gap:8px;align-items:baseline;padding:7px 10px;border-bottom:1px solid var(--dsw-alias-border-l1)}
+.ml-news-item{display:flex;gap:8px;align-items:baseline;padding:9px 12px;border-bottom:1px solid var(--dsw-alias-border-l1)}
 .ml-news-item:last-child{border-bottom:0}
-.ml-news-item a{color:inherit;text-decoration:none;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ml-news-item a{color:inherit;text-decoration:none;font-weight:600;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .ml-news-item a:hover{color:var(--dsw-alias-brand-primary)}
 .ml-news-item time{margin-left:auto;font-size:11px;color:var(--dsw-alias-label-secondary);flex:none}
 	`.trim();
@@ -369,7 +380,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.19.0';
+		const CLIENT_REV = '0.20.0';
 		const diagQueue = [];
 		let diagTimer = 0;
 		// the host meta tells the real level; until then assume the shipped 'errors' default
@@ -552,6 +563,22 @@ window.__ModuleLoader__.load({
 			);
 		}
 
+		/** Apple-style session strip: trading state by Beijing-time A-share rules */
+		function MktStatus({ t }) {
+			const [now, setNow] = React.useState(() => new Date());
+			React.useEffect(() => {
+				const timer = window.setInterval(() => setNow(new Date()), 30000);
+				return () => window.clearInterval(timer);
+			}, []);
+			const mins = now.getHours() * 60 + now.getMinutes();
+			const wd = now.getDay();
+			const state = wd === 0 || wd === 6 ? 'closed' : mins >= 555 && mins < 570 ? 'pre' : mins >= 570 && mins < 690 ? 'on' : mins >= 690 && mins < 780 ? 'lunch' : mins >= 780 && mins <= 900 ? 'on' : 'closed';
+			return h('div', { className: `ml-mktstat ${state}` },
+				h('span', { className: 'dot' }),
+				t(`mkt.${state}`),
+				h('span', null, new Intl.DateTimeFormat(void 0, { month: 'short', day: 'numeric' }).format(now)));
+		}
+
 		function WatchRow({ instrument, quote, active, pinned, badge, onPin, onSelect, onRemove, t }) {
 			const pct = quote?.changePct ?? null;
 			const advice = pct === null ? '' : pct >= 3 ? 'advice.surge' : pct >= 1 ? 'advice.rise' : pct > -1 ? 'advice.flat' : pct > -3 ? 'advice.drop' : 'advice.slump';
@@ -573,14 +600,17 @@ window.__ModuleLoader__.load({
 				}, '📍'),
 				badge === null || badge === void 0 || badge === 0 || active === true ? null : h('span', { className: 'ml-bub', title: `${String(badge)} ${t('feed.badge')}` }, String(badge > 9 ? '9+' : badge)),
 			h('span', { className: 'nm' },
-					h('b', null, quote?.name ?? instrument.name ?? instrument.symbol),
-					h('code', null, instrument.symbol),
+					h('b', null, instrument.symbol),
+					h('code', null, quote?.name ?? instrument.name ?? ''),
 					advice === '' ? null : h('span', { className: `ad ${dirClass(Math.abs(pct) < 1 ? 0 : pct)}` }, t(advice)),
 				),
 			h(Spark, { symbol: instrument.symbol, pct }),
 				h('span', { className: 'qt' },
-					h('b', { key: String(quote?.price), className: dirClass(pct) + tick }, pct === null ? '—' : `${fmtSigned(pct)}%`),
-					h('span', { className: `rm ${dirClass(pct)}`, title: quote?.stale === true ? t('list.staleHint') : void 0 }, quote === void 0 ? t('toolbar.error') : `${fmtNum(quote.price)} · ${fmtSigned(quote.change)} · ${fmtBig(quote.amount)}`)),
+					h('b', { key: String(quote?.price), className: dirClass(pct) + tick }, quote?.price === null || quote?.price === void 0 ? '—' : fmtNum(quote.price)),
+					h('span', { className: 'chips' },
+						h('span', { className: `ml-badge ${dirClass(pct)}`, title: quote?.stale === true ? t('list.staleHint') : void 0 }, quote?.change === null || quote?.change === void 0 ? '—' : fmtSigned(quote.change)),
+						pct === null || pct === void 0 ? null : h('span', { className: 'rm' }, `${fmtSigned(pct)}%`)),
+					h('span', { className: 'rm' }, quote === void 0 ? t('toolbar.error') : quote.amount === null || quote.amount === void 0 ? '—' : fmtBig(quote.amount)),
 					onRemove === void 0 ? null : h('span', {
 						className: 'rm-x', role: 'button', tabIndex: -1,
 						title: t('list.remove'),
@@ -589,6 +619,7 @@ window.__ModuleLoader__.load({
 							onRemove(instrument.symbol);
 						},
 					}, '×'),
+				),
 			);
 		}
 
@@ -1282,13 +1313,20 @@ window.__ModuleLoader__.load({
 									h('td', null, fmtNum(row.eps, 2))))))));
 		}
 
-		function newsTimeText(value) {
+		function newsTimeText(value, t) {
 			if (typeof value !== 'string' || value === '') return '';
-			if (value.includes('T')) {
-				const date = new Date(value);
-				return Number.isNaN(date.getTime()) ? '' : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-			}
-			return value.slice(11, 16);
+			const date = value.includes('T') ? new Date(value) : new Date(`${value.slice(0, 10)}T08:00:00`);
+			if (Number.isNaN(date.getTime())) return value.slice(11, 16);
+			const mins = (Date.now() - date.getTime()) / 60000;
+			if (!(mins > 0)) return t('rel.now');
+			if (mins <= 60) return t('rel.now');
+			// same-day news keeps a precise clock; everything older goes relative
+			if (mins < 1440 && date.getDate() === new Date().getDate()) return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+			const n = (key, k) => String(t(key)).replace('{n}', k);
+			if (mins < 10080) return n('rel.h', Math.floor(mins / 60));
+			if (mins < 43200) return n('rel.d', Math.floor(mins / 1440));
+			if (mins < 525600) return n('rel.w', Math.floor(mins / 10080));
+			return n('rel.y', Math.floor(mins / 525600));
 		}
 
 		function NewsCard({ news, posts, tab, setTab, symbol, t }) {
@@ -1312,7 +1350,7 @@ window.__ModuleLoader__.load({
 									item.url === '' ? h('span', null, item.title)
 										: h('a', { href: item.url, target: '_blank', rel: 'noreferrer' }, item.title),
 									item.comments === void 0 || item.comments === null || item.comments === 0 ? null : h('span', { className: 'cmt' }, `💬${String(item.comments)}`),
-									newsTimeText(item.time) === '' ? null : h('time', null, newsTimeText(item.time))))));
+									newsTimeText(item.time, t) === '' ? null : h('time', null, newsTimeText(item.time, t))))));
 		}
 
 		// ---------- panel ----------
@@ -1904,6 +1942,7 @@ window.__ModuleLoader__.load({
 											onRemove: removeFromWatch,
 											t,
 										})))),
+								h(MktStatus, { t }),
 						) : null,
 						led === true || wide === false ? null : h('div', { className: 'ml-split', onPointerDown: beginSplit('l'), role: 'separator', 'aria-orientation': 'vertical', 'aria-label': t('board.split') }),
 						led === true ? null : showDetail ? h('div', { className: 'ml-panelcol', 'data-col': 'chart' },
