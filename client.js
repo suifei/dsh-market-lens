@@ -381,7 +381,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.20.1';
+		const CLIENT_REV = '0.20.2';
 		const diagQueue = [];
 		let diagTimer = 0;
 		// the host meta tells the real level; until then assume the shipped 'errors' default
@@ -2182,11 +2182,12 @@ window.__ModuleLoader__.load({
 			// scales uniformly into the container like a game in fit mode, and
 			// a short page EQUALIZES its row pitch instead of leaving dead glass
 			const DESIGN_W = 1920;
-			const MX = 464; // main table left edge
-			const SX = 1540; // side board left edge
+			const MX = 470; // main table left edge
+			const SX = 1630; // side board left edge
 			const LR = 444; // left index panel right edge
 			const LRW = LR - 8; // usable ribbon width
-			const TCOL = [880, 1000, 1120, 1252, 1372, 1512]; // prev high low last pct amount
+			// halfwidth numerals run 7 chars + gutter; columns keep >=12 design px of air
+			const TCOL = [916, 1056, 1196, 1336, 1466, 1606]; // prev high low last pct amount
 			const wrapRef = React.useRef(null);
 			const canvasRef = React.useRef(null);
 			const contentRef = React.useRef(null);
@@ -2337,7 +2338,7 @@ window.__ModuleLoader__.load({
 				}
 				// ---- main table header: red column names like the real screens
 				ledText(x, MX + 14, TITLE_H + 2, t('board.col.instrument'), '#ff6a5e', void 0, tiny);
-				ledText(x, 622, TITLE_H + 2, t('board.col.code'), '#ff6a5e', void 0, tiny);
+				ledText(x, 630, TITLE_H + 2, t('board.col.code'), '#ff6a5e', void 0, tiny);
 				[t('board.col.prevClose'), t('board.col.high'), t('board.col.low'), t('board.col.last'), t('board.col.chgPct'), t('board.col.amount')].forEach((label, i) => {
 					ledText(x, 0, TITLE_H + 2, label, '#ff6a5e', TCOL[i] - 4, tiny);
 				});
@@ -2361,12 +2362,12 @@ window.__ModuleLoader__.load({
 					const isLit = i === lit;
 					if (isLit) {
 						x.fillStyle = '#0e2c4c';
-						x.fillRect(MX, top, SX - MX - 12, pitch - 3);
+						x.fillRect(MX, top, SX - MX - 16, pitch - 3);
 						ledText(x, MX, y, '>', '#ffd75e', void 0, tiny);
 					}
 					const name = (q?.name ?? row.name ?? '').slice(0, 4);
 					ledText(x, MX + 14, y, name, isLit ? '#ffffff' : color, void 0, tiny);
-					ledText(x, 622, y, row.symbol, '#3f618a', void 0, tiny);
+					ledText(x, 630, y, row.symbol, '#3f618a', void 0, tiny);
 					const cells = [
 						q?.prevClose === null || q?.prevClose === void 0 ? '—' : fmtNum(q.prevClose),
 						q?.high === null || q?.high === void 0 ? '—' : fmtNum(q.high),
@@ -2387,13 +2388,13 @@ window.__ModuleLoader__.load({
 				side.slice(0, nSide).forEach((e, k) => {
 					const yy = TITLE_H + 10 + G + k * (G + 4);
 					ledText(x, SX + 8, yy, e.name, e.pct > 0 ? ledUp : e.pct < 0 ? ledDown : '#8fb3d9', void 0, tiny);
-					ledText(x, 0, yy, `${fmtSigned(e.pct)}%`, e.pct > 0 ? ledUp : ledDown, SX + 372, tiny);
+					ledText(x, 0, yy, `${fmtSigned(e.pct)}%`, e.pct > 0 ? ledUp : ledDown, DESIGN_W - 8, tiny);
 				});
 				ledText(x, SX, TITLE_H + 14 + G + nSide * (G + 4), t('led.losers'), '#ff6a5e', void 0, tiny);
 				side.slice(-nSide).reverse().forEach((e, k) => {
 					const yy = TITLE_H + 22 + 2 * G + nSide * (G + 4) + k * (G + 4);
 					ledText(x, SX + 8, yy, e.name, e.pct > 0 ? ledUp : e.pct < 0 ? ledDown : '#8fb3d9', void 0, tiny);
-					ledText(x, 0, yy, `${fmtSigned(e.pct)}%`, e.pct < 0 ? ledDown : ledUp, SX + 372, tiny);
+					ledText(x, 0, yy, `${fmtSigned(e.pct)}%`, e.pct < 0 ? ledDown : ledUp, DESIGN_W - 8, tiny);
 				});
 				// ---- lit-row chart strip: stepped price ribbon + volume, between
 				// the table and the footer, pinned to the scene bottom
@@ -2402,7 +2403,7 @@ window.__ModuleLoader__.load({
 				const bars = (litSymbol === void 0 ? void 0 : feedsRef.current.get(litSymbol)?.bars) ?? [];
 				const pts = bars.filter((b2) => b2.c !== null);
 				if (pts.length > 1) {
-					const nCols = Math.floor((SX - 150) / PITCH);
+					const nCols = Math.floor((SX - 60) / PITCH);
 					const priceRows = Math.max(6, Math.floor((CHART_H - 16) * 0.62 / PITCH));
 					const volRows = Math.max(3, Math.floor((CHART_H - 16) * 0.30 / PITCH));
 					const lo = Math.min(...pts.map((b2) => b2.c));
@@ -2438,8 +2439,8 @@ window.__ModuleLoader__.load({
 						x.globalAlpha = 1;
 						prevY = yTop;
 					}
-					ledText(x, 0, cy0 + 2, fmtNum(hi), '#4d7aa8', TCOL[2], tiny);
-					ledText(x, 0, cy0 + 4 + priceRows * PITCH - G, fmtNum(lo), '#4d7aa8', TCOL[2], tiny);
+					ledText(x, 0, cy0 + 2, fmtNum(hi), '#4d7aa8', TCOL[4], tiny);
+					ledText(x, 0, cy0 + 4 + priceRows * PITCH - G, fmtNum(lo), '#4d7aa8', TCOL[4], tiny);
 				} else {
 					ledText(x, 12, cy0 + (CHART_H - G) / 2, 'LOADING', '#3f618a', void 0, tiny);
 				}
