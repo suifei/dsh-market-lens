@@ -60,7 +60,7 @@ window.__ModuleLoader__.load({
 			'advice.surge': '强势拉升', 'advice.rise': '稳步走高', 'advice.flat': '窄幅盘整', 'advice.drop': '正快速下降', 'advice.slump': '加速下挫',
 			'feed.notice': '公告', 'feed.posts': '评论', 'feed.pick': '选中一只股票后显示', 'feed.badge': '未读新公告',
 			'day.hi20': '20日新高', 'day.lo20': '20日新低', 'day.volUp': '放量',
-			'board.title': '证券大厅 · 自动轮播大屏', 'board.short': '证券大厅', 'board.tip': '自动轮播 · 悬停接管 · 点击选中不离场', 'toolbar.density': '点阵密度', 'toolbar.zoom': '灯珠倍率', 'density.std': '标准 16×16', 'density.tiny': '紧凑 8×8', 'board.split': '拖动调整列宽', 'board.pickHint': '点击查看该股全景',
+			'board.title': '证券大厅 · 自动轮播大屏', 'board.short': '证券大厅', 'board.tip': '自动轮播 · 悬停接管 · 点击选中不离场', 'toolbar.density': '点阵密度', 'toolbar.zoom': '灯珠倍率', 'news.src.sina': '新浪快讯', 'news.src.em': '东方财富', 'news.src.guba': '股吧', 'density.std': '标准 16×16', 'density.tiny': '紧凑 8×8', 'board.split': '拖动调整列宽', 'board.pickHint': '点击查看该股全景',
 			'board.col.instrument': '名称', 'board.col.last': '现价', 'board.col.chg': '涨跌', 'board.col.chgPct': '涨幅', 'board.col.amount': '成交额', 'board.col.code': '代码', 'board.col.prevClose': '前收', 'board.col.high': '最高', 'board.col.low': '最低', 'panel.last': '最新', 'led.master': '寰镜证券行情总屏', 'led.min': '寰镜', 'led.gainers': '涨幅榜', 'led.losers': '跌幅榜', 'led.count': '支数', 'led.upN': '涨', 'led.downN': '跌', 'led.flatN': '平', 'led.turnover': '总额',
 			'mkt.on': '交易中', 'mkt.pre': '集合竞价', 'mkt.lunch': '午间休市', 'mkt.closed': '已收盘', 'rel.now': '刚刚', 'rel.h': '{n}小时前', 'rel.d': '{n}天前', 'rel.w': '{n}周前', 'rel.mo': '{n}个月前', 'rel.y': '{n}年前',
 			'import.title': '批量导入自选', 'import.placeholder': '每行一个代码或名称，最多 50 条',
@@ -108,7 +108,7 @@ window.__ModuleLoader__.load({
 			'advice.surge': 'surging', 'advice.rise': 'trending up', 'advice.flat': 'consolidating', 'advice.drop': 'falling fast', 'advice.slump': 'breaking down',
 			'feed.notice': 'Filings', 'feed.posts': 'Comments', 'feed.pick': 'Select a stock to load its feeds', 'feed.badge': 'unread filings',
 			'day.hi20': '20-bar high', 'day.lo20': '20-bar low', 'day.volUp': 'Volume',
-			'board.title': 'Exchange Hall — auto-rotating board', 'board.short': 'Exchange Hall', 'board.tip': 'Auto-rotation · hover takes over · click selects, stays on the wall', 'toolbar.density': 'Dot pitch', 'toolbar.zoom': 'Bulb zoom', 'density.std': 'Standard 16x16', 'density.tiny': 'Compact 8x8', 'board.split': 'Drag to resize columns', 'board.pickHint': 'Click to open the full view',
+			'board.title': 'Exchange Hall — auto-rotating board', 'board.short': 'Exchange Hall', 'board.tip': 'Auto-rotation · hover takes over · click selects, stays on the wall', 'toolbar.density': 'Dot pitch', 'toolbar.zoom': 'Bulb zoom', 'news.src.sina': 'Sina flash', 'news.src.em': 'Eastmoney', 'news.src.guba': 'Guba', 'density.std': 'Standard 16x16', 'density.tiny': 'Compact 8x8', 'board.split': 'Drag to resize columns', 'board.pickHint': 'Click to open the full view',
 			'board.col.instrument': 'Instrument', 'board.col.last': 'Last', 'board.col.chg': 'Chg', 'board.col.chgPct': 'Chg %', 'board.col.amount': 'Turnover', 'board.col.code': 'Code', 'board.col.prevClose': 'Prev', 'board.col.high': 'High', 'board.col.low': 'Low', 'panel.last': 'Last', 'led.master': 'MarketLens Exchange Master Board', 'led.min': 'HJ', 'led.gainers': 'Gainers', 'led.losers': 'Losers', 'led.count': 'Rows', 'led.upN': 'Up', 'led.downN': 'Down', 'led.flatN': 'Flat', 'led.turnover': 'Turnover',
 			'mkt.on': 'Open', 'mkt.pre': 'Call auction', 'mkt.lunch': 'Lunch break', 'mkt.closed': 'Market closed', 'rel.now': 'just now', 'rel.h': '{n}h ago', 'rel.d': '{n}d ago', 'rel.w': '{n}w ago', 'rel.mo': '{n}mo ago', 'rel.y': '{n}y ago',
 			'import.title': 'Bulk import watchlist', 'import.placeholder': 'One code or name per line, up to 50',
@@ -382,7 +382,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.25.1';
+		const CLIENT_REV = '0.25.2';
 		const diagQueue = [];
 		let diagTimer = 0;
 		// the host meta tells the real level; until then assume the shipped 'errors' default
@@ -1331,6 +1331,12 @@ window.__ModuleLoader__.load({
 			return n('rel.y', Math.floor(mins / 525600));
 		}
 
+		const SRC_KEYS = { 'sina-roll': 'news.src.sina', 'em-notice': 'news.src.em', 'em-search': 'news.src.em', guba: 'news.src.guba', em: 'news.src.em', eastmoney: 'news.src.em' };
+		/** raw feed source id(s) like 'em-notice+guba+em-search' -> friendly localized label, unknown ids pass through */
+		function srcLabel(raw, t) {
+			const names = [...new Set(String(raw).split('+').map((part) => (SRC_KEYS[part] === void 0 ? null : t(SRC_KEYS[part]))).filter((x) => x !== null))];
+			return names.length === 0 ? String(raw) : names.join('·');
+		}
 		function NewsCard({ news, posts, tab, setTab, symbol, t }) {
 			const tabs = [['roll', t('news.title')], ['notice', t('feed.notice')], ['posts', t('feed.posts')]];
 			const list = tab === 'roll' ? news.items : tab === 'notice' ? posts.notice : posts.posts;
@@ -1342,8 +1348,8 @@ window.__ModuleLoader__.load({
 							key: id, type: 'button', role: 'tab', 'aria-selected': tab === id,
 							onClick: () => setTab(id),
 						}, label))),
-					tab === 'roll' && (news.source === '' || news.source === void 0) ? null
-						: h('span', null, tab === 'roll' ? news.source : posts.source ?? 'em')),
+					tab === 'roll' && (news.source === '' || news.source === void 0 || news.source === 'none') ? null
+						: h('span', null, srcLabel(tab === 'roll' ? news.source : posts.source ?? 'em', t))),
 				busy ? h('div', { className: 'ml-pad' }, t('news.loading'))
 					: symbol === null && tab !== 'roll' ? h('div', { className: 'ml-pad' }, t('feed.pick'))
 						: list.length === 0 ? h('div', { className: 'ml-pad' }, t('news.empty'))
