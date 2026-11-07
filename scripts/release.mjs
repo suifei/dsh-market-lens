@@ -102,7 +102,8 @@ if (flag('no-npm') === true) {
 
 // 7) registry + host verification ------------------------------------------------
 const latest = await step('7/8', 'registry dist-tags.latest poll', async () => {
-	const deadline = Date.now() + (token ? 90000 : 5000);
+	// scoped publishes can sit in the registry's staging queue for several minutes
+	const deadline = Date.now() + (token ? 300000 : 5000);
 	let seen = 'n/a';
 	while (Date.now() < deadline) {
 		try {
