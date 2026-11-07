@@ -381,7 +381,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.20.2';
+		const CLIENT_REV = '0.21.0';
 		const diagQueue = [];
 		let diagTimer = 0;
 		// the host meta tells the real level; until then assume the shipped 'errors' default
@@ -2177,17 +2177,18 @@ window.__ModuleLoader__.load({
 			// the wall has a FIXED design raster modelled on a real exchange
 			// master board: title+clock bar, left index panel (value stack and
 			// trend ribbon), the dense quote table in the middle, a gainer/loser
-			// side board on the right and a turnover footer strip. Columns are
-			// laid once at 1920 design px with guaranteed gutters; the scene
-			// scales uniformly into the container like a game in fit mode, and
-			// a short page EQUALIZES its row pitch instead of leaving dead glass
-			const DESIGN_W = 1920;
-			const MX = 470; // main table left edge
-			const SX = 1630; // side board left edge
-			const LR = 444; // left index panel right edge
-			const LRW = LR - 8; // usable ribbon width
-			// halfwidth numerals run 7 chars + gutter; columns keep >=12 design px of air
-			const TCOL = [916, 1056, 1196, 1336, 1466, 1606]; // prev high low last pct amount
+			// side board on the right and a turnover footer strip. The raster has
+			// QUANTIZED DESIGN WIDTHS (480 steps up to 8K): the scene picks the
+			// widest band that fits the container and then paints 1:1 - bulbs
+			// never resample and the wall never leaves a dead band wider than one
+			// step. Column gutters are laid on the 1920 basis and scaled per band;
+			// narrow bands drop to the core columns and fold the side board. A
+			// short page EQUALIZES its row pitch instead of leaving dead glass.
+			const BASE_W = 1920;
+			const MX = 470; // main table left edge, 1920 basis
+			const SXB = 1630; // side board left edge, 1920 basis
+			const LRB = 444; // left index panel right edge, 1920 basis
+			const TCOLB = [916, 1056, 1196, 1336, 1466, 1606]; // prev high low last pct amount, 1920 basis
 			const wrapRef = React.useRef(null);
 			const canvasRef = React.useRef(null);
 			const contentRef = React.useRef(null);
@@ -2205,16 +2206,13 @@ window.__ModuleLoader__.load({
 			const [lit, setLit] = React.useState(0);
 			const [paused, setPaused] = React.useState(false);
 			const [feedTick, setFeedTick] = React.useState(0);
-			// quantized fit scale, measured in PHYSICAL pixels (css width x dpi),
-			// floored to 0.25 steps against the 1920 (1080p) design raster: the
-			// scene NEVER crops - leftover space is off-bulb wall. Examples:
-			// 480 -> 0.25, 960 -> 0.5, 1440 -> 0.75, 1920 -> 1, 2400 -> 1.25,
-			// 4K -> 2, 8K -> 4. Bakes once at design px, nearest-neighbour blit;
-			// the layout itself never re-flows.
-			const sc = (() => {
-				const raw = size.w === 0 ? 1 : size.w / DESIGN_W;
-				return Math.max(0.25, Math.min(4, Math.floor(raw * 4) / 4));
-			})();
+			// quantized design raster: the widest 480-step band that fits the
+			// container, painted at scale 1 - 480, 960, ... 1920, ... 7680 (8K).
+			// Below one step (tiny panels) fall back to a floored 0.25 blit.
+			const DW = 480 * Math.max(1, Math.min(16, size.w === 0 ? 4 : Math.floor(size.w / 480)));
+			const sc = size.w >= DW ? 1 : Math.max(0.25, Math.floor((size.w / DW) * 4) / 4);
+			// 1920-basis -> band px
+			const u = (v) => Math.round((v * DW) / BASE_W);
 			const pageSize = Math.max(2, Math.floor((size.h / sc - ROWS_TOP - CHART_H - FOOT_H) / ROW_H));
 			const pages = Math.max(1, Math.ceil(rows.length / pageSize));
 			const start = Math.min(page * pageSize, Math.max(0, rows.length - pageSize));
@@ -2290,27 +2288,47 @@ window.__ModuleLoader__.load({
 				const pitch = Math.max(ROW_H, Math.floor((availH - ROWS_TOP - CHART_H - FOOT_H) / view.length));
 				pitchRef.current = pitch;
 				topRef.current = ROWS_TOP;
-				c.width = DESIGN_W;
+				c.width = DW;
 				c.height = ROWS_TOP + pitch * view.length + CHART_H + FOOT_H;
 				const x = c.getContext('2d');
 				x.fillStyle = '#000';
 				x.fillRect(0, 0, c.width, c.height);
-				// ---- title bar: board name left, wall clock right, amber like the hall
+				// band layout: full five-zone master board at 1920+; every narrower
+				// band drops to the compact form (fixed bulb glyphs do not shrink,
+				// so scaled gutters would collide) - core columns on right-anchored
+				// positions, index folded into the title line, no left panel
+				const wide = DW >= BASE_W;
+				const CIDX = wide ? [0, 1, 2, 3, 4, 5] : [3, 4, 5];
+				const TCOL = wide ? TCOLB.map(u) : [DW - 330, DW - 190, DW - 10];
+				const MXU = wide ? u(MX) : 8;
+				const SXU = u(SXB);
+				const LRU = u(LRB);
+				const tableR = wide ? SXU : DW - 8;
+				const nameX = wide ? MXU + 14 : 8;
+				const codeX = wide ? u(630) : 170;
+				// ---- title bar: board name left, index one-liner and clock right
 				ledText(x, 8, 3, t('led.master'), '#ffd75e', void 0, tiny);
 				const nowD = new Date();
-				ledText(x, 0, 3, `${String(nowD.getHours()).padStart(2, '0')}:${String(nowD.getMinutes()).padStart(2, '0')}`, '#ffd75e', DESIGN_W - 8, tiny);
-				// ---- left index panel: name, 2x2 value grid, trend ribbon, date axis
+				ledText(x, 0, 3, `${String(nowD.getHours()).padStart(2, '0')}:${String(nowD.getMinutes()).padStart(2, '0')}`, '#ffd75e', DW - 8, tiny);
+				// ---- index: full panel on wide bands, a folded one-liner otherwise
 				const idxSym = meta?.indexBar?.[0];
 				const idxQ = idxSym === void 0 ? void 0 : quotes.get(idxSym) ?? seenQuote(idxSym);
-				ledText(x, 8, TITLE_H + 2, (idxQ?.name ?? 'INDEX').slice(0, 8), '#ff6a5e', void 0, tiny);
-				[[t('panel.last'), idxQ?.price, false], [t('board.col.high'), idxQ?.high, false], [t('board.col.low'), idxQ?.low, false], [t('board.col.chgPct'), idxQ?.changePct, true]].forEach((cellv, k) => {
-					const lx0 = k % 2 === 0 ? 8 : 236;
-					const ly = TITLE_H + 10 + G + Math.floor(k / 2) * (G + 6);
-					ledText(x, lx0, ly, cellv[0], '#3f618a', void 0, tiny);
-					const vs = cellv[1] === null || cellv[1] === void 0 ? '—' : cellv[2] === true ? `${fmtSigned(cellv[1])}%` : fmtNum(cellv[1]);
-					ledText(x, lx0 + (ledTextW(cellv[0], tiny) + 3) * PITCH, ly, vs, cellv[1] === null || cellv[1] === void 0 ? '#8fb3d9' : cellv[1] > 0 ? ledUp : cellv[1] < 0 ? ledDown : '#cfe6ff', void 0, tiny);
-				});
-				const idxTop = TITLE_H + 10 + 2 * (G + 6) + G;
+				const idxOn = wide;
+				if (!idxOn) {
+					const fold = idxQ === void 0 ? '' : `${String(idxQ.name ?? '').slice(0, 4)} ${idxQ.price == null ? '—' : fmtNum(idxQ.price)} ${idxQ.changePct == null ? '—' : `${fmtSigned(idxQ.changePct)}%`}`;
+					ledText(x, 0, 3, fold, (idxQ?.changePct ?? 0) > 0 ? ledUp : (idxQ?.changePct ?? 0) < 0 ? ledDown : '#ffd75e', DW - 96, tiny);
+				}
+				if (idxOn) {
+					ledText(x, 8, TITLE_H + 2, (idxQ?.name ?? 'INDEX').slice(0, 8), '#ff6a5e', void 0, tiny);
+					[[t('panel.last'), idxQ?.price, false], [t('board.col.high'), idxQ?.high, false], [t('board.col.low'), idxQ?.low, false], [t('board.col.chgPct'), idxQ?.changePct, true]].forEach((cellv, kk) => {
+						const lx0 = kk % 2 === 0 ? 8 : u(236);
+						const ly = TITLE_H + 10 + G + Math.floor(kk / 2) * (G + 6);
+						ledText(x, lx0, ly, cellv[0], '#3f618a', void 0, tiny);
+						const vs = cellv[1] === null || cellv[1] === void 0 ? '—' : cellv[2] === true ? `${fmtSigned(cellv[1])}%` : fmtNum(cellv[1]);
+						ledText(x, lx0 + (ledTextW(cellv[0], tiny) + 3) * PITCH, ly, vs, cellv[1] === null || cellv[1] === void 0 ? '#8fb3d9' : cellv[1] > 0 ? ledUp : cellv[1] < 0 ? ledDown : '#cfe6ff', void 0, tiny);
+					});
+				}
+				const idxTop = TITLE_H + (idxOn ? 10 + 2 * (G + 6) + G : G + 6);
 				const idxBot = c.height - FOOT_H - CHART_H - G - 8;
 				const idxPts = idxKRef.current?.sym === idxSym ? idxKRef.current.bars.filter((b2) => b2.c !== null).slice(-60) : [];
 				if (idxPts.length > 1 && idxBot > idxTop + 20) {
@@ -2319,8 +2337,8 @@ window.__ModuleLoader__.load({
 					const iSpan = iHi - iLo || 1;
 					const iRows = Math.max(4, Math.floor((idxBot - idxTop) / PITCH) - 1);
 					let pY = null;
-					for (let col = 0; col * PITCH < LRW; col++) {
-						const idx = Math.min(idxPts.length - 1, Math.round((col / (LRW / PITCH)) * (idxPts.length - 1)));
+					for (let col = 0; col * PITCH < LRU - 8; col++) {
+						const idx = Math.min(idxPts.length - 1, Math.round((col / ((LRU - 8) / PITCH)) * (idxPts.length - 1)));
 						const lvl = Math.max(1, Math.round(((idxPts[idx].c - iLo) / iSpan) * iRows));
 						const yTop = idxTop + (iRows - lvl) * PITCH;
 						x.fillStyle = '#ffd75e';
@@ -2334,13 +2352,14 @@ window.__ModuleLoader__.load({
 					}
 					const ax = (dStr) => String(dStr ?? '').slice(5, 10);
 					ledText(x, 8, idxBot + 4, ax(idxPts[0].d), '#3f618a', void 0, tiny);
-					ledText(x, 0, idxBot + 4, ax(idxPts[idxPts.length - 1].d), '#3f618a', LR - 4, tiny);
+					ledText(x, 0, idxBot + 4, ax(idxPts[idxPts.length - 1].d), '#3f618a', LRU - 4, tiny);
 				}
 				// ---- main table header: red column names like the real screens
-				ledText(x, MX + 14, TITLE_H + 2, t('board.col.instrument'), '#ff6a5e', void 0, tiny);
-				ledText(x, 630, TITLE_H + 2, t('board.col.code'), '#ff6a5e', void 0, tiny);
-				[t('board.col.prevClose'), t('board.col.high'), t('board.col.low'), t('board.col.last'), t('board.col.chgPct'), t('board.col.amount')].forEach((label, i) => {
-					ledText(x, 0, TITLE_H + 2, label, '#ff6a5e', TCOL[i] - 4, tiny);
+				const COL_LABELS = [t('board.col.prevClose'), t('board.col.high'), t('board.col.low'), t('board.col.last'), t('board.col.chgPct'), t('board.col.amount')];
+				ledText(x, nameX, TITLE_H + 2, t('board.col.instrument'), '#ff6a5e', void 0, tiny);
+				ledText(x, codeX, TITLE_H + 2, t('board.col.code'), '#ff6a5e', void 0, tiny);
+				CIDX.forEach((ci, j) => {
+					ledText(x, 0, TITLE_H + 2, COL_LABELS[ci], '#ff6a5e', TCOL[j] - 4, tiny);
 				});
 				// ---- quote rows
 				let upN = 0;
@@ -2362,12 +2381,12 @@ window.__ModuleLoader__.load({
 					const isLit = i === lit;
 					if (isLit) {
 						x.fillStyle = '#0e2c4c';
-						x.fillRect(MX, top, SX - MX - 16, pitch - 3);
-						ledText(x, MX, y, '>', '#ffd75e', void 0, tiny);
+						x.fillRect(MXU, top, tableR - MXU - 16, pitch - 3);
+						ledText(x, MXU, y, '>', '#ffd75e', void 0, tiny);
 					}
-					const name = (q?.name ?? row.name ?? '').slice(0, 4);
-					ledText(x, MX + 14, y, name, isLit ? '#ffffff' : color, void 0, tiny);
-					ledText(x, 630, y, row.symbol, '#3f618a', void 0, tiny);
+					const name = (q?.name ?? row.name ?? '').slice(0, wide ? 4 : 3);
+					ledText(x, nameX, y, name, isLit ? '#ffffff' : color, void 0, tiny);
+					ledText(x, codeX, y, row.symbol, '#3f618a', void 0, tiny);
 					const cells = [
 						q?.prevClose === null || q?.prevClose === void 0 ? '—' : fmtNum(q.prevClose),
 						q?.high === null || q?.high === void 0 ? '—' : fmtNum(q.high),
@@ -2377,25 +2396,27 @@ window.__ModuleLoader__.load({
 						q?.amount === null || q?.amount === void 0 ? '—' : fmtBig(q.amount, 1),
 					];
 					const cellColor = ['#9fc4e8', ledUp, ledDown, color, color, '#9fc4e8'];
-					cells.forEach((text, i2) => {
-						ledText(x, 0, y, text, i2 === 3 || i2 === 4 ? color : isLit && i2 > 3 ? '#ffffff' : cellColor[i2], TCOL[i2] - 4, tiny);
+					CIDX.forEach((ci, j) => {
+						ledText(x, 0, y, cells[ci], ci === 3 || ci === 4 ? color : isLit && ci > 3 ? '#ffffff' : cellColor[ci], TCOL[j] - 4, tiny);
 					});
 				});
 				// ---- side board: gainers over losers, the classic twin ranking
+				if (wide) {
 				side.sort((a, b2) => b2.pct - a.pct);
 				const nSide = Math.max(1, Math.min(6, Math.floor((pitch * view.length - 2 * (G + 10)) / (2 * (G + 4)))));
-				ledText(x, SX, TITLE_H + 2, t('led.gainers'), '#ff6a5e', void 0, tiny);
+				ledText(x, SXU, TITLE_H + 2, t('led.gainers'), '#ff6a5e', void 0, tiny);
 				side.slice(0, nSide).forEach((e, k) => {
 					const yy = TITLE_H + 10 + G + k * (G + 4);
-					ledText(x, SX + 8, yy, e.name, e.pct > 0 ? ledUp : e.pct < 0 ? ledDown : '#8fb3d9', void 0, tiny);
-					ledText(x, 0, yy, `${fmtSigned(e.pct)}%`, e.pct > 0 ? ledUp : ledDown, DESIGN_W - 8, tiny);
+					ledText(x, SXU + 8, yy, e.name, e.pct > 0 ? ledUp : e.pct < 0 ? ledDown : '#8fb3d9', void 0, tiny);
+					ledText(x, 0, yy, `${fmtSigned(e.pct)}%`, e.pct > 0 ? ledUp : ledDown, DW - 8, tiny);
 				});
-				ledText(x, SX, TITLE_H + 14 + G + nSide * (G + 4), t('led.losers'), '#ff6a5e', void 0, tiny);
+				ledText(x, SXU, TITLE_H + 14 + G + nSide * (G + 4), t('led.losers'), '#ff6a5e', void 0, tiny);
 				side.slice(-nSide).reverse().forEach((e, k) => {
 					const yy = TITLE_H + 22 + 2 * G + nSide * (G + 4) + k * (G + 4);
-					ledText(x, SX + 8, yy, e.name, e.pct > 0 ? ledUp : e.pct < 0 ? ledDown : '#8fb3d9', void 0, tiny);
-					ledText(x, 0, yy, `${fmtSigned(e.pct)}%`, e.pct < 0 ? ledDown : ledUp, DESIGN_W - 8, tiny);
+					ledText(x, SXU + 8, yy, e.name, e.pct > 0 ? ledUp : e.pct < 0 ? ledDown : '#8fb3d9', void 0, tiny);
+					ledText(x, 0, yy, `${fmtSigned(e.pct)}%`, e.pct < 0 ? ledDown : ledUp, DW - 8, tiny);
 				});
+				}
 				// ---- lit-row chart strip: stepped price ribbon + volume, between
 				// the table and the footer, pinned to the scene bottom
 				const cy0 = ROWS_TOP + pitch * view.length;
@@ -2403,7 +2424,7 @@ window.__ModuleLoader__.load({
 				const bars = (litSymbol === void 0 ? void 0 : feedsRef.current.get(litSymbol)?.bars) ?? [];
 				const pts = bars.filter((b2) => b2.c !== null);
 				if (pts.length > 1) {
-					const nCols = Math.floor((SX - 60) / PITCH);
+					const nCols = Math.floor((tableR - 60) / PITCH);
 					const priceRows = Math.max(6, Math.floor((CHART_H - 16) * 0.62 / PITCH));
 					const volRows = Math.max(3, Math.floor((CHART_H - 16) * 0.30 / PITCH));
 					const lo = Math.min(...pts.map((b2) => b2.c));
@@ -2439,15 +2460,15 @@ window.__ModuleLoader__.load({
 						x.globalAlpha = 1;
 						prevY = yTop;
 					}
-					ledText(x, 0, cy0 + 2, fmtNum(hi), '#4d7aa8', TCOL[4], tiny);
-					ledText(x, 0, cy0 + 4 + priceRows * PITCH - G, fmtNum(lo), '#4d7aa8', TCOL[4], tiny);
+					ledText(x, 0, cy0 + 2, fmtNum(hi), '#4d7aa8', TCOL[TCOL.length - 2], tiny);
+					ledText(x, 0, cy0 + 4 + priceRows * PITCH - G, fmtNum(lo), '#4d7aa8', TCOL[TCOL.length - 2], tiny);
 				} else {
 					ledText(x, 12, cy0 + (CHART_H - G) / 2, 'LOADING', '#3f618a', void 0, tiny);
 				}
 				// ---- footer: the market breadth line, like 支数/成交数量/成交金額
 				const fy = c.height - FOOT_H + 2;
 				ledText(x, 8, fy, `${t('led.count')}:${view.length}  ${t('led.upN')} ${upN}  ${t('led.downN')} ${dnN}  ${t('led.flatN')} ${flatN}`, '#c8a24a', void 0, tiny);
-				ledText(x, 0, fy, `${t('led.turnover')} ${fmtBig(turn, 1)}`, '#c8a24a', DESIGN_W - 8, tiny);
+				ledText(x, 0, fy, `${t('led.turnover')} ${fmtBig(turn, 1)}`, '#c8a24a', DW - 8, tiny);
 				const pair = scenePairRef.current ?? (scenePairRef.current = [document.createElement('canvas'), document.createElement('canvas')]);
 				bakeLamps(c, pair[pairIdxRef.current ^= 1]);
 				// atomic publish: the loop never sees a half-baked screen
@@ -2494,7 +2515,10 @@ window.__ModuleLoader__.load({
 					bx.fillStyle = base;
 					bx.fillRect(0, 0, size.w, size.h);
 				}
-				const gw = Math.ceil(size.w / cell);
+				const sceneW = Math.round(DW * sc);
+				// center the raster in the container; leftover glass stays off bulbs
+				const offX = Math.max(0, Math.floor((size.w - sceneW) / 2));
+				const gw = Math.floor(sceneW / cell);
 				const gh = Math.ceil(size.h / cell);
 				const total = Math.max(1, gw * gh);
 				let raf = 0;
@@ -2507,12 +2531,12 @@ window.__ModuleLoader__.load({
 					x.drawImage(bg, 0, 0);
 					const scene = sceneRef.current;
 					if (scene === null) return;
-					x.drawImage(scene, 0, 0, Math.round(scene.width * sc), Math.round(scene.height * sc));
+					x.drawImage(scene, offX, 0, Math.round(scene.width * sc), Math.round(scene.height * sc));
 					scanY = (scanY + 1) % gh;
 					x.fillStyle = 'rgba(130,200,255,0.05)';
 					x.fillRect(0, Math.round(scanY * cell), size.w, Math.max(1, Math.round(cell)));
 					for (let k = 0; k < 150; k++) {
-						const bx = Math.floor(Math.random() * gw) * cell;
+						const bx = offX + Math.floor(Math.random() * gw) * cell;
 						const by = Math.floor(Math.random() * gh) * cell;
 						x.fillStyle = k % 4 === 0 ? 'rgba(150,210,255,0.12)' : 'rgba(5,8,15,0.45)';
 						x.fillRect(Math.round(bx) + 1, Math.round(by) + 1, 1, 1);
@@ -2523,7 +2547,7 @@ window.__ModuleLoader__.load({
 						const n = Math.floor((total / 10) * 1.2);
 						if (tr.phase === 'out') {
 							x.fillStyle = OFF_BG;
-							for (let k = 0; k < n; k++) x.fillRect(Math.round(Math.floor(Math.random() * gw) * cell), Math.round(Math.floor(Math.random() * gh) * cell), Math.max(1, Math.round(cell)), Math.max(1, Math.round(cell)));
+							for (let k = 0; k < n; k++) x.fillRect(offX + Math.round(Math.floor(Math.random() * gw) * cell), Math.round(Math.floor(Math.random() * gh) * cell), Math.max(1, Math.round(cell)), Math.max(1, Math.round(cell)));
 							if (tr.f >= 10) {
 								transRef.current = { phase: 'in', f: 9 };
 								const commit = pendingRef.current;
@@ -2535,7 +2559,7 @@ window.__ModuleLoader__.load({
 							for (let k = 0; k < n; k++) {
 								const sx = Math.floor(Math.random() * (scene.width / PITCH)) * PITCH;
 								const sy = Math.floor(Math.random() * (scene.height / PITCH)) * PITCH;
-								x.drawImage(scene, sx, sy, PITCH, PITCH, Math.round(sx * sc), Math.round(sy * sc), ps, ps);
+								x.drawImage(scene, sx, sy, PITCH, PITCH, Math.round(sx * sc) + offX, Math.round(sy * sc), ps, ps);
 							}
 							if (tr.f <= 0) transRef.current = null;
 						}
