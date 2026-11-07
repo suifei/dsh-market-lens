@@ -1,1 +1,0 @@
-chore: keep release temp message out of the repo (script writes to tmpdir, gitignore guards the name)
