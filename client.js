@@ -382,7 +382,7 @@ window.__ModuleLoader__.load({
 		}
 
 		// ---------- diagnostic reporting (batched POST /market-lens/diag) ----------
-		const CLIENT_REV = '0.28.0';
+		const CLIENT_REV = '0.28.1';
 		const diagQueue = [];
 		let diagTimer = 0;
 		// the host meta tells the real level; until then assume the shipped 'errors' default
@@ -2284,22 +2284,33 @@ window.__ModuleLoader__.load({
 			txt(nameX, TH + 1, env.L('board.col.instrument'), '#ff6a5e');
 			if (!two) txt(codeX, TH + 1, env.L('board.col.code'), '#ff6a5e');
 			pick.forEach((ci, j) => txt(0, TH + 1, env.colLabels[ci], '#ff6a5e', rails[j] - 2));
-			env.rows.forEach((row, i) => {
-				const top = RTOP + i * pitchC;
-				const y = top + Math.floor((pitchC - G) / 2);
-				const color = pctColor(row.pct);
-				if (i === env.lit) {
-					box(MXU, top, tableR - MXU - 8, pitchC - 2, '#0e2c4c');
-					txt(MXU, y, '>', '#ffd75e');
-				}
-				txt(nameX, y, row.name, i === env.lit ? '#ffffff' : color);
-				if (!two) txt(codeX, y, row.symbol, '#3f618a');
-				pick.forEach((ci, j) => txt(0, y, row.cells[ci], ci === 3 || ci === 4 ? (i === env.lit ? '#ffffff' : color) : i === env.lit && ci === 5 ? '#ffffff' : row.cellColors[ci], rails[j] - 2));
-			});
+			// cell-accurate seamless scroll: the tape repeats enough periods to
+			// cover the band, shifted up by env.scrollCell LED rows; half-rows at
+			// the band edges are cut by the painter via plan.clip
+			const bandH = env.bandH;
+			const period = Math.max(1, pitchC * env.rows.length);
+			const off = env.scrollCell % period;
+			const reps = Math.min(64, Math.ceil((bandH + pitchC) / period));
+			const txtR = (a, b, s, c, r) => { prims.push({ t: 'x', x: X(a), y: X(b), r: r === void 0 ? null : X(r), c, s, g: 'r' }); };
+			const boxR = (a, b, w, h2, c, al) => { prims.push({ t: 'f', x: X(a), y: X(b), w: Math.max(1, X(w)), h: Math.max(1, X(h2)), c, a: al === void 0 ? 1 : al, g: 'r' }); };
+			for (let rep = 0; rep < reps; rep++) {
+				env.rows.forEach((row, i) => {
+					const top = RTOP + rep * period + i * pitchC - off;
+					if (top + pitchC <= RTOP || top >= RTOP + bandH) return;
+					const y = top + Math.floor((pitchC - G) / 2);
+					const color = pctColor(row.pct);
+					const on = i === env.lit;
+					if (on) boxR(MXU, top, tableR - MXU - 8, pitchC - 2, '#0e2c4c');
+					if (on) txtR(MXU, y, '>', '#ffd75e');
+					txtR(nameX, y, row.name, on ? '#ffffff' : color);
+					if (!two) txtR(codeX, y, row.symbol, '#3f618a');
+					pick.forEach((ci, jj) => txtR(0, y, row.cells[ci], ci === 3 || ci === 4 ? (on ? '#ffffff' : color) : on && ci === 5 ? '#ffffff' : row.cellColors[ci], rails[jj] - 2));
+				});
+			}
 			// twin ranking boards ride wide walls only
 			if (wide && env.side.length > 0) {
 				const SXU = u(815);
-				const nSide = Math.max(1, Math.min(6, Math.floor((pitchC * env.rows.length - 2 * (G + 5)) / (2 * (G + 2)))));
+				const nSide = Math.max(1, Math.min(6, Math.floor((bandH - 2 * (G + 5)) / (2 * (G + 2)))));
 				txt(SXU, TH + 1, env.L('led.gainers'), '#ff6a5e');
 				env.side.slice(0, nSide).forEach((e, k) => {
 					const yy = TH + 5 + G + k * (G + 2);
@@ -2314,7 +2325,7 @@ window.__ModuleLoader__.load({
 				});
 			}
 			// lit-row chart strip; hi/lo tick the reserved gutter, top and bottom
-			const cy0 = RTOP + pitchC * env.rows.length;
+			const cy0 = RTOP + bandH; // chart band pinned below the fixed rows band, never moves
 			if (env.chart !== null) {
 				const ch = env.chart;
 				const nCols = Math.max(8, tableR - 120);
@@ -2345,7 +2356,7 @@ window.__ModuleLoader__.load({
 			const fy = env.hC - FH + 1;
 			txt(4, fy, env.footL, '#c8a24a');
 			txt(0, fy, env.footR, '#c8a24a', C - 4);
-			return { w: X(C), h: X(env.hC), prims };
+			return { w: X(C), h: X(env.hC), prims, clip: { y: X(RTOP), h: Math.max(1, X(bandH)) } };
 		}
 
 		function LedBoard({ rows, quotes, seenQuote, meta, onPick, getKline, ledUp, ledDown, tiny, t }) {
@@ -2367,13 +2378,15 @@ window.__ModuleLoader__.load({
 			const pitchRef = React.useRef(0);
 			const topRef = React.useRef(0);
 			const geoRef = React.useRef({ ox: 0, oy: 0, sc: 1 });
+			const offPxRef = React.useRef(0);
+			const bandHPxRef = React.useRef(0);
 			const idxKRef = React.useRef(null);
 			const feedsRef = React.useRef(new Map());
 			const scenePairRef = React.useRef(null);
 			const pairIdxRef = React.useRef(0);
 			const sceneSigRef = React.useRef('');
 			const [size, setSize] = React.useState({ w: 0, h: 0 });
-			const [scrollRow, setScrollRow] = React.useState(0);
+			const [scrollCell, setScrollCell] = React.useState(0);
 			const [lit, setLit] = React.useState(0);
 			const [paused, setPaused] = React.useState(false);
 			const [feedTick, setFeedTick] = React.useState(0);
@@ -2382,9 +2395,15 @@ window.__ModuleLoader__.load({
 			// watchlist tape; every rotation step advances the tape by exactly one LED
 			// row and the last row wraps in as the next head; the chart band below
 			// the rows never moves, and there are no pages and no bulb wipe anymore
-			const winN = Math.max(2, Math.floor((HROWS - ROWS_TOP_C - CHART_C - FOOT_HC) / ROW_MIN_C));
-			const nWin = rows.length === 0 ? 0 : Math.min(rows.length, winN);
-			const view = nWin === 0 ? [] : [...rows, ...rows].slice(scrollRow % rows.length, scrollRow % rows.length + nWin);
+			// seamless cell scroll: the rows band is a fixed window of LED rows
+			// over the whole watchlist tape; every step the head moves exactly one
+			// bulb cell upward, half-rows clip at the band edges, the chart band
+			// below never moves
+			const bandH = HROWS - ROWS_TOP_C - CHART_C - FOOT_HC;
+			const winN = Math.max(2, Math.floor(bandH / ROW_MIN_C));
+			const pitchC0 = rows.length === 0 ? ROW_MIN_C : Math.max(ROW_MIN_C, Math.floor(bandH / Math.min(rows.length, winN)));
+			const tapeCells = pitchC0 * rows.length;
+			const view = rows;
 			const ticker = (meta?.indexBar ?? []).map((symbol) => quotes.get(symbol) ?? seenQuote(symbol)).filter((q) => q !== void 0);
 			const tape = ticker.length === 0 ? [] : [...ticker, ...ticker];
 			const rowsKey = rows.map((row) => row.symbol).join(',');
@@ -2417,8 +2436,8 @@ window.__ModuleLoader__.load({
 			// report the wall geometry, so live row/col counts and the display
 			// scale can be read straight out of the diag log
 			React.useEffect(() => {
-				diag('panel.led.geo', { wall: `${String(WALL_COLS)}x${String(WALL_ROWS)}`, pitch: PITCH, winRows: nWin, disp: size.w === 0 ? 'pending' : `${String(size.w)}x${String(size.h)} @${(Math.min(size.w / WALL_W_PX, size.h / WALL_H_PX)).toFixed(3)}x` });
-			}, [nWin, size]);
+				diag('panel.led.geo', { wall: `${String(WALL_COLS)}x${String(WALL_ROWS)}`, pitch: pitchC0, winRows: Math.min(rows.length, winN), scroll: '1 cell/s', disp: size.w === 0 ? 'pending' : `${String(size.w)}x${String(size.h)} @${(Math.min(size.w / WALL_W_PX, size.h / WALL_H_PX)).toFixed(3)}x` });
+			}, [Math.min(rows.length, winN), size]);
 			// one canvas pixel per css pixel, no devicePixelRatio games: the
 			// browser never resamples the wall, so bulbs cannot shimmer or spill
 			React.useEffect(() => {
@@ -2456,10 +2475,12 @@ window.__ModuleLoader__.load({
 				}
 				// the frame budget is the fixed matrix; rows share what the frame
 				// leaves them, and the footer always sits on the last wall row
-				const pitchC = Math.max(ROW_MIN_C, Math.floor((HROWS - ROWS_TOP_C - CHART_C - FOOT_HC) / view.length));
+				const pitchC = pitchC0;
 				const hC = HROWS;
 				pitchRef.current = pitchC * PITCH;
 				topRef.current = ROWS_TOP_C * PITCH;
+				offPxRef.current = (tapeCells === 0 ? 0 : scrollCell % tapeCells) * PITCH;
+				bandHPxRef.current = bandH * PITCH;
 				const fmtv = (v) => (v === null || v === void 0 ? '—' : fmtNum(v));
 				let upN = 0;
 				let dnN = 0;
@@ -2517,7 +2538,7 @@ window.__ModuleLoader__.load({
 				// actually moved: scroll head, lit row, lattice mode, every number
 				// screen, and the minute the clock prints
 				const sig = [
-					String(scrollRow), String(lit), tiny === true ? "T" : "S",
+					String(scrollCell), String(lit), tiny === true ? "T" : "S",
 					view.map((r) => {
 						const q = quotes.get(r.symbol) ?? seenQuote(r.symbol);
 						return `${String(q?.price)}:${String(q?.changePct)}:${String(q?.high)}:${String(q?.low)}:${String(q?.prevClose)}:${String(q?.amount)}`;
@@ -2531,7 +2552,7 @@ window.__ModuleLoader__.load({
 				const fullTitle = t('led.master');
 				const title = COLS >= 200 ? fullTitle : t('led.min');
 				const plan = ledPlan({
-					P: PITCH, cols: COLS, hC, tiny, pitchC, chartC: CHART_C,
+					P: PITCH, cols: COLS, hC, tiny, pitchC, chartC: CHART_C, scrollCell, bandH,
 					ledUp, ledDown,
 					title,
 					clock: `${String(nowD.getHours()).padStart(2, '0')}:${String(nowD.getMinutes()).padStart(2, '0')}`,
@@ -2553,7 +2574,16 @@ window.__ModuleLoader__.load({
 				const x = c.getContext('2d', { willReadFrequently: true }); // bake reads pixels on every publish: keep the canvas on the CPU
 				x.fillStyle = '#000';
 				x.fillRect(0, 0, c.width, c.height);
+				x.save();
+				let inRows = false;
 				plan.prims.forEach((p) => {
+					const isR = p.g === 'r';
+					if (isR !== inRows) {
+						x.restore();
+						x.save();
+						inRows = isR;
+						if (isR) { x.beginPath(); x.rect(0, plan.clip.y, c.width, plan.clip.h); x.clip(); }
+					}
 					if (p.t === 'f') {
 						x.globalAlpha = p.a;
 						x.fillStyle = p.c;
@@ -2563,21 +2593,22 @@ window.__ModuleLoader__.load({
 						ledText(x, p.x, p.y, p.s, p.c, p.r === null ? void 0 : p.r, tiny);
 					}
 				});
+				x.restore();
 				const pair = scenePairRef.current ?? (scenePairRef.current = [document.createElement('canvas'), document.createElement('canvas')]);
 				const t0 = performance.now();
 				bakeLamps(c, pair[pairIdxRef.current ^= 1]);
 				diag("panel.led.bake", { ms: Math.round(performance.now() - t0), cells: WALL_COLS * WALL_ROWS });
 				// atomic publish: the loop never sees a half-baked screen
 				sceneRef.current = pair[pairIdxRef.current];
-			}, [size, view.length, scrollRow, lit, feedTick, tiny, quotes]);
-						// rotation: the whole rows window advances one LED row every four seconds
+			}, [size, view.length, scrollCell, lit, feedTick, tiny, quotes]);
+						// rotation: the tape scrolls up exactly one LED cell per second
 			const rotRef = React.useRef(() => void 0);
 			rotRef.current = () => {
 				if (paused === true || rows.length < 2) return;
-				setScrollRow((cur) => (cur + 1) % rows.length);
+				setScrollCell((cur) => cur + 1);
 			};
 			React.useEffect(() => {
-				const timer = window.setInterval(() => rotRef.current(), 4000);
+				const timer = window.setInterval(() => rotRef.current(), 1000);
 				return () => window.clearInterval(timer);
 			}, []);
 			// the living screen: the 800x450 wall lives off-screen at its native
@@ -2631,9 +2662,11 @@ window.__ModuleLoader__.load({
 			const hit = (event) => {
 				const rect = canvasRef.current.getBoundingClientRect();
 				const { ox, oy, sc } = geoRef.current;
-				const wy = (event.clientY - rect.top - oy) / sc; // back into wall px
-				const i = Math.floor((wy - topRef.current) / (pitchRef.current === 0 ? ROW_MIN_C * PITCH : pitchRef.current));
-				return i >= 0 && i < view.length ? i : -1;
+				const wy = (event.clientY - rect.top - oy) / sc;
+				if (wy < topRef.current || wy >= topRef.current + bandHPxRef.current || view.length === 0) return -1;
+				const rel = wy - topRef.current + offPxRef.current;
+				const idx = Math.floor(rel / (pitchRef.current === 0 ? ROW_MIN_C * PITCH : pitchRef.current));
+				return idx % view.length;
 			};
 			return h('div', { className: 'ml-led' },
 				tape.length === 0 ? null : h('div', { className: 'ml-ticker' },
@@ -2646,7 +2679,7 @@ window.__ModuleLoader__.load({
 						const i = hit(event);
 						if (i >= 0) {
 							setPaused(true);
-							setLit(Math.min(i, nWin - 1));
+							setLit(i);
 						} else setPaused(false);
 					},
 					onMouseLeave: () => setPaused(false),

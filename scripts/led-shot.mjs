@@ -88,7 +88,9 @@ const rowsAll = MOCK.map((m) => {
 });
 const side = MOCK.map((m) => ({ name: m[0].slice(0, 4), pct: m[8], pctF: m[6] })).sort((a, b) => b.pct - a.pct);
 
-// fixed wall spec: the same 1024x768 bulb matrix the browser renders off-screen
+// fixed wall spec: the same 800x450 bulb matrix the browser renders off-screen.
+// cell-scroll since 0.28.1: three frames probe the tape at rest, at a half-row
+// clip on the top edge, and deep inside the second period
 {
 	const CW = 800;
 	const CH = 450;
@@ -100,14 +102,15 @@ const side = MOCK.map((m) => ({ name: m[0].slice(0, 4), pct: m[8], pctF: m[6] })
 	const RTOP = TH + G + 4;
 	const CHART_C = 34;
 	const HROWS = CH; // the matrix itself is the budget
-	const pageSize = Math.max(2, Math.floor((HROWS - RTOP - CHART_C - FH) / (G + 6)));
-	const rows = rowsAll.slice(0, Math.min(pageSize, rowsAll.length));
-	const pitchC = Math.max(G + 6, Math.floor((HROWS - RTOP - CHART_C - FH) / rows.length));
+	const bandH = HROWS - RTOP - CHART_C - FH;
+	const winN = Math.max(2, Math.floor(bandH / (G + 6)));
+	const rows = rowsAll; // the whole watchlist is the tape; bandH cells show it
+	const pitchC = rows.length === 0 ? G + 6 : Math.max(G + 6, Math.floor(bandH / Math.min(rows.length, winN)));
 	const hC = HROWS;
 	const title = '寰镜证券行情总屏';
 	const wC = (s) => Array.from(String(s)).reduce((acc, ch2) => acc + (ch2.charCodeAt(0) > 255 ? 17 : 9), 0);
-	const plan = ledPlan({
-		P, cols, hC, tiny: false, pitchC, chartC: CHART_C,
+	const mk = (scrollCell, lit) => ledPlan({
+		P, cols, hC, tiny: false, pitchC, chartC: CHART_C, scrollCell, bandH,
 		ledUp: upC, ledDown: dnC,
 		title,
 		clock: '12:02',
@@ -121,10 +124,11 @@ const side = MOCK.map((m) => ({ name: m[0].slice(0, 4), pct: m[8], pctF: m[6] })
 		idxBars,
 		L: (k) => L[k] ?? k,
 		colLabels: [L['board.col.prevClose'], L['board.col.high'], L['board.col.low'], L['board.col.last'], L['board.col.chgPct'], L['board.col.amount']],
-		rows, side, lit: 1, chart,
+		rows, side, lit, chart,
 		footL: '支数:13  涨 6  跌 7  平 0',
 		footR: '总额 1339.5亿',
 	});
-	await writeFile(join(outDir, 'plan-800x450.json'), JSON.stringify(plan));
-	console.log(`plan ${String(cols)}x${String(hC)} cells (wall px ${String(plan.w)}x${String(plan.h)})`);
+	const plans = [mk(0, 1), mk(13, 1), mk(140, 3)];
+	await writeFile(join(outDir, 'plan-800x450.json'), JSON.stringify(plans));
+	console.log(`plan ${String(cols)}x${String(hC)} cells band ${String(bandH)} pitch ${String(pitchC)} x ${String(plans.length)} frames (wall px ${String(plans[0].w)}x${String(plans[0].h)})`);
 }

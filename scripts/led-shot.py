@@ -60,20 +60,29 @@ def blend(bg, fg, a):
     return tuple(int(b * (1 - a) + f * a) for b, f in zip(bg, fg))
 
 
-def draw_content(plan, asc, hz, cmap):
+def draw_content(plan, asc, hz, cmap, clip=None):
+    # clip mirrors the browser painter: rows-group prims (g == "r") only paint
+    # inside the rows band, so scrolled half-rows never spill into title/chart
     img = Image.new("RGB", (plan["w"], plan["h"]), OFF_BG)
     for p in plan["prims"]:
+        rows_clip = p.get("g") == "r" and clip is not None
         if p["t"] == "f":
             rgb = hex2rgb(p["c"])
             a = p.get("a")
             a = 1.0 if a is None else float(a)
-            for y in range(p["y"], p["y"] + p["h"]):
-                for x in range(p["x"], p["x"] + p["w"]):
+            y0, y1 = p["y"], p["y"] + p["h"]
+            x0, x1 = p["x"], p["x"] + p["w"]
+            if rows_clip:
+                y0 = max(y0, clip["y"])
+                y1 = min(y1, clip["y"] + clip["h"])
+            for y in range(y0, y1):
+                for x in range(x0, x1):
                     if 0 <= y < plan["h"] and 0 <= x < plan["w"]:
                         img.putpixel((x, y), blend(img.getpixel((x, y)), rgb, a))
     for p in plan["prims"]:
         if p["t"] != "x":
             continue
+        rows_clip = p.get("g") == "r" and clip is not None
         w = text_w(p["s"])
         x0 = p["x"] if p["r"] is None else p["r"] - w * PITCH
         rgb = hex2rgb(p["c"])
@@ -86,8 +95,11 @@ def draw_content(plan, asc, hz, cmap):
                         bx, by = LPX(px + rx * PITCH), LPX(p["y"] + ry * PITCH)
                         for dy in range(BULB):
                             for dx in range(BULB):
-                                if 0 <= by + dy < plan["h"] and 0 <= bx + dx < plan["w"]:
-                                    img.putpixel((bx + dx, by + dy), rgb)
+                                yy = by + dy
+                                if rows_clip and (yy < clip["y"] or yy >= clip["y"] + clip["h"]):
+                                    continue
+                                if 0 <= yy < plan["h"] and 0 <= bx + dx < plan["w"]:
+                                    img.putpixel((bx + dx, yy), rgb)
             px += gw * PITCH
     return img
 
@@ -119,14 +131,24 @@ def bake(img):
     return out
 
 
-def audit(plan):
+def audit(plan, clip=None):
     boxes = []
     for p in plan["prims"]:
         if p["t"] != "x":
             continue
         w = text_w(p["s"])
         x0 = LPX(p["x"] / PITCH) if p["r"] is None else LPX(p["r"] / PITCH) - w
-        boxes.append((x0, x0 + w, LPX(p["y"] / PITCH), LPX(p["y"] / PITCH) + 16, p["s"]))
+        y0 = LPX(p["y"] / PITCH)
+        y1 = y0 + 16
+        if p.get("g") == "r" and clip is not None:
+            # audit what the eye actually sees: the clipped sliver of a scrolling
+            # half-row can collide for real, the part outside the band cannot
+            c0 = LPX(clip["y"] / PITCH)
+            c1 = c0 + LPX(clip["h"] / PITCH)
+            y0, y1 = max(y0, c0), min(y1, c1)
+            if y1 - y0 < 4:
+                continue
+        boxes.append((x0, x0 + w, y0, y1, p["s"]))
     hits = []
     for i in range(len(boxes)):
         for j in range(i + 1, len(boxes)):
@@ -144,26 +166,30 @@ def main():
     asc, hz, cmap = load_lamp()
     total = 0
     for js in sorted(out.glob("plan-*.json")):
-        plan = json.loads(js.read_text(encoding="utf-8"))
-        lat = plan.get("lattice") or {}
-        PITCH = float(lat.get("P", 3.5))
-        BULB = int(lat.get("bulb", 3))
-        plan["w"] = int(round(plan["w"]))
-        plan["h"] = int(round(plan["h"]))
-        for p in plan["prims"]:
-            for k in ("x", "y", "r", "w", "h"):
-                if isinstance(p.get(k), (int, float)):
-                    p[k] = int(round(p[k]))
-        content = draw_content(plan, asc, hz, cmap)
-        img = bake(content)
-        img = img.resize((img.width * 2, img.height * 2), Image.NEAREST)
-        name = out / f"{js.stem.replace('plan', 'shot')}.png"
-        img.save(name)
-        hits = audit(plan)
-        total += len(hits)
-        print(f"{js.name}: shot -> {name.name}, {len(hits)} collision(s)")
-        for a, b, ox, cx, cy in hits[:12]:
-            print(f"  COLLIDE '{a}' vs '{b}' by {ox}px at x={cx} y={cy}")
+        data = json.loads(js.read_text(encoding="utf-8"))
+        plans = data if isinstance(data, list) else [data]
+        for pk, plan in enumerate(plans):
+            lat = plan.get("lattice") or {}
+            PITCH = float(lat.get("P", 3.5))
+            BULB = int(lat.get("bulb", 3))
+            plan["w"] = int(round(plan["w"]))
+            plan["h"] = int(round(plan["h"]))
+            for p in plan["prims"]:
+                for k in ("x", "y", "r", "w", "h"):
+                    if isinstance(p.get(k), (int, float)):
+                        p[k] = int(round(p[k]))
+            clip = plan.get("clip")
+            content = draw_content(plan, asc, hz, cmap, clip)
+            img = bake(content)
+            img = img.resize((img.width * 2, img.height * 2), Image.NEAREST)
+            suffix = "" if len(plans) == 1 else f"-{pk}"
+            name = out / f"{js.stem.replace('plan', 'shot')}{suffix}.png"
+            img.save(name)
+            hits = audit(plan, clip)
+            total += len(hits)
+            print(f"{js.name}{suffix}: shot -> {name.name}, {len(hits)} collision(s)")
+            for a, b, ox, cx, cy in hits[:12]:
+                print(f"  COLLIDE '{a}' vs '{b}' by {ox}px at x={cx} y={cy}")
     print("TOTAL collisions:", total)
     return 1 if total else 0
 
