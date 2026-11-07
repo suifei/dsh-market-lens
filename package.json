@@ -1,6 +1,6 @@
 {
   "name": "@suifei/dsh-market-lens",
-  "version": "0.34.0",
+  "version": "0.34.1",
   "publishConfig": {
     "access": "public"
   },
