@@ -43,3 +43,5 @@ pwsh -Command "node scripts\release.mjs <新版本号 x.y.z> --msg '<一句话�
 - **npm `0.0.0-stage` 幽灵版本**：首发新 scope 包时 npm 自动留下的建包占位（345B/2 文件、无 repository/MIT），按版本序抓取的工具会扫到它（dsh.so 报「1.2kB、1 文件、0 JS/TS、repository 缺失」即此）。已 `npm deprecate`；彻底删除需「允许 unpublish」权限的令牌或 npmjs.com 网页操作，属已知无害干扰。
 - **翻页卡死**（0.26→0.27）：每次轮询整墙重烘焙；教训→签名比对进流程第 3/4 道门。
 - **npm 令牌无 Bypass 2FA**：发布 403 两次；令牌属性写死在渠道表。
+- **release.mjs 首跑即抓虫（0.29.2）**：`node --test test/` 在 execFileSync 下当模块解析而炸（改无参自动发现）；Windows 上 `npm` 需 `shell:true` 解析（已修；publish 失败时提交/推送已完成，脚本会提示**原版本重发**指令而非要求重跑）。
+- **PS 环境变量写法坑**：`$env:"npm_config_//…"` 含冒号会被解析成驱动器路径报错；令牌注入以临时 `.npmrc`（用完还原）为唯一可靠路径，脚本内部用 process.env 展开不受影响。

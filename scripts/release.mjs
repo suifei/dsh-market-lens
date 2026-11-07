@@ -88,10 +88,16 @@ await step('5/8', 'git add/commit/tag/push', async () => {
 if (flag('no-npm') === true) {
 	console.log('[6/8] npm publish ... SKIPPED (--no-npm)');
 } else {
-	await step('6/8', 'npm publish -> registry.npmjs.org', () => {
+	try {
 		const env = { ...process.env, [`npm_config_//${'registry.npmjs.org'}/:_authToken`]: token };
-		run('npm', ['publish', '--registry=https://registry.npmjs.org'], { env });
-	});
+		run('npm', ['publish', '--registry=https://registry.npmjs.org'], { env, shell: process.platform === 'win32' });
+		console.log('[6/8] npm publish -> registry.npmjs.org ... OK');
+	} catch (e) {
+		console.log('[6/8] npm publish -> registry.npmjs.org ... FAIL');
+		console.error(`    gates passed and the tree is already pushed/tagged; fix auth/network, then republish WITHOUT bumping:`);
+		console.error(`    npm publish --registry=https://registry.npmjs.org`);
+		fail(`npm publish: ${(e.stderr ?? '') + (e.stdout ?? '') + (e.message ?? '')}`.slice(0, 800));
+	}
 }
 
 // 7) registry + host verification ------------------------------------------------
