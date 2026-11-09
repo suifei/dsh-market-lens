@@ -1,6 +1,6 @@
 {
   "name": "@suifei/dsh-market-lens",
-  "version": "0.34.4",
+  "version": "0.34.5",
   "publishConfig": {
     "access": "public"
   },
@@ -43,10 +43,6 @@
   "scripts": {
     "test": "node --test test/"
   },
-  "dependencies": {
-    "@deepseek-ai/dsh-tools": "0.2.2-rc.1",
-    "@deepseek-ai/schemastery": "~3.19.0"
-  },
   "overrides": {
     "zod": "^4.6.6"
   },
@@ -56,7 +52,13 @@
     }
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": "~4.1.0"
+    "@deepseek-ai/cordis": "~4.1.0",
+    "@deepseek-ai/dsh-tools": "0.2.2-rc.1",
+    "@deepseek-ai/schemastery": "~3.19.0"
+  },
+  "devDependencies": {
+    "@deepseek-ai/dsh-tools": "0.2.2-rc.1",
+    "@deepseek-ai/schemastery": "~3.19.0"
   },
   "dsh": {
     "bundle": {

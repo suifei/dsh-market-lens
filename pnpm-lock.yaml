@@ -14,6 +14,7 @@ importers:
       '@deepseek-ai/cordis':
         specifier: ~4.1.0
         version: 4.1.0
+    devDependencies:
       '@deepseek-ai/dsh-tools':
         specifier: 0.2.2-rc.1
         version: 0.2.2-rc.1(a13a0f05e8644f33708fe2540ec79e5a)
