@@ -37,7 +37,9 @@ function defineTool(options) {
 		description: options.description,
 		parameters,
 		output: {
-			schema: options.output?.schema ?? { type: 'json' },
+			// `{ type: 'json' }` is the author-facing shorthand for "any JSON value";
+			// the registry wants a real JSON Schema, where that compiles to {}
+			schema: options.output?.schema?.type === 'json' || options.output?.schema === void 0 ? {} : options.output.schema,
 			render: (args, value) => options.output.render(args, value),
 		},
 		...(options.timeoutMs !== void 0 ? { timeoutMs: options.timeoutMs } : {}),
@@ -203,7 +205,7 @@ export function apply(ctx, config) {
 		service,
 		diag,
 		alerts,
-		config: { ...config, version: '0.34.6' },
+		config: { ...config, version: '0.34.7' },
 	});
 
 	ctx.effect(() => {
