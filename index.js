@@ -6,12 +6,46 @@
  * over read-only model tools. Nothing here writes; there is no trading verb.
  */
 import z from '@deepseek-ai/schemastery';
-import { defineTool } from '@deepseek-ai/dsh-tools';
 import { join } from 'node:path';
 import { createMarketService } from './lib/service.js';
 import { createDiagLogger, defaultDiagDir } from './lib/diaglog.js';
 import { createRoutes } from './lib/routes.js';
 import { createAlertManager } from './lib/alerts.js';
+
+/**
+ * The tool registry only needs a plain definition: name, description, a JSON
+ * Schema for the arguments, an output schema, a renderer and execute().
+ * @deepseek-ai/dsh-tools' defineTool performs exactly this conversion, but
+ * pulling that harness-internal package in as a dependency invites version
+ * skew with the host's own copy, so the same shape is built here.
+ */
+function parametersToJsonSchema(spec) {
+	const properties = {};
+	const required = [];
+	for (const [key, value] of Object.entries(spec ?? {})) {
+		const { required: isRequired, ...rest } = value ?? {};
+		properties[key] = rest;
+		if (isRequired === true) required.push(key);
+	}
+	return { type: 'object', properties, ...(required.length > 0 ? { required } : {}) };
+}
+
+function defineTool(options) {
+	const parameters = parametersToJsonSchema(options.parameters);
+	return {
+		name: options.name,
+		description: options.description,
+		parameters,
+		output: {
+			schema: options.output?.schema ?? { type: 'json' },
+			render: (args, value) => options.output.render(args, value),
+		},
+		...(options.timeoutMs !== void 0 ? { timeoutMs: options.timeoutMs } : {}),
+		async execute(args, exec) {
+			return await options.execute(args, exec);
+		},
+	};
+}
 
 /** Stable Loader identity. */
 export const name = 'market-lens';
@@ -169,7 +203,7 @@ export function apply(ctx, config) {
 		service,
 		diag,
 		alerts,
-		config: { ...config, version: '0.34.5' },
+		config: { ...config, version: '0.34.6' },
 	});
 
 	ctx.effect(() => {
