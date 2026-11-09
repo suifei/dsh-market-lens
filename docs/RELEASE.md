@@ -6,9 +6,9 @@
 
 | 渠道 | 地址/对象 | 角色 | 更新方式 |
 |---|---|---|---|
-| **npm** | `@suifei/dsh-market-lens`（registry.npmjs.org） | 发行本体：所有安装路径的源头 | `npm publish`（脚本第 6 步）；发布令牌为账号 suifei 的 granular token（勾选 Bypass 2FA，**7 天自过期**，过期后在 npmjs.com → Account Security 重新生成并更新调用时的 `NPM_TOKEN`） |
+| **npm** | `@suifei/dsh-market-lens`（registry.npmjs.org） | 发行本体：所有安装路径的源头 | `npm publish`（脚本第 6 步）；令牌见 §5 |
 | **dsh.so 插件市场** | 提交页 `www.dsh.so/zh/submit/`，条目对象 `github.com/suifei/dsh-market-lens`（**注意不是旧占位仓库 `suifei/market-lens`**） | 生态入口：让 DSH 用户可发现、可安装 | 大版本/新增能力后重新粘贴检查 →「提交到 dsh.so」（服务端每次重新拉取 tarball 重扫，不吃缓存）；元数据（星标/许可证）自动同步。**提交前自查**：`dsh` 字段、README 安装节、MIT LICENSE、仓库名规范、`dsh-plugin` topic、无安装钩子 |
-| **awesome-dsh-plugin** | `github.com/awesome-dsh-plugin/awesome-dsh-plugin` PR **#12855** | 社区清单收录 | 首版收录中（等维护者合并/仓库年龄闸门）；条目行若有名称/描述变化，推送到同 PR 分支即可 |
+| **awesome-dsh-plugin**（同时喂 dshmarket 目录） | `github.com/awesome-dsh-plugin/awesome-dsh-plugin` 的 `data/plugins/suifei__dsh-market-lens.yml` | 社区清单收录；dshmarket 的「申请收录插件」按钮就指向它的 contributing.md | **✅ 已收录（2026-11-07 维护者 fkysly 手工落 main，PR #12855 已关闭）**。条目描述如需变更：改仓库里的 yml 再走一次 PR；`screenshots.json` 的键由夜间探测自动补，**不要**手动改共享文件 |
 
 本机开发面（不算渠道）：desktop profile 用 **`link:` 直链**装（`plugin_manager install_bundle link:E:\works\dsh-market-lens`），源码改动刷新页面即达，无需重装；npm 用户升级走插件市场更新。
 
@@ -46,3 +46,22 @@ pwsh -Command "node scripts\release.mjs <新版本号 x.y.z> --msg '<一句话�
 - **release.mjs 首跑即抓虫（0.29.2）**：`node --test test/` 在 execFileSync 下当模块解析而炸（改无参自动发现）；Windows 上 `npm` 需 `shell:true` 解析（已修；publish 失败时提交/推送已完成，脚本会提示**原版本重发**指令而非要求重跑）。
 - **PS 环境变量写法坑**：`$env:"npm_config_//…"` 含冒号会被解析成驱动器路径报错；令牌注入以临时 `.npmrc`（用完还原）为唯一可靠路径，脚本内部用 process.env 展开不受影响。
 - **registry 安装态黑屏（0.34.2 事故，0.34.3 修复）**：宿主模块 runner 在**包安装**（npm/GitHub 源）时给到的是**虚拟 `import.meta.url`**，`new URL('../assets/lamp.bin', import.meta.url)` 直接抛 `Invalid URL` → `/market-lens/lampfont` 全 502（实测 37 秒内 6401 次）→ 点阵字库永远不 ready → 灯墙只剩顶部 DOM 行情条、画布全黑。link/file 安装是 `file:` URL 所以一直正常——**只有换安装方式才暴露**。修复：资源解析加 `import.meta.resolve('<pkg>/assets/<file>')` 兜底通道（并把模块 URL 写进错误信息），`package.json` `exports` 补 `"./assets/*"`。教训：**装完必须验资产路由**（`curl /market-lens/lampfont` 应为 200 且 ≈396880 字节），不能只看 meta。
+- **声明 DSH 内部包为依赖（审计告警，0.34.6/0.34.7 修复）**：`@deepseek-ai/dsh-tools` 曾作为 `dependencies` 声明，会把 `dsh-agent/dsh-llm/dsh-session…` 整棵内部树装进 profile。我们只用它的 `defineTool`，故改为**本地实现**（`parametersToJsonSchema` + 形同 `defineTool` 的返回对象）。坑：真 `defineTool` 会把作者态 `{ type: 'json' }` **编译成空 schema `{}`**，漏了这步会让宿主抛 `JsonSchemaError` 使行**不激活**（0.34.6 事故，0.34.7 修）。另实测：把 schemastery/dsh-tools 全改 `peerDependencies` **不可行**——干净 profile 装完一个 peer 都不装，import 直接 `ERR_MODULE_NOT_FOUND`。
+- **kline 源 resolve null 被缓存（0.34.8 修复）**：降级链 `try { return await run(source) }` 把**不抛错而返回 null** 的源当成成功，`null` 进入 TTL 缓存后 `result.bars` 抛 `Cannot read properties of null (reading 'bars')`，且**每次请求都复现**直到 TTL 过期。修复：源循环校验 `Array.isArray(value.bars)` 才接受，出口再兜一道；客户端 sparkline/K 线诊断与工具渲染同步加 `?.`。
+
+## 5. 令牌与凭据（**绝不入仓**）
+
+| 用途 | 形态 | 生成方式 | 使用方式 |
+|---|---|---|---|
+| **npm 发布** | granular access token（`npm_…`），权限 **Read and publish**，**必须勾选 Bypass 2FA**，有效期自定（建议 7 天） | npmjs.com → 右上头像 → Account Security → Granular Access Tokens → Generate New Token | 作为 `--token` 传给 `scripts/release.mjs`；脚本用**临时 `.npmrc` 注入、命令结束即还原**（或进程内 `npm_config_//registry.npmjs.org/:_authToken` 环境变量）。**不要写进 `package.json`/`.npmrc`/仓库文件** |
+| **GitHub**（推代码、开/查 PR） | `gh` CLI 的 OAuth 或 git 凭据管理器里的 PAT | `gh auth login` / 系统凭据管理器 | 仅本机使用；**不入仓** |
+| **dsh.so 提交** | 无令牌 | — | 网页表单手动提交（粘贴仓库地址 → 开始检查 → 提交到 dsh.so） |
+
+**令牌过期的典型症状**：`npm publish` 返回 `E403 ... Two-factor authentication or granular access token with bypass 2fa enabled is required`（令牌没开 Bypass 2FA）或 `401 Unauthorized`（令牌过期/撤销）。两者都只需重新生成令牌再跑同一条命令——**版本号不用重打**（已提交已推送时按脚本提示原版本重发即可）。
+
+**发布后三条核验（缺一不可）**：
+1. `npm view @suifei/dsh-market-lens version` == 新版本（scoped 包可能先进入 registry **staging 队列**，数分钟才转正；脚本会轮询 5 分钟）；
+2. `curl /market-lens/meta` 的 `version` == 新版本，且 `/market-lens/lampfont` 返回 200 / ≈396880 字节；
+3. 宿主行 `fiberPhase: active`（工具注册通过），`panel.crash` 无新增。
+
+**安装侧已知时滞**：插件管理器默认走 **npmmirror**，新版本发布后镜像 packument 常比 npmjs 晚几分钟；此时 `dsh plugin add <pkg>@<新版本>` 会报 `ERR_PNPM_NO_MATCHING_VERSION`。等几分钟，或显式加 `--registry=https://registry.npmjs.org`。
