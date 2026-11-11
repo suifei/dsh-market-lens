@@ -18,7 +18,28 @@ const flag = (name) => {
 	return i < 0 ? null : (argv[i + 1] === void 0 || (argv[i + 1] ?? '').startsWith('--') ? true : argv[i + 1]);
 };
 const msg = flag('msg');
-const token = flag('token');
+
+/**
+ * Read a Windows environment variable straight from the registry. The release
+ * is often driven from a long-lived host process whose environment predates the
+ * variable, and a freshly exported NPM_TOKEN would otherwise look missing.
+ */
+function envFromRegistry(name) {
+	if (process.platform !== 'win32') return null;
+	const hives = ['HKCU\\Environment', 'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment'];
+	for (const hive of hives) {
+		try {
+			const out = execFileSync('reg', ['query', hive, '/v', name], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+			const hit = out.match(/REG_(?:EXPAND_)?SZ\s+(.+)/);
+			if (hit !== null) return hit[1].trim();
+		} catch { /* not set in this hive */ }
+	}
+	return null;
+}
+
+// Precedence: explicit flag, then NPM_TOKEN from the environment (or the
+// registry when this process inherited a stale one).
+const token = flag('token') ?? process.env.NPM_TOKEN ?? envFromRegistry('NPM_TOKEN');
 const hostPort = flag('host-port');
 const py = flag('python') ?? (existsSync('C:\\Users\\SuiFei\\.dsh\\dsh-runtimes\\dsh-primary-runtime\\dependencies\\python\\python.exe')
 	? 'C:\\Users\\SuiFei\\.dsh\\dsh-runtimes\\dsh-primary-runtime\\dependencies\\python\\python.exe' : 'python');
@@ -26,7 +47,7 @@ const NODE = process.execPath;
 const fail = (why) => { console.error(`\x1b[31mRELEASE ABORT: ${why}\x1b[0m`); process.exit(1); };
 if (typeof version !== 'string' || !/^\d+\.\d+\.\d+$/.test(version)) fail('usage: release.mjs <x.y.z> --msg "..." [--token npm_..] [--host-port N] [--no-npm]');
 if (typeof msg !== 'string') fail('--msg is required (one-line summary)');
-if (!token && flag('no-npm') !== true) fail('npm channel needs --token <granular token with Bypass-2FA> (or --no-npm)');
+if (!token && flag('no-npm') !== true) fail('npm channel needs a granular token with Bypass-2FA: pass --token, or export NPM_TOKEN (or --no-npm)');
 
 const run = (cmd, args, opts) => execFileSync(cmd, args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 32 * 1024 * 1024, ...opts });
 const step = async (n, name, fn) => {

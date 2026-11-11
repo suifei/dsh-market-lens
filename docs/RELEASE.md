@@ -15,7 +15,8 @@
 ## 2. 标准发布流程（一条命令）
 
 ```powershell
-pwsh -Command "node scripts\release.mjs <新版本号 x.y.z> --msg '<一句话变更摘要>' --token <npm granular token> [--host-port <当前 GUI 端口>]"
+pwsh -Command "node scripts\release.mjs <新版本号 x.y.z> --msg '<一句话变更摘要>' [--host-port <当前 GUI 端口>]
+# 令牌无需传参：脚本读 NPM_TOKEN（--token 仍可显式覆盖）"
 ```
 
 脚本按序执行，**任一步失败即整体中止、已提交但未推送**（可修复后重跑同版本）：
@@ -53,7 +54,7 @@ pwsh -Command "node scripts\release.mjs <新版本号 x.y.z> --msg '<一句话�
 
 | 用途 | 形态 | 生成方式 | 使用方式 |
 |---|---|---|---|
-| **npm 发布** | granular access token（`npm_…`），权限 **Read and publish**，**必须勾选 Bypass 2FA**，有效期自定（建议 7 天） | npmjs.com → 右上头像 → Account Security → Granular Access Tokens → Generate New Token | 作为 `--token` 传给 `scripts/release.mjs`；脚本用**临时 `.npmrc` 注入、命令结束即还原**（或进程内 `npm_config_//registry.npmjs.org/:_authToken` 环境变量）。**不要写进 `package.json`/`.npmrc`/仓库文件** |
+| **npm 发布** | granular access token（`npm_…`），权限 **Read and publish**，**必须勾选 Bypass 2FA**，有效期自定（建议 7 天） | npmjs.com → 右上头像 → Account Security → Granular Access Tokens → Generate New Token | **默认走系统环境变量 `NPM_TOKEN`**（2026-11-11 起本机已写入 Machine 级）。脚本取值优先级：`--token` 参数 → `process.env.NPM_TOKEN` → **注册表兜底读取**（`HKCU\Environment` / `HKLM\…\Session Manager\Environment`，因为长期运行的宿主进程环境可能早于变量设置）。命令内部以 `npm_config_//registry.npmjs.org/:_authToken` 环境变量注入，**不落盘、不入仓** |
 | **GitHub**（推代码、开/查 PR） | `gh` CLI 的 OAuth 或 git 凭据管理器里的 PAT | `gh auth login` / 系统凭据管理器 | 仅本机使用；**不入仓** |
 | **dsh.so 提交** | 无令牌 | — | 网页表单手动提交（粘贴仓库地址 → 开始检查 → 提交到 dsh.so） |
 
